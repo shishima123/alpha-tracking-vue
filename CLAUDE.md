@@ -40,13 +40,26 @@ fetch(APPS_SCRIPT_URL, {
 
 The Apps Script side dispatches on `(resource, action)` in [apps-script/Code.gs](apps-script/Code.gs#L79). When adding a new endpoint, add a `case` in `dispatch()` and a matching function in the API client.
 
-### Auth (shared secret)
+### Auth (HMAC-signed requests)
 
-Every request must include `secret` in the body. `verifyAuth()` in `Code.gs` compares it against the `APP_SECRET` Script Property (set via Apps Script editor → Project Settings → Script Properties). If missing or wrong, the server returns `{ ok: false, error: 'unauthorized' }`.
+The passphrase is **never sent in the request body**. Instead, every request is signed with HMAC-SHA256 using the passphrase as the key. Wire format:
 
-Frontend stores the passphrase in `localStorage['alphaTracking.secret']` after the user enters it on [src/views/Login.vue](src/views/Login.vue). The API client ([src/services/api.js](src/services/api.js)) attaches it to every call; on `unauthorized`, it clears storage and fires `window.dispatchEvent(new Event('alpha:auth-required'))`, which [src/App.vue](src/App.vue) listens for to redirect to `/login`. A router guard in [src/router/index.js](src/router/index.js) blocks all non-`public` routes when no secret is present.
+```js
+{
+  data: JSON.stringify({ resource, action, payload }),  // inner envelope
+  timestamp: Date.now(),
+  nonce: <random hex>,
+  signature: base64(HMAC-SHA256(passphrase, data + '|' + timestamp + '|' + nonce)),
+}
+```
 
-This is client-side trust only — anyone with the passphrase can write. Rotate by changing the Script Property + redeploying *New version*.
+Server (`verifyAuth` in [Code.gs](apps-script/Code.gs)) loads the passphrase from Script Property `APP_SECRET`, recomputes the HMAC, and also rejects requests whose `timestamp` is more than 60s off — that's the replay-prevention window. Set the property via: Apps Script editor → Project Settings → Script Properties → key `APP_SECRET`.
+
+Frontend (`buildSignedBody` in [src/services/api.js](src/services/api.js)) uses the Web Crypto API (`crypto.subtle`). After login the passphrase is `importKey`'d as a **non-extractable** `HMAC` `CryptoKey` and stored in IndexedDB (`alphaTracking` DB, `auth` store, key `hmacKey`). The raw passphrase is never persisted anywhere — `subtle.exportKey()` on the stored key throws. On `unauthorized`, the client deletes the key and fires `window.dispatchEvent(new Event('alpha:auth-required'))`, which [src/App.vue](src/App.vue) listens for to redirect to `/login`. The router guard in [src/router/index.js](src/router/index.js) is async because `hasStoredKey()` reads IndexedDB.
+
+**Threat model:** Protects against URL leakage, captured-request replay, and passphrase exfiltration via DevTools (attacker can read IndexedDB but only sees an opaque `CryptoKey` object — they can't extract the original passphrase to reuse elsewhere). Does NOT protect against persistent malicious JS on the page (XSS, malicious extension), which can still call `subtle.sign()` with the stored key within its session. Rotate by changing `APP_SECRET` + redeploying *New version*.
+
+**Both sides must serialize identically.** The signature covers the `data` string verbatim; server uses `body.data` as-received, not a re-serialization of parsed fields. If you change envelope shape, change client + server together.
 
 ### State layer
 

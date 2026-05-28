@@ -64,7 +64,7 @@
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useTrackingStore } from './stores/trackingStore';
-import { clearStoredSecret, getStoredSecret } from './services/api';
+import { clearStoredKey, hasStoredKey } from './services/api';
 
 const store = useTrackingStore();
 const route = useRoute();
@@ -79,8 +79,8 @@ const routes = [
   { name: 'points', path: '/points', label: 'Điểm Alpha' },
 ];
 
-function logout() {
-  clearStoredSecret();
+async function logout() {
+  await clearStoredKey();
   store.$reset();
   router.push({ name: 'login' });
 }
@@ -89,9 +89,9 @@ function onAuthRequired() {
   if (route.name !== 'login') router.push({ name: 'login' });
 }
 
-onMounted(() => {
+onMounted(async () => {
   window.addEventListener('alpha:auth-required', onAuthRequired);
-  if (getStoredSecret()) store.loadAll();
+  if (await hasStoredKey()) store.loadAll();
 });
 
 onBeforeUnmount(() => {

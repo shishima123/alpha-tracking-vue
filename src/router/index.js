@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import { getStoredSecret } from '../services/api';
+import { hasStoredKey } from '../services/api';
 import Dashboard from '../views/Dashboard.vue';
 import Fees from '../views/Fees.vue';
 import Alpha from '../views/Alpha.vue';
@@ -17,9 +17,9 @@ const router = createRouter({
   ],
 });
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   if (to.meta.public) return true;
-  if (!getStoredSecret()) return { name: 'login' };
+  if (!(await hasStoredKey())) return { name: 'login' };
   return true;
 });
 

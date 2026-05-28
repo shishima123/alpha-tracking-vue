@@ -3,15 +3,25 @@
  *
  * Tránh CORS preflight bằng cách:
  *  - Dùng POST với Content-Type: text/plain (đây là "simple request")
- *  - Toàn bộ payload nằm trong body JSON: { resource, action, payload, secret }
- *  - Apps Script trả về { ok, data } hoặc { ok: false, error }
+ *  - Apps Script không hỗ trợ OPTIONS, application/json sẽ trigger preflight
  *
- * Auth: passphrase lưu trong localStorage, kèm vào mọi request dưới key `secret`.
- * Server (Code.gs) so sánh với Script Property APP_SECRET.
+ * Auth: HMAC-SHA256 signing với non-extractable CryptoKey.
+ *  - Khi login, passphrase được import thành CryptoKey (extractable: false)
+ *  - Lưu CryptoKey vào IndexedDB — passphrase RAW không lưu ở đâu cả.
+ *  - Mỗi request body = { data, timestamp, nonce, signature }
+ *    + data      = JSON({resource, action, payload})
+ *    + signature = base64(HMAC-SHA256(key, data + '|' + timestamp + '|' + nonce))
+ *  - Server (Code.gs) tính lại signature từ APP_SECRET, check timestamp lệch ≤60s.
+ *
+ * Attacker mở DevTools chỉ thấy CryptoKey object opaque trong IndexedDB,
+ * không thể export ra raw value. Vẫn dùng được trong session JS đó để sign,
+ * nhưng không trộm được passphrase để dùng nơi khác.
  */
 
 const APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL;
-const SECRET_STORAGE_KEY = 'alphaTracking.secret';
+const DB_NAME = 'alphaTracking';
+const STORE = 'auth';
+const KEY_ID = 'hmacKey';
 
 if (!APPS_SCRIPT_URL) {
   console.warn(
@@ -20,38 +30,140 @@ if (!APPS_SCRIPT_URL) {
   );
 }
 
-export function getStoredSecret() {
-  try { return localStorage.getItem(SECRET_STORAGE_KEY) || ''; } catch (_) { return ''; }
+const encoder = new TextEncoder();
+let cachedKey = null;
+
+// =========================================================================
+// IndexedDB
+// =========================================================================
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
 }
 
-export function setStoredSecret(s) {
-  localStorage.setItem(SECRET_STORAGE_KEY, s);
+async function idbGet(key) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(STORE, 'readonly').objectStore(STORE).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
 }
 
-export function clearStoredSecret() {
-  localStorage.removeItem(SECRET_STORAGE_KEY);
+async function idbSet(key, value) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(STORE, 'readwrite').objectStore(STORE).put(value, key);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
 }
 
-async function rawCall(resource, action, payload, secret) {
+async function idbDelete(key) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(STORE, 'readwrite').objectStore(STORE).delete(key);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// =========================================================================
+// Key management
+// =========================================================================
+async function importPassphraseKey(passphrase) {
+  return crypto.subtle.importKey(
+    'raw',
+    encoder.encode(passphrase),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false, // extractable = false → không thể subtle.exportKey()
+    ['sign']
+  );
+}
+
+export async function persistPassphrase(passphrase) {
+  const key = await importPassphraseKey(passphrase);
+  await idbSet(KEY_ID, key);
+  cachedKey = key;
+}
+
+async function loadStoredKey() {
+  if (cachedKey) return cachedKey;
+  try {
+    const k = await idbGet(KEY_ID);
+    if (k) cachedKey = k;
+  } catch (_) { /* DB error → treat as no key */ }
+  return cachedKey;
+}
+
+export async function hasStoredKey() {
+  return !!(await loadStoredKey());
+}
+
+export async function clearStoredKey() {
+  cachedKey = null;
+  try { await idbDelete(KEY_ID); } catch (_) { /* ignore */ }
+}
+
+// =========================================================================
+// Signing
+// =========================================================================
+function makeNonce() {
+  const a = new Uint8Array(12);
+  crypto.getRandomValues(a);
+  return Array.from(a, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function signWithKey(key, message) {
+  const sigBuf = await crypto.subtle.sign('HMAC', key, encoder.encode(message));
+  const bytes = new Uint8Array(sigBuf);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+
+async function buildSignedBody(key, resource, action, payload) {
+  const data = JSON.stringify({ resource, action, payload });
+  const timestamp = Date.now();
+  const nonce = makeNonce();
+  const signature = await signWithKey(key, data + '|' + timestamp + '|' + nonce);
+  return { data, timestamp, nonce, signature };
+}
+
+async function postSigned(key, resource, action, payload) {
   if (!APPS_SCRIPT_URL) {
     throw new Error('VITE_APPS_SCRIPT_URL chưa cấu hình. Xem .env.example');
   }
+  const body = await buildSignedBody(key, resource, action, payload);
   const res = await fetch(APPS_SCRIPT_URL, {
     method: 'POST',
-    // text/plain để bypass CORS preflight (Apps Script không hỗ trợ OPTIONS)
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ resource, action, payload, secret }),
+    body: JSON.stringify(body),
     redirect: 'follow',
   });
   if (!res.ok) throw new Error('HTTP ' + res.status);
   return res.json();
 }
 
+// =========================================================================
+// Public API
+// =========================================================================
 async function call(resource, action, payload = {}) {
-  const data = await rawCall(resource, action, payload, getStoredSecret());
+  const key = await loadStoredKey();
+  if (!key) {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('alpha:auth-required'));
+    }
+    throw new Error('unauthorized');
+  }
+  const data = await postSigned(key, resource, action, payload);
   if (!data.ok) {
     if (data.error === 'unauthorized') {
-      clearStoredSecret();
+      await clearStoredKey();
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('alpha:auth-required'));
       }
@@ -62,9 +174,10 @@ async function call(resource, action, payload = {}) {
 }
 
 export const authApi = {
-  /** Trả về true nếu passphrase đúng, false nếu sai. Throw cho lỗi khác. */
-  verify: async (secret) => {
-    const data = await rawCall('health', 'health', {}, secret);
+  /** Verify passphrase mà KHÔNG persist. Trả true/false, throw cho lỗi khác. */
+  verify: async (passphrase) => {
+    const tempKey = await importPassphraseKey(passphrase);
+    const data = await postSigned(tempKey, 'health', 'health', {});
     if (data.ok) return true;
     if (data.error === 'unauthorized') return false;
     throw new Error(data.error || 'Unknown error');

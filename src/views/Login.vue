@@ -34,7 +34,7 @@
 <script setup>
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { authApi, setStoredSecret } from '../services/api';
+import { authApi, persistPassphrase } from '../services/api';
 import { useTrackingStore } from '../stores/trackingStore';
 
 const passphrase = ref('');
@@ -52,7 +52,8 @@ async function login() {
       error.value = 'Passphrase không đúng';
       return;
     }
-    setStoredSecret(passphrase.value);
+    await persistPassphrase(passphrase.value);
+    passphrase.value = '';
     await store.loadAll();
     router.push('/');
   } catch (e) {

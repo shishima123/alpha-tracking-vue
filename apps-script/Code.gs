@@ -49,6 +49,8 @@ function doPost(e) {
   return handleRequest(e, 'POST');
 }
 
+const TIMESTAMP_TOLERANCE_MS = 60 * 1000; // 60s — chống replay
+
 function handleRequest(e, method) {
   try {
     const params = (e && e.parameter) || {};
@@ -56,10 +58,14 @@ function handleRequest(e, method) {
     if (e && e.postData && e.postData.contents) {
       try { body = JSON.parse(e.postData.contents); } catch (_) {}
     }
-    verifyAuth(body, params);
-    const action = body.action || params.action || 'health';
-    const resource = body.resource || params.resource || '';
-    const payload = body.payload || {};
+    verifyAuth(body);
+
+    // Sau khi xác thực: parse inner envelope (đã được sign cùng signature)
+    let inner = {};
+    try { inner = JSON.parse(body.data || '{}'); } catch (_) {}
+    const action = inner.action || params.action || 'health';
+    const resource = inner.resource || params.resource || '';
+    const payload = inner.payload || {};
 
     const result = dispatch(resource, action, payload, params);
     return jsonResponse({ ok: true, data: result });
@@ -69,17 +75,42 @@ function handleRequest(e, method) {
 }
 
 /**
- * Mọi request bắt buộc kèm `secret` khớp với Script Property `APP_SECRET`.
+ * HMAC-SHA256 auth. Client gửi { data, timestamp, nonce, signature }, trong đó:
+ *   signature = base64(HMAC-SHA256(APP_SECRET, data + '|' + timestamp + '|' + nonce))
+ *   data      = JSON.stringify({ resource, action, payload })
+ *
+ * Server kiểm:
+ *   1. timestamp lệch <= 60s (chống replay)
+ *   2. signature khớp với HMAC tính lại từ APP_SECRET
+ *
  * Set passphrase: Apps Script editor → Project Settings (bánh răng trái) →
  * Script Properties → Add property → key=APP_SECRET, value=<chuỗi ngẫu nhiên>.
  */
-function verifyAuth(body, params) {
-  const expected = PropertiesService.getScriptProperties().getProperty('APP_SECRET');
-  if (!expected) {
+function verifyAuth(body) {
+  const secret = PropertiesService.getScriptProperties().getProperty('APP_SECRET');
+  if (!secret) {
     throw new Error('Server chưa cấu hình APP_SECRET. Vào Apps Script → Project Settings → Script Properties → thêm APP_SECRET.');
   }
-  const provided = (body && body.secret) || (params && params.secret) || '';
-  if (provided !== expected) throw new Error('unauthorized');
+  if (
+    !body ||
+    typeof body.data !== 'string' ||
+    typeof body.timestamp !== 'number' ||
+    typeof body.nonce !== 'string' ||
+    typeof body.signature !== 'string'
+  ) {
+    throw new Error('unauthorized');
+  }
+  const skew = Math.abs(Date.now() - body.timestamp);
+  if (skew > TIMESTAMP_TOLERANCE_MS) throw new Error('unauthorized');
+
+  const message = body.data + '|' + body.timestamp + '|' + body.nonce;
+  const expected = hmacSha256Base64(secret, message);
+  if (expected !== body.signature) throw new Error('unauthorized');
+}
+
+function hmacSha256Base64(secret, message) {
+  const sig = Utilities.computeHmacSha256Signature(message, secret);
+  return Utilities.base64Encode(sig);
 }
 
 function jsonResponse(obj) {
