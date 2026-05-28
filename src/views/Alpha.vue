@@ -264,7 +264,8 @@ function hasAnyReward(p) {
 }
 
 function accountsWithReward(p) {
-  return store.activeAccounts.filter((a) => Number(p.rewards?.[a.id]) > 0);
+  // Bao gồm cả inactive accounts để không "ẩn" reward cũ
+  return store.accounts.filter((a) => Number(p.rewards?.[a.id]) > 0);
 }
 
 function typeClass(type) {
@@ -340,9 +341,10 @@ function startEdit(p) {
   editForm.claimPoints = p.claimPoints;
   editForm.type = p.type;
   editForm.note = p.note || '';
-  editForm.rewards = {};
+  // Giữ NGUYÊN rewards gốc (kể cả của inactive accounts) để không bị drop khi save
+  editForm.rewards = { ...(p.rewards || {}) };
   for (const a of store.activeAccounts) {
-    editForm.rewards[a.id] = p.rewards?.[a.id] ?? null;
+    if (!(a.id in editForm.rewards)) editForm.rewards[a.id] = null;
   }
 }
 

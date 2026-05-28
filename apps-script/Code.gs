@@ -42,15 +42,6 @@ const ACCOUNT_CALC_DEFAULTS = {
   lastAfter: null,
 };
 
-const DEFAULT_ACCOUNTS = [
-  { id: 'main', name: 'Main', color: '#ef4444' },
-  { id: 'emiu', name: 'Em iu', color: '#ec4899' },
-  { id: 'huy', name: 'Huy', color: '#f59e0b' },
-  { id: 'old', name: 'Old', color: '#10b981' },
-  { id: 'new', name: 'New', color: '#3b82f6' },
-  { id: 'bo', name: 'Bo', color: '#8b5cf6' },
-];
-
 const DEFAULT_VND_RATE = 26500;
 
 // =========================================================================
@@ -263,21 +254,7 @@ function appendItem(name, item) {
 // ACCOUNTS
 // =========================================================================
 function listAccounts() {
-  let accounts = readRows(SHEETS.ACCOUNTS).map(normalizeAccount);
-  if (accounts.length === 0) {
-    accounts = DEFAULT_ACCOUNTS.map(function (a) {
-      return {
-        id: a.id,
-        name: a.name,
-        displayName: a.name,
-        color: a.color,
-        active: true,
-        createdAt: new Date().toISOString(),
-      };
-    });
-    writeAll(SHEETS.ACCOUNTS, accounts);
-  }
-  return accounts;
+  return readRows(SHEETS.ACCOUNTS).map(normalizeAccount);
 }
 
 function normalizeAccount(r) {
