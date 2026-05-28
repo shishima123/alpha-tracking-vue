@@ -56,6 +56,7 @@ function handleRequest(e, method) {
     if (e && e.postData && e.postData.contents) {
       try { body = JSON.parse(e.postData.contents); } catch (_) {}
     }
+    verifyAuth(body, params);
     const action = body.action || params.action || 'health';
     const resource = body.resource || params.resource || '';
     const payload = body.payload || {};
@@ -65,6 +66,20 @@ function handleRequest(e, method) {
   } catch (err) {
     return jsonResponse({ ok: false, error: err.message || String(err) });
   }
+}
+
+/**
+ * Mọi request bắt buộc kèm `secret` khớp với Script Property `APP_SECRET`.
+ * Set passphrase: Apps Script editor → Project Settings (bánh răng trái) →
+ * Script Properties → Add property → key=APP_SECRET, value=<chuỗi ngẫu nhiên>.
+ */
+function verifyAuth(body, params) {
+  const expected = PropertiesService.getScriptProperties().getProperty('APP_SECRET');
+  if (!expected) {
+    throw new Error('Server chưa cấu hình APP_SECRET. Vào Apps Script → Project Settings → Script Properties → thêm APP_SECRET.');
+  }
+  const provided = (body && body.secret) || (params && params.secret) || '';
+  if (provided !== expected) throw new Error('unauthorized');
 }
 
 function jsonResponse(obj) {

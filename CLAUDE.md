@@ -11,7 +11,7 @@ npm run build       # static build to dist/
 npm run preview     # preview built bundle
 ```
 
-No tests, no linter — this is a small personal project. Before `npm run dev` works, `.env` must exist with `VITE_APPS_SCRIPT_URL=...` (see [.env.example](.env.example)).
+No tests, no linter — this is a small personal project. Before `npm run dev` works, `.env` must exist with `VITE_APPS_SCRIPT_URL=...` (see [.env.example](.env.example)). The Apps Script side also needs a Script Property `APP_SECRET` (any random string) — see the Auth section below.
 
 The README references a `frontend/` subfolder; that layout is stale — the Vue app lives at the repo root (`src/`, `package.json`, `vite.config.js`). The old `backend/` Node server has been removed.
 
@@ -39,6 +39,14 @@ fetch(APPS_SCRIPT_URL, {
 **Critical:** `Content-Type` must be `text/plain` so the request stays a CORS "simple request" — Apps Script does not respond to `OPTIONS` preflight, so anything else (`application/json`, custom headers) breaks in the browser.
 
 The Apps Script side dispatches on `(resource, action)` in [apps-script/Code.gs](apps-script/Code.gs#L79). When adding a new endpoint, add a `case` in `dispatch()` and a matching function in the API client.
+
+### Auth (shared secret)
+
+Every request must include `secret` in the body. `verifyAuth()` in `Code.gs` compares it against the `APP_SECRET` Script Property (set via Apps Script editor → Project Settings → Script Properties). If missing or wrong, the server returns `{ ok: false, error: 'unauthorized' }`.
+
+Frontend stores the passphrase in `localStorage['alphaTracking.secret']` after the user enters it on [src/views/Login.vue](src/views/Login.vue). The API client ([src/services/api.js](src/services/api.js)) attaches it to every call; on `unauthorized`, it clears storage and fires `window.dispatchEvent(new Event('alpha:auth-required'))`, which [src/App.vue](src/App.vue) listens for to redirect to `/login`. A router guard in [src/router/index.js](src/router/index.js) blocks all non-`public` routes when no secret is present.
+
+This is client-side trust only — anyone with the passphrase can write. Rotate by changing the Script Property + redeploying *New version*.
 
 ### State layer
 
