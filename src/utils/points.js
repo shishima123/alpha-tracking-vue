@@ -2,6 +2,7 @@ import { parseDate } from './format';
 
 export const ALPHA_VOLUME_MULTIPLIER = 4;
 export const MAX_POINT = 20;
+export const POINT_WINDOW_DAYS = 15;
 
 export function pointsFromVolume(volume) {
   const v = Number(volume) || 0;
@@ -21,47 +22,84 @@ export function nextThreshold(volume) {
   };
 }
 
-export function computePointsFromFees(fees, requiredPoints = 15) {
-  const required = Number(requiredPoints) || 15;
+/**
+ * Điểm Alpha của 1 account:
+ *  - Tổng điểm = sum(fees.points) trong cửa sổ 15 ngày KHÔNG tính hôm nay.
+ *    Tức entry.date phải > today-15 AND entry.date < today
+ *    (= 14 ngày: từ today-14 đến today-1).
+ *  - Điểm trừ = sum(project.claimPoints) cho mỗi alpha project trong window
+ *    mà account này có reward > 0 (= đã húp được kèo này).
+ *  - Điểm còn lại = Tổng − Điểm trừ.
+ *  - Schedule "ngày reset" = với mỗi claim trong window:
+ *      resetDate = claim.date + 15
+ *      daysLeft  = resetDate − today (1..14)
+ *    Sắp xếp ascending theo daysLeft.
+ */
+export function computeAlphaPoints(fees, projects, requiredPoints = 15) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const required = Number(requiredPoints) || 15;
+  const DAY = 86400000;
 
-  const grouped = {};
-  for (const f of fees) {
-    if (!grouped[f.accountId]) grouped[f.accountId] = [];
-    grouped[f.accountId].push(f);
+  // entry hợp lệ khi 1 <= daysAgo <= 14 (today exclusive, 14 ngày trước inclusive)
+  function dateInWindow(dateStr) {
+    const d = parseDate(dateStr);
+    if (!d) return null;
+    d.setHours(0, 0, 0, 0);
+    const daysAgo = Math.round((today.getTime() - d.getTime()) / DAY);
+    return daysAgo >= 1 && daysAgo <= 14 ? d : null;
   }
 
-  const accounts = Object.keys(grouped).map((id) => {
-    const entries = grouped[id];
-    let current = 0;
-    const schedule = [];
-    for (const e of entries) {
-      const d = parseDate(e.date);
-      if (!d) continue;
-      const reset = new Date(d);
-      reset.setDate(reset.getDate() + 15);
-      if (reset.getTime() < today.getTime()) continue;
-      const pts = Number(e.points) || 0;
-      current += pts;
-      schedule.push({
-        tradeDate: e.date,
+  const map = {};
+  function bucket(id) {
+    if (!map[id]) map[id] = { totalPoints: 0, claims: [] };
+    return map[id];
+  }
+
+  for (const f of fees || []) {
+    if (!dateInWindow(f.date)) continue;
+    bucket(f.accountId).totalPoints += Number(f.points) || 0;
+  }
+
+  for (const p of projects || []) {
+    const d = dateInWindow(p.date);
+    if (!d) continue;
+    const rewards = p.rewards || {};
+    const reset = new Date(d);
+    reset.setDate(reset.getDate() + POINT_WINDOW_DAYS);
+    const daysLeft = Math.round((reset.getTime() - today.getTime()) / DAY);
+    for (const accId in rewards) {
+      if (!(Number(rewards[accId]) > 0)) continue;
+      bucket(accId).claims.push({
+        projectId: p.id,
+        projectName: p.name,
+        claimDate: p.date,
+        claimPoints: Number(p.claimPoints) || 0,
+        rewardAmount: Number(rewards[accId]) || 0,
         resetDate: formatDmy(reset),
-        daysLeft: Math.ceil((reset.getTime() - today.getTime()) / 86400000),
-        points: pts,
+        daysLeft,
       });
     }
-    schedule.sort((a, b) => (a.resetDate < b.resetDate ? -1 : 1));
+  }
+
+  const accounts = Object.keys(map).map((id) => {
+    const m = map[id];
+    const deducted = m.claims.reduce((s, c) => s + c.claimPoints, 0);
+    const currentPoints = m.totalPoints - deducted;
+    const schedule = m.claims.slice().sort((a, b) => a.daysLeft - b.daysLeft);
     return {
       accountId: id,
-      currentPoints: current,
+      totalPoints: m.totalPoints,
+      claimsCount: m.claims.length,
+      deducted,
+      currentPoints,
+      schedule,
       airdrop: {
-        eligible: current >= required,
-        current,
+        eligible: currentPoints >= required,
+        current: currentPoints,
         required,
-        deficit: Math.max(0, required - current),
+        deficit: Math.max(0, required - currentPoints),
       },
-      schedule: schedule.slice(0, 10),
     };
   });
 

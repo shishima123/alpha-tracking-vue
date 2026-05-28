@@ -59,9 +59,9 @@
       </div>
     </div>
 
-    <!-- Danh sách dự án -->
-    <div class="card overflow-x-auto">
-      <div class="flex items-center justify-between mb-3">
+    <!-- Danh sách dự án (card list) -->
+    <div class="card">
+      <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
         <h3 class="font-semibold">
           Danh sách dự án ({{ store.projects.length }})
         </h3>
@@ -71,49 +71,54 @@
           placeholder="Tìm theo tên dự án..."
         />
       </div>
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="table-thead">
-            <th class="px-3 py-2">Ngày</th>
-            <th class="px-3 py-2">Dự án</th>
-            <th class="px-3 py-2">Loại</th>
-            <th class="px-3 py-2 text-right">Điểm</th>
-            <th
-              v-for="acc in store.activeAccounts"
-              :key="acc.id"
-              class="px-2 py-2 text-right"
-            >
-              <span
-                class="inline-block w-2 h-2 rounded-full mr-1"
-                :style="{ background: acc.color }"
-              ></span>
-              {{ acc.displayName }}
-            </th>
-            <th class="px-3 py-2 text-right">Tổng</th>
-            <th class="px-3 py-2 w-32 text-right"></th>
-          </tr>
-        </thead>
-        <tbody>
-          <template v-for="p in filteredProjects" :key="p.id">
-            <!-- Display row -->
-            <tr v-if="editingId !== p.id" class="hover:bg-binance-light/30">
-              <td class="table-td whitespace-nowrap">{{ p.date }}</td>
-              <td class="table-td font-medium">{{ p.name }}</td>
-              <td class="table-td">
+
+      <div v-if="filteredProjects.length === 0" class="text-center py-8 text-gray-500">
+        Chưa có dự án nào
+      </div>
+
+      <div v-else class="space-y-2">
+        <div
+          v-for="p in filteredProjects"
+          :key="p.id"
+          class="border border-binance-light rounded-lg p-3 hover:bg-binance-light/20 transition"
+        >
+          <!-- DISPLAY MODE -->
+          <div v-if="editingId !== p.id" class="flex items-start justify-between gap-4 flex-wrap">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="font-semibold text-base">{{ p.name }}</span>
                 <span class="badge" :class="typeClass(p.type)">{{ p.type }}</span>
-              </td>
-              <td class="table-td text-right">{{ p.claimPoints }}</td>
-              <td
-                v-for="acc in store.activeAccounts"
-                :key="acc.id"
-                class="table-td text-right text-binance-yellow"
-              >
-                {{ p.rewards[acc.id] ? fmtUSD(p.rewards[acc.id]) : '-' }}
-              </td>
-              <td class="table-td text-right font-semibold text-green-400">
-                {{ fmtUSD(projectTotal(p)) }}
-              </td>
-              <td class="table-td text-right space-x-2 whitespace-nowrap">
+                <span class="text-xs text-gray-500">{{ p.date }}</span>
+                <span class="text-xs text-gray-500">·</span>
+                <span class="text-xs text-gray-400">
+                  Yêu cầu <b class="text-gray-200">{{ p.claimPoints }}đ</b>
+                </span>
+                <span v-if="p.note" class="text-xs text-gray-500 italic">· {{ p.note }}</span>
+              </div>
+
+              <div v-if="hasAnyReward(p)" class="mt-2 flex flex-wrap gap-1.5">
+                <span
+                  v-for="acc in accountsWithReward(p)"
+                  :key="acc.id"
+                  class="text-xs px-2 py-1 rounded-md bg-binance-dark border border-binance-light/60 flex items-center gap-1.5"
+                >
+                  <span
+                    class="inline-block w-2 h-2 rounded-full"
+                    :style="{ background: acc.color }"
+                  ></span>
+                  <span class="text-gray-300">{{ acc.displayName }}</span>
+                  <span class="text-binance-yellow font-semibold">{{ fmtUSD(p.rewards[acc.id]) }}</span>
+                </span>
+              </div>
+              <div v-else class="mt-2 text-xs text-gray-500 italic">
+                Chưa ghi nhận reward cho account nào
+              </div>
+            </div>
+
+            <div class="flex flex-col items-end shrink-0">
+              <div class="text-xs text-gray-400">Tổng</div>
+              <div class="text-xl font-bold text-green-400">{{ fmtUSD(projectTotal(p)) }}</div>
+              <div class="mt-1 flex gap-3">
                 <button
                   class="text-binance-yellow hover:text-yellow-300 text-xs"
                   @click="startEdit(p)"
@@ -121,71 +126,82 @@
                   Sửa
                 </button>
                 <button
-                  class="text-red-400 text-xs hover:text-red-300"
+                  class="text-red-400 hover:text-red-300 text-xs"
                   @click="del(p)"
                 >
                   Xóa
                 </button>
-              </td>
-            </tr>
+              </div>
+            </div>
+          </div>
 
-            <!-- Edit row -->
-            <tr v-else class="bg-binance-light/30">
-              <td class="table-td">
-                <input v-model="editDateIso" type="date" class="input py-1" />
-              </td>
-              <td class="table-td">
-                <input v-model="editForm.name" class="input py-1" placeholder="Tên" />
-              </td>
-              <td class="table-td">
-                <select v-model="editForm.type" class="input py-1">
+          <!-- EDIT MODE -->
+          <div v-else>
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+              <div>
+                <label class="label">Tên dự án</label>
+                <input v-model="editForm.name" class="input" />
+              </div>
+              <div>
+                <label class="label">Ngày</label>
+                <input v-model="editDateIso" type="date" class="input" />
+              </div>
+              <div>
+                <label class="label">Điểm yêu cầu</label>
+                <input v-model.number="editForm.claimPoints" type="number" class="input" />
+              </div>
+              <div>
+                <label class="label">Loại</label>
+                <select v-model="editForm.type" class="input">
                   <option v-for="t in projectTypes" :key="t" :value="t">{{ t }}</option>
                 </select>
-              </td>
-              <td class="table-td">
-                <input v-model.number="editForm.claimPoints" type="number" class="input py-1 text-right" />
-              </td>
-              <td
-                v-for="acc in store.activeAccounts"
-                :key="acc.id"
-                class="table-td"
-              >
-                <input
-                  v-model.number="editForm.rewards[acc.id]"
-                  type="number"
-                  step="0.01"
-                  class="input py-1 text-right"
-                  placeholder="0"
-                />
-              </td>
-              <td class="table-td text-right font-semibold text-green-400">
-                {{ fmtUSD(editTotal) }}
-              </td>
-              <td class="table-td text-right space-x-2 whitespace-nowrap">
-                <button
-                  class="text-green-400 hover:text-green-300 text-xs"
-                  :disabled="savingEdit"
-                  @click="saveEdit"
-                >
-                  {{ savingEdit ? '...' : 'Lưu' }}
-                </button>
-                <button
-                  class="text-gray-400 hover:text-gray-300 text-xs"
-                  :disabled="savingEdit"
-                  @click="cancelEdit"
-                >
+              </div>
+              <div>
+                <label class="label">Ghi chú</label>
+                <input v-model="editForm.note" class="input" placeholder="Không bắt buộc" />
+              </div>
+            </div>
+
+            <div class="mt-3">
+              <div class="label">Số tiền nhận được ($)</div>
+              <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 mt-1">
+                <div v-for="acc in store.activeAccounts" :key="acc.id">
+                  <label class="text-xs flex items-center gap-1 text-gray-300 mb-0.5">
+                    <span
+                      class="inline-block w-2 h-2 rounded-full"
+                      :style="{ background: acc.color }"
+                    ></span>
+                    {{ acc.displayName }}
+                  </label>
+                  <input
+                    v-model.number="editForm.rewards[acc.id]"
+                    type="number"
+                    step="0.01"
+                    class="input"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between mt-3">
+              <div class="text-sm">
+                <span class="text-gray-400">Tổng: </span>
+                <span class="text-green-400 font-semibold">{{ fmtUSD(editTotal) }}</span>
+              </div>
+              <div class="flex gap-2">
+                <button class="btn-secondary" :disabled="savingEdit" @click="cancelEdit">
                   Hủy
                 </button>
-              </td>
-            </tr>
-          </template>
-          <tr v-if="filteredProjects.length === 0">
-            <td :colspan="6 + store.activeAccounts.length" class="text-center py-6 text-gray-500">
-              Chưa có dự án nào
-            </td>
-          </tr>
-        </tbody>
-      </table>
+                <button class="btn-primary" :disabled="savingEdit" @click="saveEdit">
+                  <span v-if="savingEdit" class="inline-block w-3 h-3 border-2 border-binance-dark border-t-transparent rounded-full animate-spin"></span>
+                  {{ savingEdit ? 'Đang lưu...' : 'Lưu' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -241,6 +257,14 @@ function projectTotal(p) {
     (s, v) => s + (Number(v) || 0),
     0
   );
+}
+
+function hasAnyReward(p) {
+  return Object.values(p.rewards || {}).some((v) => Number(v) > 0);
+}
+
+function accountsWithReward(p) {
+  return store.activeAccounts.filter((a) => Number(p.rewards?.[a.id]) > 0);
 }
 
 function typeClass(type) {

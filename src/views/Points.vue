@@ -1,13 +1,14 @@
 <template>
   <div class="space-y-6">
-    <!-- Cấu hình điểm yêu cầu -->
+    <!-- Header config -->
     <div class="card">
       <div class="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h3 class="font-semibold">Theo dõi điểm Alpha</h3>
           <p class="text-xs text-gray-500 mt-1">
-            Tính từ dữ liệu lịch sử phí (không gọi server). Dùng nút 🧮 góc dưới
-            phải để tính volume → phí và fill nhanh cho 1 tài khoản.
+            Tổng = sum điểm phí trong 15 ngày gần nhất (không tính hôm nay).
+            Trừ <b class="text-gray-300">claimPoints</b> mỗi kèo alpha đã húp trong cùng cửa sổ.
+            Khi kèo hết hạn → điểm hồi lại.
           </p>
         </div>
         <div class="flex items-center gap-2">
@@ -22,13 +23,14 @@
       </div>
     </div>
 
-    <!-- Điểm còn lại từng account -->
+    <!-- Cards điểm từng account -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       <div
         v-for="acc in store.activeAccounts"
         :key="acc.id"
         class="card"
       >
+        <!-- Header: name + badge -->
         <div class="flex items-center justify-between mb-3">
           <div class="flex items-center gap-2">
             <span
@@ -37,55 +39,70 @@
             ></span>
             <h3 class="font-semibold">{{ acc.displayName }}</h3>
           </div>
-          <div class="flex items-center gap-2">
-            <button
-              class="text-xs text-binance-yellow hover:underline"
-              title="Mở máy tính cho tài khoản này"
-              @click="openCalc(acc.id)"
-            >
-              🧮 Tính
-            </button>
-            <span
-              v-if="getAccountData(acc.id)?.airdrop.eligible"
-              class="badge bg-green-900 text-green-200"
-            >
-              ✓ Đủ điểm húp
-            </span>
-            <span v-else class="badge bg-gray-700 text-gray-400">
-              Thiếu {{ getAccountData(acc.id)?.airdrop.deficit ?? required }}
-            </span>
-          </div>
+          <span
+            v-if="data(acc.id).airdrop.eligible"
+            class="badge bg-green-900 text-green-200"
+          >
+            ✓ Đủ điểm húp
+          </span>
+          <span v-else class="badge bg-gray-700 text-gray-400">
+            Thiếu {{ data(acc.id).airdrop.deficit }}
+          </span>
         </div>
 
-        <div class="grid grid-cols-2 gap-3 mb-3">
-          <div>
-            <div class="text-xs text-gray-400">Điểm còn lại</div>
-            <div class="text-3xl font-bold text-binance-yellow">
-              {{ getAccountData(acc.id)?.currentPoints || 0 }}
+        <!-- Metrics 4 ô -->
+        <div class="grid grid-cols-4 gap-2 mb-3 text-center">
+          <div class="border border-binance-light rounded-lg px-1 py-2">
+            <div class="text-[11px] text-gray-400">Tổng điểm</div>
+            <div class="text-xl font-bold">{{ data(acc.id).totalPoints }}</div>
+          </div>
+          <div class="border border-binance-light rounded-lg px-1 py-2">
+            <div class="text-[11px] text-gray-400">Đã trừ</div>
+            <div class="text-xl font-bold text-red-400">
+              −{{ data(acc.id).deducted }}
             </div>
           </div>
-          <div>
-            <div class="text-xs text-gray-400">Cần để húp</div>
-            <div class="text-3xl font-bold text-gray-500">{{ required }}</div>
+          <div class="border border-binance-light bg-binance-light/30 rounded-lg px-1 py-2">
+            <div class="text-[11px] text-gray-400">Còn lại</div>
+            <div
+              class="text-xl font-bold"
+              :class="data(acc.id).airdrop.eligible ? 'text-green-400' : 'text-binance-yellow'"
+            >
+              {{ data(acc.id).currentPoints }}
+            </div>
+          </div>
+          <div class="border border-binance-light rounded-lg px-1 py-2">
+            <div class="text-[11px] text-gray-400">Số kèo</div>
+            <div class="text-xl font-bold text-gray-300">
+              {{ data(acc.id).claimsCount }}
+            </div>
           </div>
         </div>
 
+        <!-- Ngày reset (lịch hồi điểm khi kèo hết hạn) -->
         <div class="border-t border-binance-light pt-2">
-          <div class="text-xs text-gray-400 mb-2">Lịch hồi điểm (15 ngày)</div>
-          <div v-if="!getAccountData(acc.id)?.schedule?.length" class="text-xs text-gray-500">
-            Chưa có dữ liệu
+          <div class="text-xs text-gray-400 mb-2">
+            Ngày reset (kèo hết hạn, điểm hồi lại)
           </div>
-          <ul class="space-y-1 text-xs max-h-40 overflow-y-auto">
+          <div v-if="!data(acc.id).schedule.length" class="text-xs text-gray-500">
+            Chưa có kèo nào đã húp trong 14 ngày qua
+          </div>
+          <ul v-else class="space-y-1.5 text-xs max-h-48 overflow-y-auto">
             <li
-              v-for="(s, i) in getAccountData(acc.id)?.schedule || []"
+              v-for="(s, i) in data(acc.id).schedule"
               :key="i"
-              class="flex justify-between items-center"
+              class="flex items-center justify-between gap-2"
             >
-              <span class="text-gray-300">
-                {{ s.resetDate }}
-                <span class="text-gray-500">(còn {{ s.daysLeft }}d)</span>
+              <div class="flex-1 min-w-0">
+                <div class="truncate text-gray-200 font-medium">{{ s.projectName }}</div>
+                <div class="text-gray-500">
+                  {{ s.resetDate }}
+                  <span class="text-gray-600">· còn {{ s.daysLeft }}d</span>
+                </div>
+              </div>
+              <span class="text-green-400 font-semibold whitespace-nowrap">
+                +{{ s.claimPoints }}đ
               </span>
-              <span class="text-binance-yellow">+{{ s.points }} đ</span>
             </li>
           </ul>
         </div>
@@ -97,21 +114,30 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { useTrackingStore } from '../stores/trackingStore';
-import { useCalculatorStore } from '../stores/calculatorStore';
-import { computePointsFromFees } from '../utils/points';
+import { computeAlphaPoints } from '../utils/points';
 
 const store = useTrackingStore();
-const calc = useCalculatorStore();
 const required = ref(15);
 
 const pointsData = computed(() =>
-  computePointsFromFees(store.fees || [], required.value)
+  computeAlphaPoints(store.fees || [], store.projects || [], required.value)
 );
-function getAccountData(id) {
-  return pointsData.value.accounts.find((a) => a.accountId === id);
-}
 
-function openCalc(accountId) {
-  calc.show(accountId);
+const emptyAccount = computed(() => ({
+  totalPoints: 0,
+  deducted: 0,
+  currentPoints: 0,
+  claimsCount: 0,
+  schedule: [],
+  airdrop: {
+    eligible: false,
+    current: 0,
+    required: required.value,
+    deficit: required.value,
+  },
+}));
+
+function data(id) {
+  return pointsData.value.accounts.find((a) => a.accountId === id) || emptyAccount.value;
 }
 </script>
