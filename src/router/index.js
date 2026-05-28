@@ -1,0 +1,17 @@
+import { createRouter, createWebHistory } from 'vue-router';
+import Dashboard from '../views/Dashboard.vue';
+import Fees from '../views/Fees.vue';
+import Alpha from '../views/Alpha.vue';
+import Points from '../views/Points.vue';
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes: [
+    { path: '/', name: 'dashboard', component: Dashboard, meta: { title: 'Dashboard' } },
+    { path: '/fees', name: 'fees', component: Fees, meta: { title: 'Phí Trade' } },
+    { path: '/alpha', name: 'alpha', component: Alpha, meta: { title: 'Dự án Alpha' } },
+    { path: '/points', name: 'points', component: Points, meta: { title: 'Điểm Alpha' } },
+  ],
+});
+
+export default router;
