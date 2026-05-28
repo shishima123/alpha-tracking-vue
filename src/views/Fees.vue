@@ -1,65 +1,8 @@
 <template>
   <div class="space-y-6">
-    <!-- Form nhập phí cho nhiều account 1 ngày -->
-    <div class="card">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="font-semibold">Nhập phí hàng ngày</h3>
-        <input
-          v-model="form.date"
-          type="text"
-          placeholder="dd/MM/yyyy"
-          class="input w-40"
-        />
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        <div
-          v-for="acc in store.activeAccounts"
-          :key="acc.id"
-          class="border border-binance-light rounded-lg p-3"
-        >
-          <div class="flex items-center gap-2 mb-2">
-            <span
-              class="inline-block w-3 h-3 rounded-full"
-              :style="{ background: acc.color }"
-            ></span>
-            <span class="font-medium text-sm">{{ acc.displayName }}</span>
-          </div>
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="label">Phí ($)</label>
-              <input
-                v-model.number="form.entries[acc.id].fee"
-                type="number"
-                step="0.01"
-                class="input"
-                placeholder="0.00"
-              />
-            </div>
-            <div>
-              <label class="label">Điểm</label>
-              <input
-                v-model.number="form.entries[acc.id].points"
-                type="number"
-                class="input"
-                placeholder="0"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="flex items-center justify-end gap-2 mt-4">
-        <button class="btn-secondary" @click="resetForm">Reset</button>
-        <button class="btn-primary" @click="submit" :disabled="saving">
-          {{ saving ? 'Đang lưu...' : 'Lưu phí ngày ' + form.date }}
-        </button>
-      </div>
-    </div>
-
     <!-- Phí tháng hiện tại -->
     <div class="card overflow-x-auto">
-      <div class="flex items-center justify-between mb-3">
+      <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
         <h3 class="font-semibold">
           Phí tháng <span class="text-binance-yellow">{{ store.currentMonth || '—' }}</span>
           <span class="text-gray-500 font-normal">({{ filteredFees.length }} bản ghi)</span>
@@ -116,7 +59,13 @@
               </td>
             </tr>
             <tr v-else class="bg-binance-light/30">
-              <td class="table-td">{{ f.date }}</td>
+              <td class="table-td">
+                <input
+                  v-model="editDateIso"
+                  type="date"
+                  class="input py-1"
+                />
+              </td>
               <td class="table-td">
                 <span
                   class="inline-block w-2 h-2 rounded-full mr-2"
@@ -167,7 +116,7 @@
           </template>
           <tr v-if="filteredFees.length === 0">
             <td colspan="6" class="text-center py-6 text-gray-500">
-              Chưa có bản ghi nào trong tháng này
+              Chưa có bản ghi nào trong tháng này — dùng modal 🧮 (góc dưới phải) để nhập phí.
             </td>
           </tr>
         </tbody>
@@ -182,33 +131,24 @@
 </template>
 
 <script setup>
-import { reactive, computed, watch, ref } from 'vue';
+import { reactive, computed, ref } from 'vue';
 import { useTrackingStore } from '../stores/trackingStore';
-import { fmtUSD, todayStr } from '../utils/format';
+import { useToastStore } from '../stores/toastStore';
+import { fmtUSD, isoToDmy, dmyToIso } from '../utils/format';
 
 const store = useTrackingStore();
+const toast = useToastStore();
 
-const form = reactive({
-  date: todayStr(),
-  entries: {},
-});
 const filter = reactive({ accountId: '' });
-const saving = ref(false);
 
 const editingId = ref(null);
-const editForm = reactive({ fee: 0, points: 0, note: '' });
+const editForm = reactive({ date: '', fee: 0, points: 0, note: '' });
 const savingEdit = ref(false);
 
-// Khi accounts load xong, khởi tạo entries cho mỗi account
-watch(
-  () => store.activeAccounts,
-  (accs) => {
-    for (const a of accs) {
-      if (!form.entries[a.id]) form.entries[a.id] = { fee: null, points: null };
-    }
-  },
-  { immediate: true, deep: true }
-);
+const editDateIso = computed({
+  get: () => dmyToIso(editForm.date),
+  set: (v) => { editForm.date = isoToDmy(v) || editForm.date; },
+});
 
 const filteredFees = computed(() => {
   let list = [...store.fees];
@@ -224,39 +164,9 @@ function accountColor(id) {
   return store.accountById(id)?.color || '#3b82f6';
 }
 
-async function submit() {
-  const entries = Object.entries(form.entries)
-    .filter(([, v]) => (v.fee && v.fee > 0) || (v.points && v.points > 0))
-    .map(([accountId, v]) => ({
-      date: form.date,
-      accountId,
-      fee: Number(v.fee) || 0,
-      points: Number(v.points) || 0,
-    }));
-
-  if (entries.length === 0) {
-    alert('Hãy nhập ít nhất 1 bản ghi (phí hoặc điểm > 0)');
-    return;
-  }
-  saving.value = true;
-  try {
-    await store.addFees(entries);
-    resetForm();
-  } catch (e) {
-    alert('Lỗi: ' + e.message);
-  } finally {
-    saving.value = false;
-  }
-}
-
-function resetForm() {
-  for (const id of Object.keys(form.entries)) {
-    form.entries[id] = { fee: null, points: null };
-  }
-}
-
 function startEdit(f) {
   editingId.value = f.id;
+  editForm.date = f.date;
   editForm.fee = f.fee;
   editForm.points = f.points;
   editForm.note = f.note || '';
@@ -270,13 +180,15 @@ async function saveEdit() {
   savingEdit.value = true;
   try {
     await store.updateFee(editingId.value, {
+      date: editForm.date,
       fee: Number(editForm.fee) || 0,
       points: Number(editForm.points) || 0,
       note: editForm.note || '',
     });
+    toast.success('Đã cập nhật phí');
     editingId.value = null;
   } catch (e) {
-    alert('Lỗi: ' + e.message);
+    toast.error('Lỗi: ' + e.message);
   } finally {
     savingEdit.value = false;
   }
@@ -286,8 +198,9 @@ async function del(f) {
   if (!confirm(`Xóa bản ghi ${f.date} - ${accountName(f.accountId)}?`)) return;
   try {
     await store.deleteFee(f.id);
+    toast.success('Đã xóa bản ghi phí');
   } catch (e) {
-    alert('Lỗi: ' + e.message);
+    toast.error('Lỗi: ' + e.message);
   }
 }
 </script>

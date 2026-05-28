@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { accountsApi, feesApi, alphaApi, summaryApi, pointsApi, bootstrapApi } from '../services/api';
+import { useCalculatorStore } from './calculatorStore';
 
 export const useTrackingStore = defineStore('tracking', {
   state: () => ({
@@ -89,6 +90,8 @@ export const useTrackingStore = defineStore('tracking', {
         this.projects = data.projects;
         this.summary = data.summary;
         this.points = data.points;
+        // Mirror calc fields on each account → localStorage cache
+        useCalculatorStore().syncFromAccounts(this.accounts);
       } catch (e) {
         this.error = e.message;
       } finally {

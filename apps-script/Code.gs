@@ -23,10 +23,23 @@ const SHEETS = {
 };
 
 const HEADERS = {
-  Accounts: ['id', 'name', 'displayName', 'color', 'active', 'createdAt'],
+  Accounts: [
+    'id', 'name', 'displayName', 'color', 'active',
+    'pointTrade', 'pointHold', 'currentVol', 'perOrder', 'withdraw', 'lastAfter',
+    'createdAt',
+  ],
   Fees: ['id', 'date', 'accountId', 'fee', 'points', 'note', 'createdAt'],
   AlphaProjects: ['id', 'name', 'date', 'claimPoints', 'type', 'rewards', 'note', 'createdAt'],
   FeesMonthly: ['id', 'month', 'accountId', 'totalFee', 'totalPoints', 'count', 'updatedAt'],
+};
+
+const ACCOUNT_CALC_DEFAULTS = {
+  pointTrade: 15,
+  pointHold: 2,
+  currentVol: 0,
+  perOrder: 1024,
+  withdraw: 1050,
+  lastAfter: null,
 };
 
 const DEFAULT_ACCOUNTS = [
@@ -181,8 +194,24 @@ function getSheet(name) {
       sh.getRange(1, 1, 1, headers.length).setValues([headers]);
       sh.setFrozenRows(1);
     }
+  } else {
+    ensureHeaders(sh, name);
   }
   return sh;
+}
+
+/**
+ * Migration: sheet đã tồn tại nhưng có thể thiếu header cột mới (khi schema mở rộng).
+ * Append các tên cột còn thiếu vào cuối row 1; data cũ giữ nguyên (cell mới = rỗng,
+ * normalizeXxx sẽ đổ default khi đọc).
+ */
+function ensureHeaders(sh, name) {
+  const headers = HEADERS[name];
+  if (!headers || headers.length === 0) return;
+  const lastCol = sh.getLastColumn();
+  if (lastCol >= headers.length) return;
+  const missing = headers.slice(lastCol);
+  sh.getRange(1, lastCol + 1, 1, missing.length).setValues([missing]);
 }
 
 function readRows(name) {
@@ -252,12 +281,26 @@ function listAccounts() {
 }
 
 function normalizeAccount(r) {
+  function numOr(v, d) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : d;
+  }
+  function valOr(v, d) {
+    return (v === '' || v === null || v === undefined) ? d : v;
+  }
   return {
     id: String(r.id),
     name: r.name,
     displayName: r.displayName || r.name,
     color: r.color || '#3b82f6',
     active: r.active !== false && r.active !== 'FALSE' && r.active !== '',
+    pointTrade: numOr(r.pointTrade, ACCOUNT_CALC_DEFAULTS.pointTrade),
+    pointHold: numOr(r.pointHold, ACCOUNT_CALC_DEFAULTS.pointHold),
+    currentVol: numOr(r.currentVol, ACCOUNT_CALC_DEFAULTS.currentVol),
+    perOrder: numOr(r.perOrder, ACCOUNT_CALC_DEFAULTS.perOrder),
+    withdraw: numOr(r.withdraw, ACCOUNT_CALC_DEFAULTS.withdraw),
+    lastAfter: (r.lastAfter === '' || r.lastAfter === null || r.lastAfter === undefined)
+      ? null : Number(r.lastAfter),
     createdAt: r.createdAt || '',
   };
 }
@@ -265,18 +308,24 @@ function normalizeAccount(r) {
 function createAccount(payload) {
   const name = (payload.name || '').trim();
   if (!name) throw new Error('name là bắt buộc');
-  const id = name.toLowerCase().replace(/\s+/g, '_');
+  const id = (payload.id || name).toLowerCase().replace(/\s+/g, '_');
   const list = listAccounts();
   if (list.some(function (a) { return a.id === id; }))
     throw new Error('Account đã tồn tại');
-  const item = {
+  const item = normalizeAccount({
     id: id,
     name: name,
-    displayName: name,
+    displayName: payload.displayName || name,
     color: payload.color || '#3b82f6',
-    active: true,
+    active: payload.active !== false,
+    pointTrade: payload.pointTrade,
+    pointHold: payload.pointHold,
+    currentVol: payload.currentVol,
+    perOrder: payload.perOrder,
+    withdraw: payload.withdraw,
+    lastAfter: payload.lastAfter,
     createdAt: new Date().toISOString(),
-  };
+  });
   appendItem(SHEETS.ACCOUNTS, item);
   return item;
 }
@@ -285,7 +334,7 @@ function updateAccount(payload) {
   const list = listAccounts();
   const idx = list.findIndex(function (a) { return a.id === payload.id; });
   if (idx === -1) throw new Error('Không tìm thấy');
-  list[idx] = Object.assign({}, list[idx], payload);
+  list[idx] = normalizeAccount(Object.assign({}, list[idx], payload));
   writeAll(SHEETS.ACCOUNTS, list);
   return list[idx];
 }

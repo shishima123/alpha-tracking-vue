@@ -57,6 +57,9 @@
     <footer v-if="!isLoginRoute" class="border-t border-binance-light py-3 text-center text-xs text-gray-500">
       Binance Alpha Tracking · Lưu trữ trên Google Sheets · {{ new Date().getFullYear() }}
     </footer>
+
+    <CalculatorFab v-if="!isLoginRoute" />
+    <Toaster />
   </div>
 </template>
 
@@ -65,6 +68,8 @@ import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useTrackingStore } from './stores/trackingStore';
 import { clearStoredKey, hasStoredKey } from './services/api';
+import CalculatorFab from './components/CalculatorFab.vue';
+import Toaster from './components/Toaster.vue';
 
 const store = useTrackingStore();
 const route = useRoute();
@@ -77,6 +82,7 @@ const routes = [
   { name: 'fees', path: '/fees', label: 'Phí Trade' },
   { name: 'alpha', path: '/alpha', label: 'Dự án Alpha' },
   { name: 'points', path: '/points', label: 'Điểm Alpha' },
+  { name: 'accounts', path: '/accounts', label: 'Tài khoản' },
 ];
 
 async function logout() {
