@@ -1,10 +1,12 @@
 import { defineStore } from 'pinia';
-import { accountsApi, feesApi, alphaApi, summaryApi, pointsApi } from '../services/api';
+import { accountsApi, feesApi, alphaApi, summaryApi, pointsApi, bootstrapApi } from '../services/api';
 
 export const useTrackingStore = defineStore('tracking', {
   state: () => ({
     accounts: [],
-    fees: [],
+    fees: [],              // chỉ chứa daily rows của tháng hiện tại
+    feesMonthly: [],       // aggregate cho các tháng cũ
+    currentMonth: '',      // 'MM/YYYY' do server xác định
     projects: [],
     summary: null,
     points: null,
@@ -40,15 +42,15 @@ export const useTrackingStore = defineStore('tracking', {
     },
     async addFees(entries) {
       await feesApi.bulk(entries);
-      await this.loadFees();
+      await this.loadAll();
     },
     async updateFee(id, data) {
       await feesApi.update(id, data);
-      await this.loadFees();
+      await this.loadAll();
     },
     async deleteFee(id) {
       await feesApi.remove(id);
-      this.fees = this.fees.filter((f) => f.id !== id);
+      await this.loadAll();
     },
 
     async loadProjects() {
@@ -79,13 +81,14 @@ export const useTrackingStore = defineStore('tracking', {
       this.loading = true;
       this.error = null;
       try {
-        await Promise.all([
-          this.loadAccounts(),
-          this.loadFees(),
-          this.loadProjects(),
-          this.loadSummary(),
-          this.loadPoints(),
-        ]);
+        const data = await bootstrapApi.get({ vndRate: this.vndRate });
+        this.accounts = data.accounts;
+        this.fees = data.fees;
+        this.feesMonthly = data.feesMonthly || [];
+        this.currentMonth = data.currentMonth || '';
+        this.projects = data.projects;
+        this.summary = data.summary;
+        this.points = data.points;
       } catch (e) {
         this.error = e.message;
       } finally {

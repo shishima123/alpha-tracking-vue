@@ -63,13 +63,23 @@ Frontend (`buildSignedBody` in [src/services/api.js](src/services/api.js)) uses 
 
 ### State layer
 
-A single Pinia store [src/stores/trackingStore.js](src/stores/trackingStore.js) owns all server state (`accounts`, `fees`, `projects`, `summary`, `points`). Views read from it and call its `loadX` / `createX` / `updateX` actions — they should not call `api.js` directly. `loadAll()` runs the five loaders in parallel and is the typical top-of-app entry point.
+A single Pinia store [src/stores/trackingStore.js](src/stores/trackingStore.js) owns all server state (`accounts`, `fees`, `projects`, `summary`, `points`). Views read from it and call its `loadX` / `createX` / `updateX` actions — they should not call `api.js` directly. `loadAll()` calls the single `bootstrap` endpoint which returns everything in one HTTP request — important because Apps Script serializes concurrent requests to the same script, so 5 parallel calls would queue server-side. The standalone `getSummary` / `getPoints` endpoints still exist for partial refreshes; `getBootstrap` reuses their pure compute helpers (`computeSummary`, `computePoints`) so each sheet is read exactly once.
 
 ### Sheets schema
 
 Column order is declared in `HEADERS` at the top of `Code.gs`. `writeAll()` rewrites the entire data range each time; `appendItem()` appends one row. Rewriting is used for updates/deletes because Apps Script has no per-row ID lookup — when adding a new field, update `HEADERS`, the `normalize*` / row mappers, and the create/update payloads together.
 
 Two helpers handle JSON inside cells: `rewards` on alpha projects is stored as a JSON string (`{accountId: usdAmount}`) and parsed via `safeJson()`.
+
+### Fees archival (FeesMonthly cache)
+
+The `Fees` sheet keeps every daily row forever (needed for the 15-day points-reset window which can span months). For perf, `FeesMonthly` is an auto-populated aggregate cache: one row per `(month, accountId)` with `totalFee` / `totalPoints` / `count`, populated by `syncFeesMonthly()` on every bootstrap for any past month not yet cached. Current month is never cached (still being mutated).
+
+Any fee mutation (`createFee` / `bulkCreateFees` / `updateFee` / `deleteFee`) calls `invalidateFeesMonthly([affected months])` to remove stale aggregate rows; the next bootstrap rebuilds them.
+
+`getBootstrap` returns `fees` filtered to **current month only** plus the full `feesMonthly` aggregate — this slim payload is what `store.fees` and `store.feesMonthly` hold. The Fees tab therefore shows only the current month's daily entries; past months are visible aggregated on the Dashboard via `computeSummaryFast()` which merges current daily rows + past aggregates.
+
+The standalone `getSummary` / `getPoints` endpoints still read the full Fees sheet (they're used after mutations for partial refreshes), so they bypass the cache. All fee mutations in the store now call `loadAll()` instead of `loadFees()` to keep `store.fees` correctly scoped to current month.
 
 ### Date handling
 

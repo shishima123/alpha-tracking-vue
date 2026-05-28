@@ -215,4 +215,8 @@ export const pointsApi = {
   fromVolume: (volume) => call('points', 'fromVolume', { volume }),
 };
 
+export const bootstrapApi = {
+  get: (params = {}) => call('bootstrap', 'get', params),
+};
+
 export default { call };

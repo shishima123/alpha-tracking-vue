@@ -19,12 +19,14 @@ const SHEETS = {
   ACCOUNTS: 'Accounts',
   FEES: 'Fees',
   ALPHA: 'AlphaProjects',
+  FEES_MONTHLY: 'FeesMonthly',
 };
 
 const HEADERS = {
   Accounts: ['id', 'name', 'displayName', 'color', 'active', 'createdAt'],
   Fees: ['id', 'date', 'accountId', 'fee', 'points', 'note', 'createdAt'],
   AlphaProjects: ['id', 'name', 'date', 'claimPoints', 'type', 'rewards', 'note', 'createdAt'],
+  FeesMonthly: ['id', 'month', 'accountId', 'totalFee', 'totalPoints', 'count', 'updatedAt'],
 };
 
 const DEFAULT_ACCOUNTS = [
@@ -153,6 +155,10 @@ function dispatch(resource, action, payload, params) {
     case 'points':
       if (action === 'get') return getPoints(payload);
       if (action === 'fromVolume') return pointsFromVolumeApi(payload);
+      break;
+
+    case 'bootstrap':
+      if (action === 'get') return getBootstrap(payload);
       break;
 
     case '':
@@ -325,6 +331,7 @@ function createFee(payload) {
     createdAt: new Date().toISOString(),
   };
   appendItem(SHEETS.FEES, item);
+  invalidateFeesMonthly([monthKey(item.date)]);
   return item;
 }
 
@@ -335,6 +342,7 @@ function bulkCreateFees(payload) {
   const sh = getSheet(SHEETS.FEES);
   const headers = HEADERS.Fees;
   const now = Date.now();
+  const months = {};
   const rows = entries.map(function (e, i) {
     const item = {
       id: String(now + i),
@@ -345,9 +353,11 @@ function bulkCreateFees(payload) {
       note: e.note || '',
       createdAt: new Date().toISOString(),
     };
+    months[monthKey(item.date)] = true;
     return headers.map(function (h) { return item[h]; });
   });
   sh.getRange(sh.getLastRow() + 1, 1, rows.length, headers.length).setValues(rows);
+  invalidateFeesMonthly(Object.keys(months));
   return { inserted: rows.length };
 }
 
@@ -355,14 +365,20 @@ function updateFee(payload) {
   const list = listFees({});
   const idx = list.findIndex(function (f) { return f.id === payload.id; });
   if (idx === -1) throw new Error('Không tìm thấy');
+  const oldMonth = monthKey(list[idx].date);
   list[idx] = Object.assign({}, list[idx], payload);
+  const newMonth = monthKey(list[idx].date);
   writeAll(SHEETS.FEES, list);
+  invalidateFeesMonthly([oldMonth, newMonth]);
   return list[idx];
 }
 
 function deleteFee(payload) {
-  const list = listFees({}).filter(function (f) { return f.id !== payload.id; });
+  const all = listFees({});
+  const target = all.find(function (f) { return f.id === payload.id; });
+  const list = all.filter(function (f) { return f.id !== payload.id; });
   writeAll(SHEETS.FEES, list);
+  if (target) invalidateFeesMonthly([monthKey(target.date)]);
   return { ok: true };
 }
 
@@ -421,10 +437,11 @@ function deleteProject(payload) {
 // =========================================================================
 function getSummary(payload) {
   payload = payload || {};
-  const vndRate = Number(payload.vndRate || DEFAULT_VND_RATE);
+  return computeSummary(listFees({}), listProjects(), payload.vndRate);
+}
 
-  const fees = listFees({});
-  const projects = listProjects();
+function computeSummary(fees, projects, vndRateInput) {
+  const vndRate = Number(vndRateInput || DEFAULT_VND_RATE);
 
   const byMonth = {};
   function bucket(key) {
@@ -505,8 +522,11 @@ function getSummary(payload) {
 // =========================================================================
 function getPoints(payload) {
   payload = payload || {};
-  const requiredPoints = Number(payload.requiredPoints || 15);
-  const fees = listFees({});
+  return computePoints(listFees({}), payload.requiredPoints);
+}
+
+function computePoints(fees, requiredPointsInput) {
+  const requiredPoints = Number(requiredPointsInput || 15);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -578,6 +598,205 @@ function nextThreshold(volume) {
     nextPoint: p + 1,
     nextVolume: nextVol,
     volumeNeeded: nextVol - volume,
+  };
+}
+
+// =========================================================================
+// FEES MONTHLY (aggregate cache cho các tháng cũ)
+// =========================================================================
+function currentMonthKey() {
+  const d = new Date();
+  return pad(d.getMonth() + 1) + '/' + d.getFullYear();
+}
+
+function feesMonthlyId(month, accountId) {
+  return month.replace('/', '_') + '__' + accountId;
+}
+
+function listFeesMonthly() {
+  return readRows(SHEETS.FEES_MONTHLY).map(function (r) {
+    return {
+      id: String(r.id),
+      month: String(r.month),
+      accountId: String(r.accountId),
+      totalFee: Number(r.totalFee) || 0,
+      totalPoints: Number(r.totalPoints) || 0,
+      count: Number(r.count) || 0,
+      updatedAt: r.updatedAt || '',
+    };
+  });
+}
+
+/**
+ * Bảo đảm aggregate cho mọi tháng past (≠ tháng hiện tại) đều có trong
+ * FeesMonthly. Nếu thiếu, compute từ allFees rồi append.
+ */
+function syncFeesMonthly(allFees) {
+  const currentKey = currentMonthKey();
+  const existing = listFeesMonthly();
+  const existingMonths = {};
+  existing.forEach(function (r) { existingMonths[r.month] = true; });
+
+  const grouped = {};
+  allFees.forEach(function (f) {
+    const m = monthKey(f.date);
+    if (!m || m === currentKey) return;
+    if (existingMonths[m]) return; // đã có aggregate cho tháng này
+    const id = feesMonthlyId(m, f.accountId);
+    if (!grouped[id]) {
+      grouped[id] = {
+        id: id,
+        month: m,
+        accountId: f.accountId,
+        totalFee: 0,
+        totalPoints: 0,
+        count: 0,
+      };
+    }
+    grouped[id].totalFee += Number(f.fee) || 0;
+    grouped[id].totalPoints += Number(f.points) || 0;
+    grouped[id].count += 1;
+  });
+
+  const ids = Object.keys(grouped);
+  if (ids.length === 0) return;
+  const sh = getSheet(SHEETS.FEES_MONTHLY);
+  const headers = HEADERS.FeesMonthly;
+  const now = new Date().toISOString();
+  const rows = ids.map(function (id) {
+    const o = grouped[id];
+    o.totalFee = round2(o.totalFee);
+    o.updatedAt = now;
+    return headers.map(function (h) {
+      const v = o[h];
+      return (v === null || v === undefined) ? '' : v;
+    });
+  });
+  sh.getRange(sh.getLastRow() + 1, 1, rows.length, headers.length).setValues(rows);
+}
+
+/**
+ * Xóa aggregate của các tháng bị ảnh hưởng (sau create/update/delete fee).
+ * Tháng hiện tại không cache nên bỏ qua.
+ */
+function invalidateFeesMonthly(monthStrs) {
+  if (!monthStrs || monthStrs.length === 0) return;
+  const currentKey = currentMonthKey();
+  const affected = {};
+  monthStrs.forEach(function (m) { if (m && m !== currentKey) affected[m] = true; });
+  if (Object.keys(affected).length === 0) return;
+  const list = listFeesMonthly().filter(function (r) { return !affected[r.month]; });
+  writeAll(SHEETS.FEES_MONTHLY, list);
+}
+
+/**
+ * Summary version dùng aggregate cache: past months đọc từ FeesMonthly,
+ * tháng hiện tại tính từ currentFees.
+ */
+function computeSummaryFast(currentFees, feesMonthly, projects, vndRateInput) {
+  const vndRate = Number(vndRateInput || DEFAULT_VND_RATE);
+  const byMonth = {};
+  function bucket(key) {
+    if (!byMonth[key]) byMonth[key] = { rewards: {}, fees: {}, projects: 0 };
+    return byMonth[key];
+  }
+
+  feesMonthly.forEach(function (r) {
+    const b = bucket(r.month);
+    b.fees[r.accountId] = (b.fees[r.accountId] || 0) + r.totalFee;
+  });
+
+  currentFees.forEach(function (f) {
+    const m = monthKey(f.date);
+    if (!m) return;
+    const b = bucket(m);
+    b.fees[f.accountId] = (b.fees[f.accountId] || 0) + (Number(f.fee) || 0);
+  });
+
+  projects.forEach(function (p) {
+    const m = monthKey(p.date);
+    if (!m) return;
+    const b = bucket(m);
+    b.projects += 1;
+    const rewards = p.rewards || {};
+    for (const acc in rewards) {
+      const v = Number(rewards[acc]) || 0;
+      if (!v) continue;
+      b.rewards[acc] = (b.rewards[acc] || 0) + v;
+    }
+  });
+
+  const monthly = Object.keys(byMonth).sort(sortMonth).map(function (key) {
+    const b = byMonth[key];
+    const accs = {};
+    Object.keys(b.rewards).forEach(function (a) { accs[a] = true; });
+    Object.keys(b.fees).forEach(function (a) { accs[a] = true; });
+    const byAccount = {};
+    let revenue = 0, fee = 0;
+    Object.keys(accs).forEach(function (a) {
+      const r = b.rewards[a] || 0;
+      const f = b.fees[a] || 0;
+      byAccount[a] = { revenue: r, fee: f, profit: r - f };
+      revenue += r;
+      fee += f;
+    });
+    const profit = revenue - fee;
+    return {
+      month: key,
+      totalRevenue: round2(revenue),
+      totalFee: round2(fee),
+      profit: round2(profit),
+      profitVND: Math.round(profit * vndRate),
+      projects: b.projects,
+      byAccount: byAccount,
+    };
+  });
+
+  const total = monthly.reduce(function (acc, m) {
+    acc.revenue += m.totalRevenue;
+    acc.fee += m.totalFee;
+    acc.profit += m.profit;
+    acc.profitVND += m.profitVND;
+    acc.projects += m.projects;
+    return acc;
+  }, { revenue: 0, fee: 0, profit: 0, profitVND: 0, projects: 0 });
+
+  return {
+    vndRate: vndRate,
+    monthly: monthly,
+    total: {
+      revenue: round2(total.revenue),
+      fee: round2(total.fee),
+      profit: round2(total.profit),
+      profitVND: total.profitVND,
+      projects: total.projects,
+    },
+  };
+}
+
+// =========================================================================
+// BOOTSTRAP — gom mọi data cần thiết vào 1 request.
+// Tháng hiện tại trả raw daily rows; tháng cũ chỉ trả aggregate.
+// =========================================================================
+function getBootstrap(payload) {
+  payload = payload || {};
+  const accounts = listAccounts();
+  const allFees = listFees({});
+  const projects = listProjects();
+  const currentKey = currentMonthKey();
+  const currentFees = allFees.filter(function (f) { return monthKey(f.date) === currentKey; });
+
+  syncFeesMonthly(allFees);
+  const feesMonthly = listFeesMonthly();
+
+  return {
+    accounts: accounts,
+    fees: currentFees,
+    feesMonthly: feesMonthly,
+    projects: projects,
+    summary: computeSummaryFast(currentFees, feesMonthly, projects, payload.vndRate),
+    points: computePoints(allFees, payload.requiredPoints),
+    currentMonth: currentKey,
   };
 }
 
