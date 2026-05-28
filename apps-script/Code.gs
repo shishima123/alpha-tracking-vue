@@ -175,8 +175,19 @@ function dispatch(resource, action, payload, params) {
 // =========================================================================
 // SHEET HELPERS
 // =========================================================================
+// Cache per-invocation: SpreadsheetApp/getSheetByName/ensureHeaders đều tốn round-trip
+// ~50-200ms mỗi call. Trong 1 lần handleRequest, sheet refs không đổi → memoize.
+let _ssCache = null;
+const _sheetCache = {};
+
+function activeSpreadsheet() {
+  if (!_ssCache) _ssCache = SpreadsheetApp.getActiveSpreadsheet();
+  return _ssCache;
+}
+
 function getSheet(name) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (_sheetCache[name]) return _sheetCache[name];
+  const ss = activeSpreadsheet();
   let sh = ss.getSheetByName(name);
   if (!sh) {
     sh = ss.insertSheet(name);
@@ -188,6 +199,7 @@ function getSheet(name) {
   } else {
     ensureHeaders(sh, name);
   }
+  _sheetCache[name] = sh;
   return sh;
 }
 
@@ -207,18 +219,19 @@ function ensureHeaders(sh, name) {
 
 function readRows(name) {
   const sh = getSheet(name);
-  const lastRow = sh.getLastRow();
-  const lastCol = sh.getLastColumn();
-  if (lastRow < 2) return [];
-  const values = sh.getRange(2, 1, lastRow - 1, lastCol).getValues();
+  // getDataRange = 1 round-trip lấy cả values + dims; tốt hơn getLastRow+getLastCol+getRange
+  const values = sh.getDataRange().getValues();
+  if (values.length < 2) return [];
   const headers = HEADERS[name];
-  return values
-    .filter(function (r) { return r[0] !== '' && r[0] !== null; })
-    .map(function (r) {
-      const o = {};
-      for (let i = 0; i < headers.length; i++) o[headers[i]] = r[i];
-      return o;
-    });
+  const out = [];
+  for (let i = 1; i < values.length; i++) {
+    const r = values[i];
+    if (r[0] === '' || r[0] === null) continue;
+    const o = {};
+    for (let j = 0; j < headers.length; j++) o[headers[j]] = r[j];
+    out.push(o);
+  }
+  return out;
 }
 
 function writeAll(name, items) {
@@ -656,6 +669,7 @@ function listFeesMonthly() {
 /**
  * Bảo đảm aggregate cho mọi tháng past (≠ tháng hiện tại) đều có trong
  * FeesMonthly. Nếu thiếu, compute từ allFees rồi append.
+ * Trả về list đầy đủ (existing + newly added) để caller không phải đọc lại sheet.
  */
 function syncFeesMonthly(allFees) {
   const currentKey = currentMonthKey();
@@ -685,20 +699,25 @@ function syncFeesMonthly(allFees) {
   });
 
   const ids = Object.keys(grouped);
-  if (ids.length === 0) return;
+  if (ids.length === 0) return existing;
+
   const sh = getSheet(SHEETS.FEES_MONTHLY);
   const headers = HEADERS.FeesMonthly;
   const now = new Date().toISOString();
-  const rows = ids.map(function (id) {
+  const newItems = ids.map(function (id) {
     const o = grouped[id];
     o.totalFee = round2(o.totalFee);
     o.updatedAt = now;
+    return o;
+  });
+  const rows = newItems.map(function (o) {
     return headers.map(function (h) {
       const v = o[h];
       return (v === null || v === undefined) ? '' : v;
     });
   });
   sh.getRange(sh.getLastRow() + 1, 1, rows.length, headers.length).setValues(rows);
+  return existing.concat(newItems);
 }
 
 /**
@@ -812,8 +831,8 @@ function getBootstrap(payload) {
   const currentKey = currentMonthKey();
   const currentFees = allFees.filter(function (f) { return monthKey(f.date) === currentKey; });
 
-  syncFeesMonthly(allFees);
-  const feesMonthly = listFeesMonthly();
+  // syncFeesMonthly trả về list đã merge new + existing → khỏi gọi listFeesMonthly() lần nữa
+  const feesMonthly = syncFeesMonthly(allFees);
 
   return {
     accounts: accounts,
