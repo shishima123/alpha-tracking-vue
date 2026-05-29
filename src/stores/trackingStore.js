@@ -19,6 +19,13 @@ export const useTrackingStore = defineStore('tracking', {
   getters: {
     activeAccounts: (s) => s.accounts.filter((a) => a.active),
     accountById: (s) => (id) => s.accounts.find((a) => a.id === id),
+    // id → vị trí trong s.accounts (đã sort theo sortOrder ở server).
+    // Account lạ (id không có trong danh sách) trả về Infinity → đẩy xuống cuối.
+    accountOrderIndex: (s) => {
+      const map = {};
+      s.accounts.forEach((a, i) => { map[a.id] = i; });
+      return (id) => (id in map ? map[id] : Infinity);
+    },
   },
   actions: {
     async loadAccounts() {

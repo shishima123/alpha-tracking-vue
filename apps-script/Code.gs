@@ -26,7 +26,7 @@ const HEADERS = {
   Accounts: [
     'id', 'name', 'displayName', 'color', 'active',
     'pointTrade', 'pointHold', 'currentVol', 'perOrder', 'withdraw', 'lastAfter',
-    'createdAt',
+    'createdAt', 'sortOrder',
   ],
   Fees: ['id', 'date', 'accountId', 'fee', 'points', 'note', 'createdAt'],
   AlphaProjects: ['id', 'name', 'date', 'claimPoints', 'type', 'rewards', 'note', 'createdAt'],
@@ -201,6 +201,12 @@ function getSheet(name) {
   } else {
     ensureHeaders(sh, name);
   }
+  // FeesMonthly.month dạng "MM/YYYY" — Sheets sẽ auto-coerce thành Date object
+  // (April 1, 2026) khi setValues vào ô format mặc định. Pin column B = plain text
+  // để các write sau giữ nguyên string.
+  if (name === SHEETS.FEES_MONTHLY) {
+    sh.getRange('B:B').setNumberFormat('@');
+  }
   _sheetCache[name] = sh;
   return sh;
 }
@@ -269,7 +275,13 @@ function appendItem(name, item) {
 // ACCOUNTS
 // =========================================================================
 function listAccounts() {
-  return readRows(SHEETS.ACCOUNTS).map(normalizeAccount);
+  const list = readRows(SHEETS.ACCOUNTS).map(normalizeAccount);
+  // sortOrder asc; tie-break theo createdAt asc để giữ order ổn định khi unset.
+  list.sort(function (a, b) {
+    if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+    return String(a.createdAt).localeCompare(String(b.createdAt));
+  });
+  return list;
 }
 
 function normalizeAccount(r) {
@@ -294,6 +306,7 @@ function normalizeAccount(r) {
     lastAfter: (r.lastAfter === '' || r.lastAfter === null || r.lastAfter === undefined)
       ? null : Number(r.lastAfter),
     createdAt: r.createdAt || '',
+    sortOrder: numOr(r.sortOrder, 0),
   };
 }
 
@@ -317,6 +330,7 @@ function createAccount(payload) {
     withdraw: payload.withdraw,
     lastAfter: payload.lastAfter,
     createdAt: new Date().toISOString(),
+    sortOrder: payload.sortOrder,
   });
   appendItem(SHEETS.ACCOUNTS, item);
   return item;
@@ -724,7 +738,7 @@ function listFeesMonthly() {
   return readRows(SHEETS.FEES_MONTHLY).map(function (r) {
     return {
       id: String(r.id),
-      month: String(r.month),
+      month: formatMonthValue(r.month),
       accountId: String(r.accountId),
       totalFee: Number(r.totalFee) || 0,
       totalPoints: Number(r.totalPoints) || 0,
@@ -732,6 +746,15 @@ function listFeesMonthly() {
       updatedAt: r.updatedAt || '',
     };
   });
+}
+
+/**
+ * Nếu cell month bị Sheets coerce thành Date → format lại "MM/YYYY".
+ * Nếu vẫn là string → trả lại nguyên.
+ */
+function formatMonthValue(v) {
+  if (v instanceof Date) return pad(v.getMonth() + 1) + '/' + v.getFullYear();
+  return String(v);
 }
 
 /**

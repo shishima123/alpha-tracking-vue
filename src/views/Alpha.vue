@@ -63,7 +63,10 @@
     <div class="card">
       <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
         <h3 class="font-semibold">
-          Danh sách dự án ({{ store.projects.length }})
+          Danh sách dự án
+          <span class="text-gray-500 font-normal">
+            ({{ visibleProjects.length }}/{{ filteredProjects.length }})
+          </span>
         </h3>
         <input
           v-model="search"
@@ -78,7 +81,7 @@
 
       <div v-else class="space-y-2">
         <div
-          v-for="p in filteredProjects"
+          v-for="p in visibleProjects"
           :key="p.id"
           class="border border-binance-light rounded-lg p-3 hover:bg-binance-light/20 transition"
         >
@@ -202,6 +205,17 @@
           </div>
         </div>
       </div>
+
+      <div
+        v-if="filteredProjects.length > visibleProjects.length || (showAll && filteredProjects.length > recentProjects.length)"
+        class="flex justify-center mt-4"
+      >
+        <button class="btn-secondary text-xs" @click="showAll = !showAll">
+          {{ showAll
+            ? `Thu gọn (chỉ ${RECENT_DAYS} ngày gần nhất — ${recentProjects.length} dự án)`
+            : `Xem tất cả ${filteredProjects.length} dự án` }}
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -210,12 +224,15 @@
 import { reactive, ref, computed, watch } from 'vue';
 import { useTrackingStore } from '../stores/trackingStore';
 import { useToastStore } from '../stores/toastStore';
-import { fmtUSD, todayStr, isoToDmy, dmyToIso } from '../utils/format';
+import { fmtUSD, todayStr, isoToDmy, dmyToIso, parseDate } from '../utils/format';
+
+const RECENT_DAYS = 15;
 
 const store = useTrackingStore();
 const toast = useToastStore();
 const saving = ref(false);
 const search = ref('');
+const showAll = ref(false);
 
 const projectTypes = ['FCFS', 'TGE', 'Phase', 'Pre-Tge', 'Booster'];
 
@@ -250,6 +267,22 @@ const filteredProjects = computed(() => {
       p.name.toLowerCase().includes(search.value.toLowerCase())
     );
   return list.sort((a, b) => (a.date < b.date ? 1 : -1));
+});
+
+const recentProjects = computed(() => {
+  const cutoff = new Date();
+  cutoff.setHours(0, 0, 0, 0);
+  cutoff.setDate(cutoff.getDate() - RECENT_DAYS);
+  return filteredProjects.value.filter((p) => {
+    const d = parseDate(p.date);
+    return d && d.getTime() >= cutoff.getTime();
+  });
+});
+
+// Khi search: bỏ giới hạn 15 ngày để tìm được dự án cũ. Inactive show-all toggle vẫn giữ.
+const visibleProjects = computed(() => {
+  if (showAll.value || search.value) return filteredProjects.value;
+  return recentProjects.value;
 });
 
 function projectTotal(p) {

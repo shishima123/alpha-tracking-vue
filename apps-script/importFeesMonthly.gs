@@ -27,8 +27,8 @@
 // Tên match với `name` HOẶC `displayName` của account (case-insensitive).
 const FEES_MONTHLY_SNAPSHOT = [
   { month: '04/2025', amounts: { Main: 191.00 } },
-  { month: '05/2025', amounts: { Main: 350.00, 'Em iu': 350.00, 'Old(Phu)': 350.00, 'New(Chanh)': 350.00 } },
-  { month: '06/2025', amounts: { Main: 217.00, 'Em iu': 217.00, Huy: 217.00, 'Old(Phu)': 217.00, 'New(Chanh)': 217.00 } },
+  { month: '05/2025', amounts: { Main: 125.00, 'Em iu': 125.00, 'Old(Phu)': 125.00, 'New(Chanh)': 125.00 } },
+  { month: '06/2025', amounts: { Main: 150.00, 'Em iu': 150.00, Huy: 150.00, 'Old(Phu)': 150.00, 'New(Chanh)': 150.00 } },
   { month: '07/2025', amounts: { Main: 99.03,  'Em iu': 98.33,  Huy: 84.36,  'Old(Phu)': 102.29, 'New(Chanh)': 102.10, An: 59.90,  Tuyet: 9.50  } },
   { month: '08/2025', amounts: { Main: 104.90, 'Em iu': 98.78,  Huy: 103.68, 'Old(Phu)': 78.81,  'New(Chanh)': 75.35,  An: 105.58, Tuyet: 55.88 } },
   { month: '09/2025', amounts: { Main: 93.49,  'Em iu': 101.23, Huy: 299.98, 'Old(Phu)': 9.95,   'New(Chanh)': 10.04,  An: 0.00,   Tuyet: 3.98  } },
@@ -115,4 +115,19 @@ function importFeesMonthlyFromSnapshot() {
 function clearFeesMonthlySheet() {
   writeAll(SHEETS.FEES_MONTHLY, []);
   Logger.log('Đã clear FeesMonthly.');
+}
+
+/**
+ * Migration một lần: fix các row đã lỡ lưu cột `month` dạng Date object thay vì
+ * string "MM/YYYY". Nguyên nhân: Sheets auto-coerce string giống MM/YYYY thành
+ * Date khi setValues vào ô format mặc định → Dashboard group sai bucket.
+ *
+ * Sau khi update Code.gs (pin column B = text + formatMonthValue khi read), chạy
+ * function này 1 lần để rewrite cell value từ Date → string. Không thay đổi data.
+ */
+function migrateFeesMonthlyMonth() {
+  const list = listFeesMonthly(); // formatMonthValue convert Date → "MM/YYYY"
+  writeAll(SHEETS.FEES_MONTHLY, list); // column B giờ là text format → string stay string
+  Logger.log('Đã migrate %s rows về dạng string.', list.length);
+  return { rewritten: list.length };
 }

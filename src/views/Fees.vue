@@ -228,8 +228,8 @@ const groupedByDate = computed(() => {
       return db - da;
     })
     .map((date) => {
-      const entries = groups[date].slice().sort((a, b) =>
-        accountName(a.accountId).localeCompare(accountName(b.accountId))
+      const entries = groups[date].slice().sort(
+        (a, b) => store.accountOrderIndex(a.accountId) - store.accountOrderIndex(b.accountId)
       );
       return {
         date,

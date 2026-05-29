@@ -3,7 +3,7 @@
     <!-- Form thêm account mới -->
     <div class="card">
       <h3 class="font-semibold mb-4">Thêm tài khoản mới</h3>
-      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
         <div>
           <label class="label">Tên (name)</label>
           <input v-model="form.name" class="input" placeholder="vd: bo" />
@@ -31,6 +31,15 @@
           <label class="label">Điểm Hold</label>
           <input v-model.number="form.pointHold" type="number" min="0" class="input" />
         </div>
+        <div>
+          <label class="label">Thứ tự</label>
+          <input
+            v-model.number="form.sortOrder"
+            type="number"
+            class="input"
+            placeholder="0"
+          />
+        </div>
       </div>
       <div class="flex items-center justify-end gap-2 mt-4">
         <button class="btn-secondary" @click="resetForm">Reset</button>
@@ -52,19 +61,21 @@
       <table class="w-full text-sm">
         <thead>
           <tr class="table-thead">
+            <th class="px-2 py-2 text-right w-20">Thứ tự</th>
             <th class="px-3 py-2">Tên / Display</th>
-            <th class="px-2 py-2">Màu</th>
-            <th class="px-2 py-2 text-center">Active</th>
-            <th class="px-2 py-2 text-right">Đ.Trade</th>
-            <th class="px-2 py-2 text-right">Đ.Hold</th>
-            <th class="px-2 py-2 text-right">Đ.Tổng</th>
-            <th class="px-3 py-2 w-32 text-right"></th>
+            <th class="px-2 py-2 w-24">Màu</th>
+            <th class="px-2 py-2 text-center w-16">Active</th>
+            <th class="px-2 py-2 text-right w-20">Đ.Trade</th>
+            <th class="px-2 py-2 text-right w-20">Đ.Hold</th>
+            <th class="px-2 py-2 text-right w-16">Đ.Tổng</th>
+            <th class="px-3 py-2 w-24 text-right"></th>
           </tr>
         </thead>
         <tbody>
           <template v-for="a in store.accounts" :key="a.id">
             <!-- Display row -->
             <tr v-if="editingId !== a.id" class="hover:bg-binance-light/30">
+              <td class="table-td text-right text-gray-300">{{ a.sortOrder ?? 0 }}</td>
               <td class="table-td">
                 <div class="flex items-center gap-2">
                   <span class="inline-block w-3 h-3 rounded-full" :style="{ background: a.color }"></span>
@@ -94,9 +105,12 @@
             <!-- Edit row -->
             <tr v-else class="bg-binance-light/30">
               <td class="table-td">
+                <input v-model.number="editForm.sortOrder" type="number" class="input py-1 px-2 text-right w-16" />
+              </td>
+              <td class="table-td">
                 <div class="flex items-center gap-2">
-                  <input v-model="editForm.color" type="color" class="w-8 h-8 rounded border border-binance-light p-0 cursor-pointer" />
-                  <input v-model="editForm.displayName" class="input py-1" placeholder="Display name" />
+                  <input v-model="editForm.color" type="color" class="w-8 h-8 rounded border border-binance-light p-0 cursor-pointer shrink-0" />
+                  <input v-model="editForm.displayName" class="input py-1 min-w-0 flex-1" placeholder="Display name" />
                 </div>
                 <div class="text-xs text-gray-500 mt-1">{{ a.id }} (cố định)</div>
               </td>
@@ -105,10 +119,10 @@
                 <input v-model="editForm.active" type="checkbox" />
               </td>
               <td class="table-td">
-                <input v-model.number="editForm.pointTrade" type="number" min="1" max="20" class="input py-1 text-right" />
+                <input v-model.number="editForm.pointTrade" type="number" min="1" max="20" class="input py-1 px-2 text-right w-16" />
               </td>
               <td class="table-td">
-                <input v-model.number="editForm.pointHold" type="number" min="0" class="input py-1 text-right" />
+                <input v-model.number="editForm.pointHold" type="number" min="0" class="input py-1 px-2 text-right w-16" />
               </td>
               <td class="table-td text-right text-binance-yellow font-semibold">
                 {{ (Number(editForm.pointTrade) || 0) + (Number(editForm.pointHold) || 0) }}
@@ -124,7 +138,7 @@
             </tr>
           </template>
           <tr v-if="store.accounts.length === 0">
-            <td colspan="7" class="text-center py-6 text-gray-500">
+            <td colspan="8" class="text-center py-6 text-gray-500">
               Chưa có tài khoản nào
             </td>
           </tr>
@@ -149,6 +163,7 @@ const DEFAULT_FORM = {
   active: true,
   pointTrade: 15,
   pointHold: 2,
+  sortOrder: 0,
 };
 
 const form = reactive({ ...DEFAULT_FORM });
@@ -173,6 +188,7 @@ async function submit() {
       active: form.active,
       pointTrade: form.pointTrade,
       pointHold: form.pointHold,
+      sortOrder: Number(form.sortOrder) || 0,
     });
     toast.success(`Đã tạo tài khoản "${name}"`);
     resetForm();
@@ -191,6 +207,7 @@ const editForm = reactive({
   active: true,
   pointTrade: 15,
   pointHold: 2,
+  sortOrder: 0,
 });
 const savingEdit = ref(false);
 
@@ -201,6 +218,7 @@ function startEdit(a) {
   editForm.active = !!a.active;
   editForm.pointTrade = a.pointTrade ?? 15;
   editForm.pointHold = a.pointHold ?? 2;
+  editForm.sortOrder = a.sortOrder ?? 0;
 }
 
 function cancelEdit() {
@@ -217,6 +235,7 @@ async function saveEdit() {
       active: editForm.active,
       pointTrade: editForm.pointTrade,
       pointHold: editForm.pointHold,
+      sortOrder: Number(editForm.sortOrder) || 0,
     });
     toast.success(`Đã cập nhật "${editForm.displayName}"`);
     editingId.value = null;
