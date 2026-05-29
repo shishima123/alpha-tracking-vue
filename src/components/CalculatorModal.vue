@@ -8,18 +8,23 @@
         <!-- Header -->
         <div class="flex items-center justify-between px-5 py-3 border-b border-binance-light">
           <h2 class="font-semibold text-lg flex items-center gap-2">
-            <span class="text-binance-yellow">🧮</span>
+            <svg class="w-5 h-5 text-binance-yellow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="16" height="20" x="4" y="2" rx="2" />
+              <line x1="8" x2="16" y1="6" y2="6" />
+              <line x1="16" x2="16" y1="14" y2="18" />
+              <path d="M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M8 18h.01M12 18h.01" />
+            </svg>
             Máy tính Volume → Phí Alpha
           </h2>
           <button
-            class="text-gray-400 hover:text-gray-100 text-xl leading-none"
+            class="text-gray-500 hover:text-gray-800 text-xl leading-none"
             @click="calc.hide()"
           >
             ✕
           </button>
         </div>
 
-        <div v-if="!store.activeAccounts.length" class="p-6 text-center text-gray-400">
+        <div v-if="!store.activeAccounts.length" class="p-6 text-center text-gray-500">
           Chưa có tài khoản nào. Tạo tài khoản ở tab Dashboard trước.
         </div>
 
@@ -45,7 +50,7 @@
 
           <!-- Config section -->
           <div class="border border-binance-light rounded-xl p-3">
-            <div class="text-xs text-gray-400 mb-2 uppercase tracking-wider">
+            <div class="text-xs text-gray-500 mb-2 uppercase tracking-wider">
               Cấu hình điểm
             </div>
             <div class="grid grid-cols-3 gap-3">
@@ -81,7 +86,7 @@
 
           <!-- Volume calculator -->
           <div class="border border-binance-light rounded-xl p-3">
-            <div class="text-xs text-gray-400 mb-2 uppercase tracking-wider">
+            <div class="text-xs text-gray-500 mb-2 uppercase tracking-wider">
               Volume calculator
             </div>
 
@@ -89,8 +94,8 @@
             <div
               class="mb-3 px-3 py-2 rounded-lg border text-sm font-medium flex items-center gap-2"
               :class="reached
-                ? 'bg-green-900/30 border-green-700 text-green-200'
-                : 'bg-red-900/30 border-red-700 text-red-200'"
+                ? 'bg-green-50 border-green-300 text-green-700'
+                : 'bg-red-50 border-red-300 text-red-700'"
             >
               <template v-if="reached">
                 <span class="text-lg">✓</span>
@@ -127,16 +132,16 @@
                 </select>
               </div>
               <div class="bg-binance-light/30 rounded-lg px-3 py-2">
-                <div class="text-xs text-gray-400">Điểm hiện tại</div>
+                <div class="text-xs text-gray-500">Điểm hiện tại</div>
                 <div
                   class="text-xl font-bold"
-                  :class="reached ? 'text-green-400' : 'text-binance-yellow'"
+                  :class="reached ? 'text-green-600' : 'text-binance-yellow'"
                 >
                   {{ res.currentPoint }}
                 </div>
               </div>
               <div class="bg-binance-light/30 rounded-lg px-3 py-2">
-                <div class="text-xs text-gray-400">Mốc cần đạt (= 2^{{ cfg.pointTrade }})</div>
+                <div class="text-xs text-gray-500">Mốc cần đạt (= 2^{{ cfg.pointTrade }})</div>
                 <div class="text-xl font-bold">
                   {{ fmtNumber(res.targetVol) }}
                 </div>
@@ -145,46 +150,46 @@
 
             <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
               <div class="border rounded-lg px-3 py-2"
-                   :class="reached ? 'border-green-700 bg-green-900/20' : 'border-binance-light'">
-                <div class="text-xs text-gray-400">Vol raw cần trade</div>
+                   :class="reached ? 'border-green-300 bg-green-50' : 'border-binance-light'">
+                <div class="text-xs text-gray-500">Vol raw cần trade</div>
                 <div class="text-lg font-semibold"
-                     :class="reached ? 'text-green-400' : 'text-gray-200'">
+                     :class="reached ? 'text-green-600' : 'text-gray-800'">
                   {{ fmtNumber(res.rawNeeded) }}
                 </div>
               </div>
               <div class="border rounded-lg px-3 py-2"
-                   :class="reached ? 'border-green-700 bg-green-900/20' : 'border-binance-light'">
-                <div class="text-xs text-gray-400">Vol x{{ MULT }} còn thiếu</div>
+                   :class="reached ? 'border-green-300 bg-green-50' : 'border-binance-light'">
+                <div class="text-xs text-gray-500">Vol x{{ MULT }} còn thiếu</div>
                 <div
                   class="text-lg font-semibold"
-                  :class="reached ? 'text-green-400' : 'text-red-400'"
+                  :class="reached ? 'text-green-600' : 'text-red-600'"
                 >
                   {{ fmtNumber(res.deltaX4) }}
                 </div>
               </div>
               <div class="border rounded-lg px-3 py-2"
-                   :class="reached ? 'border-green-700 bg-green-900/20' : 'border-binance-light'">
-                <div class="text-xs text-gray-400">Số lệnh còn lại</div>
+                   :class="reached ? 'border-green-300 bg-green-50' : 'border-binance-light'">
+                <div class="text-xs text-gray-500">Số lệnh còn lại</div>
                 <div
                   class="text-lg font-semibold"
-                  :class="reached ? 'text-green-400' : 'text-binance-yellow'"
+                  :class="reached ? 'text-green-600' : 'text-binance-yellow'"
                 >
                   {{ res.ordersNeeded }}
                 </div>
               </div>
               <div class="border rounded-lg px-3 py-2"
-                   :class="reached ? 'border-green-700 bg-green-900/20' : 'border-binance-light'">
-                <div class="text-xs text-gray-400">
+                   :class="reached ? 'border-green-300 bg-green-50' : 'border-binance-light'">
+                <div class="text-xs text-gray-500">
                   {{ reached ? 'Đã đạt' : `Sau khi trade ${res.ordersNeeded} lệnh` }}
                 </div>
-                <div class="text-lg font-semibold text-green-400">
+                <div class="text-lg font-semibold text-green-600">
                   {{ reached ? '✓' : `+${res.pointsGain} điểm` }}
                 </div>
               </div>
             </div>
 
             <details class="mt-2">
-              <summary class="cursor-pointer text-xs text-gray-400 hover:text-gray-200">
+              <summary class="cursor-pointer text-xs text-gray-500 hover:text-gray-800">
                 Bảng quy đổi Volume → Điểm
               </summary>
               <div class="grid grid-cols-3 md:grid-cols-5 gap-2 mt-2 text-xs">
@@ -196,7 +201,7 @@
                 >
                   <span class="text-binance-yellow">{{ t.point }}đ</span>
                   =
-                  <span class="text-gray-300">{{ fmtNumber(t.volume) }}</span>
+                  <span class="text-gray-700">{{ fmtNumber(t.volume) }}</span>
                 </div>
               </div>
             </details>
@@ -204,7 +209,7 @@
 
           <!-- Fill phí -->
           <div class="border border-binance-light rounded-xl p-3">
-            <div class="text-xs text-gray-400 mb-2 uppercase tracking-wider">
+            <div class="text-xs text-gray-500 mb-2 uppercase tracking-wider">
               Fill phí vào hệ thống
             </div>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -239,7 +244,7 @@
               </div>
               <div>
                 <label class="label">Phí ($)</label>
-                <div class="input bg-binance-light/30 text-red-400 text-right">
+                <div class="input bg-binance-light/30 text-rose-600 text-right">
                   {{ fmtUSD(fee) }}
                 </div>
               </div>
@@ -258,7 +263,7 @@
                   :disabled="saving || !canSave"
                   @click="saveFee"
                 >
-                  <span v-if="saving" class="inline-block w-3 h-3 border-2 border-binance-dark border-t-transparent rounded-full animate-spin"></span>
+                  <span v-if="saving" class="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
                   {{ saving ? 'Đang lưu...' : 'Lưu phí' }}
                 </button>
               </div>
@@ -333,7 +338,8 @@ const res = computed(() => {
   const target = Math.pow(2, Number(cfg.pointTrade) || 0);
   const currentPoint = pointsFromVolume(v);
   const deltaX4 = Math.max(0, target - v);
-  const rawNeeded = Math.ceil(deltaX4 / MULT);
+  // +3 vol raw để bù trừ sai số khi trade thực tế (slippage/làm tròn).
+  const rawNeeded = deltaX4 > 0 ? Math.ceil(deltaX4 / MULT) + 3 : 0;
   const per = Number(cfg.perOrder) || 1;
   const ordersNeeded = deltaX4 > 0 ? Math.ceil(rawNeeded / per) : 0;
   const afterVol = v + ordersNeeded * per * MULT;

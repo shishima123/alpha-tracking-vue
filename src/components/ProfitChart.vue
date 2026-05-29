@@ -3,7 +3,7 @@
     <div class="flex items-center justify-between mb-3">
       <div>
         <h3 class="font-semibold">Lợi nhuận theo tháng</h3>
-        <p class="text-xs text-gray-400">USD · sau khi trừ phí</p>
+        <p class="text-xs text-gray-500">USD · sau khi trừ phí</p>
       </div>
     </div>
     <div class="h-72">
@@ -37,7 +37,7 @@ const chartData = computed(() => ({
     {
       label: 'Lợi nhuận (USD)',
       data: props.monthly.map((m) => m.profit),
-      backgroundColor: '#F0B90B',
+      backgroundColor: '#2563eb',
       borderRadius: 6,
     },
     {
@@ -53,11 +53,11 @@ const options = {
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
-    legend: { labels: { color: '#cbd5e1' } },
+    legend: { labels: { color: '#334155' } },
   },
   scales: {
-    x: { ticks: { color: '#94a3b8' }, grid: { color: '#2b3139' } },
-    y: { ticks: { color: '#94a3b8' }, grid: { color: '#2b3139' } },
+    x: { ticks: { color: '#64748b' }, grid: { color: '#e2e8f0' } },
+    y: { ticks: { color: '#64748b' }, grid: { color: '#e2e8f0' } },
   },
 };
 </script>

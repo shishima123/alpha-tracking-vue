@@ -29,7 +29,7 @@ const HEADERS = {
     'createdAt', 'sortOrder', 'hideInPoints',
   ],
   Fees: ['id', 'date', 'accountId', 'fee', 'points', 'note', 'createdAt'],
-  AlphaProjects: ['id', 'name', 'date', 'claimPoints', 'type', 'rewards', 'note', 'createdAt'],
+  AlphaProjects: ['id', 'name', 'date', 'claimPoints', 'type', 'rewards', 'note', 'createdAt', 'estimated'],
   FeesMonthly: ['id', 'month', 'accountId', 'totalFee', 'totalPoints', 'count', 'updatedAt'],
 };
 
@@ -519,6 +519,8 @@ function listProjects() {
       rewards: safeJson(r.rewards) || {},
       note: r.note || '',
       createdAt: r.createdAt || '',
+      // {accountId: true} — đánh dấu reward chỉ là ước lượng, chưa chính thức.
+      estimated: safeJson(r.estimated) || {},
     };
   });
 }
@@ -535,6 +537,7 @@ function createProject(payload) {
     rewards: payload.rewards || {},
     note: payload.note || '',
     createdAt: new Date().toISOString(),
+    estimated: payload.estimated || {},
   };
   appendItem(SHEETS.ALPHA, item);
   return item;

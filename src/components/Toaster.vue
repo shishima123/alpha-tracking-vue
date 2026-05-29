@@ -24,9 +24,9 @@ import { useToastStore } from '../stores/toastStore';
 const toast = useToastStore();
 
 function classFor(type) {
-  if (type === 'success') return 'bg-green-900/80 border-green-700 text-green-100';
-  if (type === 'error') return 'bg-red-900/80 border-red-700 text-red-100';
-  return 'bg-binance-gray/90 border-binance-light text-gray-100';
+  if (type === 'success') return 'bg-green-600 border-green-500 text-white';
+  if (type === 'error') return 'bg-red-600 border-red-500 text-white';
+  return 'bg-white/95 border-binance-light text-gray-700';
 }
 
 function iconFor(type) {

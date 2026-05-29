@@ -42,7 +42,7 @@
         </div>
       </div>
       <div class="mt-3">
-        <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-300 w-fit">
+        <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-700 w-fit">
           <input v-model="form.hideInPoints" type="checkbox" class="accent-binance-yellow" />
           Ẩn ở tab Điểm Alpha
         </label>
@@ -50,7 +50,7 @@
       <div class="flex items-center justify-end gap-2 mt-4">
         <button class="btn-secondary" @click="resetForm">Reset</button>
         <button class="btn-primary" :disabled="saving || !form.name.trim()" @click="submit">
-          <span v-if="saving" class="inline-block w-3 h-3 border-2 border-binance-dark border-t-transparent rounded-full animate-spin"></span>
+          <span v-if="saving" class="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
           {{ saving ? 'Đang lưu...' : 'Tạo tài khoản' }}
         </button>
       </div>
@@ -82,7 +82,7 @@
           <template v-for="a in store.accounts" :key="a.id">
             <!-- Display row -->
             <tr v-if="editingId !== a.id" class="hover:bg-binance-light/30">
-              <td class="table-td text-right text-gray-300">{{ a.sortOrder ?? 0 }}</td>
+              <td class="table-td text-right text-gray-700">{{ a.sortOrder ?? 0 }}</td>
               <td class="table-td">
                 <div class="flex items-center gap-2">
                   <span class="inline-block w-3 h-3 rounded-full" :style="{ background: a.color }"></span>
@@ -92,14 +92,14 @@
                   </div>
                 </div>
               </td>
-              <td class="table-td text-xs text-gray-400 font-mono">{{ a.color }}</td>
+              <td class="table-td text-xs text-gray-500 font-mono">{{ a.color }}</td>
               <td class="table-td text-center">
-                <span class="badge" :class="a.active ? 'bg-green-900 text-green-200' : 'bg-gray-700 text-gray-400'">
+                <span class="badge" :class="a.active ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'">
                   {{ a.active ? '✓' : '✕' }}
                 </span>
               </td>
               <td class="table-td text-center">
-                <span class="badge" :class="a.hideInPoints ? 'bg-yellow-900 text-yellow-200' : 'bg-gray-700 text-gray-500'">
+                <span class="badge" :class="a.hideInPoints ? 'bg-amber-100 text-amber-700' : 'bg-gray-200 text-gray-500'">
                   {{ a.hideInPoints ? '✓' : '—' }}
                 </span>
               </td>
@@ -109,8 +109,8 @@
                 {{ (a.pointTrade || 0) + (a.pointHold || 0) }}
               </td>
               <td class="table-td text-right space-x-2 whitespace-nowrap">
-                <button class="text-binance-yellow hover:text-yellow-300 text-xs" @click="startEdit(a)">Sửa</button>
-                <button class="text-red-400 hover:text-red-300 text-xs" @click="del(a)">Xóa</button>
+                <button class="text-binance-yellow hover:text-blue-700 text-xs" @click="startEdit(a)">Sửa</button>
+                <button class="text-red-600 hover:text-red-700 text-xs" @click="del(a)">Xóa</button>
               </td>
             </tr>
 
@@ -126,7 +126,7 @@
                 </div>
                 <div class="text-xs text-gray-500 mt-1">{{ a.id }} (cố định)</div>
               </td>
-              <td class="table-td text-xs text-gray-400 font-mono">{{ editForm.color }}</td>
+              <td class="table-td text-xs text-gray-500 font-mono">{{ editForm.color }}</td>
               <td class="table-td text-center">
                 <input v-model="editForm.active" type="checkbox" />
               </td>
@@ -143,10 +143,10 @@
                 {{ (Number(editForm.pointTrade) || 0) + (Number(editForm.pointHold) || 0) }}
               </td>
               <td class="table-td text-right space-x-2 whitespace-nowrap">
-                <button class="text-green-400 hover:text-green-300 text-xs" :disabled="savingEdit" @click="saveEdit">
+                <button class="text-green-600 hover:text-green-700 text-xs" :disabled="savingEdit" @click="saveEdit">
                   {{ savingEdit ? '...' : 'Lưu' }}
                 </button>
-                <button class="text-gray-400 hover:text-gray-300 text-xs" :disabled="savingEdit" @click="cancelEdit">
+                <button class="text-gray-500 hover:text-gray-700 text-xs" :disabled="savingEdit" @click="cancelEdit">
                   Hủy
                 </button>
               </td>

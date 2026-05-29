@@ -14,7 +14,7 @@
       >
         <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-binance-gray/95 border border-binance-light shadow-lg backdrop-blur text-xs">
           <span class="inline-block w-3 h-3 border-2 border-binance-yellow border-t-transparent rounded-full animate-spin"></span>
-          <span class="text-gray-200">Đang tải...</span>
+          <span class="text-gray-700">Đang tải...</span>
           <span v-if="inflightCount > 1" class="text-gray-500">({{ inflightCount }})</span>
         </div>
       </div>

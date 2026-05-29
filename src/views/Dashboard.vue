@@ -12,13 +12,13 @@
         label="Tổng phí"
         :value="'$' + fmtUSD(total.fee)"
         :sub="fmtVND(total.fee * store.vndRate)"
-        color-class="text-red-400"
+        color-class="text-rose-600"
       />
       <StatCard
         label="Lợi nhuận"
         :value="'$' + fmtUSD(total.profit)"
         :sub="fmtVND(total.profitVND)"
-        color-class="text-green-400"
+        color-class="text-green-600"
       />
       <StatCard
         label="Dự án đã claim"
@@ -56,25 +56,25 @@
               :class="expanded[m.month] ? 'bg-binance-light/20' : ''"
               @click="toggleMonth(m.month)"
             >
-              <td class="table-td text-center text-gray-400 select-none">
+              <td class="table-td text-center text-gray-500 select-none">
                 {{ expanded[m.month] ? '▾' : '▸' }}
               </td>
               <td class="table-td font-medium">{{ m.month }}</td>
               <td class="table-td text-right text-binance-yellow">{{ fmtUSD(m.totalRevenue) }}</td>
-              <td class="table-td text-right text-red-400">-{{ fmtUSD(m.totalFee) }}</td>
+              <td class="table-td text-right text-rose-600">-{{ fmtUSD(m.totalFee) }}</td>
               <td
                 class="table-td text-right font-semibold"
-                :class="m.profit >= 0 ? 'text-green-400' : 'text-red-400'"
+                :class="m.profit >= 0 ? 'text-green-600' : 'text-red-600'"
               >
                 {{ fmtUSD(m.profit) }}
               </td>
-              <td class="table-td text-right text-gray-300">{{ fmtVND(m.profitVND) }}</td>
+              <td class="table-td text-right text-gray-700">{{ fmtVND(m.profitVND) }}</td>
               <td class="table-td text-right">{{ m.projects }}</td>
             </tr>
             <tr v-if="expanded[m.month]" class="bg-binance-dark/50">
               <td></td>
               <td colspan="6" class="px-3 py-3">
-                <div class="text-xs text-gray-400 mb-2 uppercase tracking-wider">
+                <div class="text-xs text-gray-500 mb-2 uppercase tracking-wider">
                   Theo tài khoản — Tháng {{ m.month }}
                 </div>
                 <div v-if="!hasAccountBreakdown(m)" class="text-xs text-gray-500 italic">
@@ -82,7 +82,7 @@
                 </div>
                 <table v-else class="w-full text-sm">
                   <thead>
-                    <tr class="text-xs text-gray-400">
+                    <tr class="text-xs text-gray-500">
                       <th class="px-2 py-1 text-left font-normal">Tài khoản</th>
                       <th class="px-2 py-1 text-right font-normal">Thu nhập</th>
                       <th class="px-2 py-1 text-right font-normal">Phí</th>
@@ -105,12 +105,12 @@
                       <td class="px-2 py-1.5 text-right text-binance-yellow">
                         {{ fmtUSD(row.revenue) }}
                       </td>
-                      <td class="px-2 py-1.5 text-right text-red-400">
+                      <td class="px-2 py-1.5 text-right text-rose-600">
                         -{{ fmtUSD(row.fee) }}
                       </td>
                       <td
                         class="px-2 py-1.5 text-right font-semibold"
-                        :class="row.profit >= 0 ? 'text-green-400' : 'text-red-400'"
+                        :class="row.profit >= 0 ? 'text-green-600' : 'text-red-600'"
                       >
                         {{ fmtUSD(row.profit) }}
                       </td>

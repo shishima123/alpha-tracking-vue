@@ -20,7 +20,7 @@
             </router-link>
           </nav>
           <div class="ml-auto flex items-center gap-3 text-sm">
-            <div class="flex items-center gap-2 text-gray-400">
+            <div class="flex items-center gap-2 text-gray-500">
               <span>Tỉ giá:</span>
               <input
                 v-model.number="store.vndRate"
@@ -30,11 +30,31 @@
               />
               <span>VND/USD</span>
             </div>
-            <button class="btn-secondary" @click="store.loadAll()" :disabled="store.loading">
-              <span v-if="store.loading">Đang tải...</span>
-              <span v-else>↻ Refresh</span>
+            <button class="btn-primary" @click="calc.show()" title="Máy tính Volume → Phí Alpha">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect width="16" height="20" x="4" y="2" rx="2" />
+                <line x1="8" x2="16" y1="6" y2="6" />
+                <line x1="16" x2="16" y1="14" y2="18" />
+                <path d="M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M8 18h.01M12 18h.01" />
+              </svg>
+              <span class="hidden sm:inline">Máy tính</span>
             </button>
-            <button class="btn-secondary" @click="logout" title="Đăng xuất">⎋</button>
+            <button class="btn-secondary" @click="store.loadAll()" :disabled="store.loading">
+              <svg class="w-4 h-4" :class="store.loading ? 'animate-spin' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                <path d="M21 3v5h-5" />
+                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                <path d="M3 21v-5h5" />
+              </svg>
+              <span class="hidden sm:inline">{{ store.loading ? 'Đang tải...' : 'Refresh' }}</span>
+            </button>
+            <button class="btn-secondary" @click="logout" title="Đăng xuất">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" x2="9" y1="12" y2="12" />
+              </svg>
+            </button>
           </div>
         </div>
       </header>
@@ -42,7 +62,7 @@
       <!-- Error banner -->
       <div
         v-if="store.error"
-        class="bg-red-900/40 border-b border-red-700 text-red-200 px-4 py-2 text-sm"
+        class="bg-red-50 border-b border-red-300 text-red-700 px-4 py-2 text-sm"
       >
         {{ store.error }}
         <button class="ml-2 underline" @click="store.error = null">đóng</button>
@@ -58,7 +78,7 @@
       Binance Alpha Tracking · Lưu trữ trên Google Sheets · {{ new Date().getFullYear() }}
     </footer>
 
-    <CalculatorFab v-if="!isLoginRoute" />
+    <CalculatorModal v-if="!isLoginRoute" />
     <Toaster />
     <LoadingIndicator />
   </div>
@@ -68,12 +88,14 @@
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useTrackingStore } from './stores/trackingStore';
+import { useCalculatorStore } from './stores/calculatorStore';
 import { clearStoredKey, hasStoredKey } from './services/api';
-import CalculatorFab from './components/CalculatorFab.vue';
+import CalculatorModal from './components/CalculatorModal.vue';
 import Toaster from './components/Toaster.vue';
 import LoadingIndicator from './components/LoadingIndicator.vue';
 
 const store = useTrackingStore();
+const calc = useCalculatorStore();
 const route = useRoute();
 const router = useRouter();
 

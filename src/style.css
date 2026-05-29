@@ -3,47 +3,69 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 html,
 body,
 #app {
   min-height: 100vh;
-  background-color: #0b0e11;
-  color: #eaecef;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: #dfe4ec;
+  /* Radial glow xanh nhạt ở top (đã bỏ lưới). Fixed để không scroll cùng content. */
+  background-image:
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(37, 99, 235, 0.05), transparent 70%);
+  background-attachment: fixed;
+  color: #334155;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 @layer components {
   .card {
-    @apply bg-binance-gray border border-binance-light rounded-xl p-4 shadow;
+    @apply rounded-xl p-4;
+    background: #f7f9fc;
+    border: 1px solid rgba(203, 213, 225, 0.8);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px -16px rgba(15, 23, 42, 0.12);
   }
   .btn {
     @apply inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition;
   }
   .btn-primary {
-    @apply btn bg-binance-yellow text-binance-dark hover:bg-yellow-400;
+    @apply btn bg-binance-yellow text-white hover:bg-blue-700;
   }
   .btn-secondary {
-    @apply btn bg-binance-light text-gray-200 hover:bg-gray-700;
+    @apply btn text-gray-700;
+    background: #f7f9fc;
+    border: 1px solid rgba(203, 213, 225, 0.9);
+  }
+  .btn-secondary:hover {
+    background: #e9eef5;
   }
   .btn-danger {
     @apply btn bg-red-600 text-white hover:bg-red-500;
   }
   .input {
-    @apply w-full bg-binance-dark border border-binance-light rounded-lg px-3 py-2 text-sm
-           text-gray-100 focus:border-binance-yellow focus:outline-none;
+    @apply w-full rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none transition;
+    background: #ffffff;
+    border: 1px solid rgba(203, 213, 225, 0.9);
+  }
+  .input:focus {
+    border-color: rgba(37, 99, 235, 0.6);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
   }
   .label {
-    @apply block text-xs font-medium text-gray-400 mb-1;
+    @apply block text-xs font-medium text-gray-500 mb-1;
   }
   .table-thead {
-    @apply text-left text-xs font-semibold text-gray-400 uppercase tracking-wider
+    @apply text-left text-xs font-semibold text-gray-500 uppercase tracking-wider
            border-b border-binance-light;
   }
   .table-td {
-    @apply px-3 py-2 text-sm text-gray-200 border-b border-binance-light/50;
+    @apply px-3 py-2 text-sm text-gray-700 border-b border-binance-light/70;
   }
   .badge {
     @apply inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full;
@@ -52,6 +74,6 @@ body,
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: #0b0e11; }
-::-webkit-scrollbar-thumb { background: #2b3139; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #3a414a; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.6); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 0.8); }

@@ -5,7 +5,7 @@
         <span class="text-binance-yellow text-2xl">α</span>
         Binance Alpha Tracking
       </h1>
-      <p class="text-sm text-gray-400 mb-5">Nhập passphrase để truy cập dữ liệu.</p>
+      <p class="text-sm text-gray-500 mb-5">Nhập passphrase để truy cập dữ liệu.</p>
       <form @submit.prevent="login">
         <label class="label" for="pw">Passphrase</label>
         <input
@@ -17,7 +17,7 @@
           :disabled="loading"
           autofocus
         />
-        <p v-if="error" class="text-sm text-red-400 mt-2">{{ error }}</p>
+        <p v-if="error" class="text-sm text-red-600 mt-2">{{ error }}</p>
         <button
           type="submit"
           class="btn-primary w-full justify-center mt-4"

@@ -7,14 +7,14 @@
           <h3 class="font-semibold">Theo dõi điểm Alpha</h3>
           <p class="text-xs text-gray-500 mt-1">
             Tổng = sum điểm phí trong 15 ngày gần nhất (không tính hôm nay).
-            Trừ <b class="text-gray-300">claimPoints</b> mỗi kèo alpha đã nhận trong cùng cửa sổ.
+            Trừ <b class="text-gray-700">claimPoints</b> mỗi kèo alpha đã nhận trong cùng cửa sổ.
             Khi kèo hết hạn → điểm hồi lại.
           </p>
         </div>
         <div class="flex items-center gap-3 flex-wrap">
           <label class="flex items-center gap-2 cursor-pointer text-sm">
             <input v-model="highlightMode" type="checkbox" class="accent-binance-yellow" />
-            <span class="text-gray-300">Highlight</span>
+            <span class="text-gray-700">Highlight</span>
           </label>
           <div class="flex items-center gap-2">
             <label class="label !mb-0">Điểm yêu cầu để nhận:</label>
@@ -48,11 +48,11 @@
           </div>
           <span
             v-if="data(acc.id).airdrop.eligible"
-            class="badge bg-green-900 text-green-200"
+            class="badge bg-green-100 text-green-700"
           >
             ✓ Đủ điểm nhận
           </span>
-          <span v-else class="badge bg-gray-700 text-gray-400">
+          <span v-else class="badge bg-gray-200 text-gray-500">
             Thiếu {{ data(acc.id).airdrop.deficit }}
           </span>
         </div>
@@ -60,27 +60,27 @@
         <!-- Metrics 4 ô -->
         <div class="grid grid-cols-4 gap-2 mb-3 text-center">
           <div class="border border-binance-light rounded-lg px-1 py-2">
-            <div class="text-[11px] text-gray-400">Tổng điểm</div>
+            <div class="text-[11px] text-gray-500">Tổng điểm</div>
             <div class="text-xl font-bold">{{ data(acc.id).totalPoints }}</div>
           </div>
           <div class="border border-binance-light rounded-lg px-1 py-2">
-            <div class="text-[11px] text-gray-400">Đã trừ</div>
-            <div class="text-xl font-bold text-red-400">
+            <div class="text-[11px] text-gray-500">Đã trừ</div>
+            <div class="text-xl font-bold text-rose-600">
               −{{ data(acc.id).deducted }}
             </div>
           </div>
           <div class="border border-binance-light bg-binance-light/30 rounded-lg px-1 py-2">
-            <div class="text-[11px] text-gray-400">Còn lại</div>
+            <div class="text-[11px] text-gray-500">Còn lại</div>
             <div
               class="text-xl font-bold"
-              :class="data(acc.id).airdrop.eligible ? 'text-green-400' : 'text-binance-yellow'"
+              :class="data(acc.id).airdrop.eligible ? 'text-green-600' : 'text-binance-yellow'"
             >
               {{ data(acc.id).currentPoints }}
             </div>
           </div>
           <div class="border border-binance-light rounded-lg px-1 py-2">
-            <div class="text-[11px] text-gray-400">Số kèo</div>
-            <div class="text-xl font-bold text-gray-300">
+            <div class="text-[11px] text-gray-500">Số kèo</div>
+            <div class="text-xl font-bold text-gray-700">
               {{ data(acc.id).claimsCount }}
             </div>
           </div>
@@ -88,7 +88,7 @@
 
         <!-- Ngày reset (lịch hồi điểm khi kèo hết hạn) -->
         <div class="border-t border-binance-light pt-2">
-          <div class="text-xs text-gray-400 mb-2">
+          <div class="text-xs text-gray-500 mb-2">
             Ngày reset (kèo hết hạn, điểm hồi lại)
           </div>
           <div v-if="!data(acc.id).schedule.length" class="text-xs text-gray-500">
@@ -103,11 +103,11 @@
               <div class="flex-1 min-w-0">
                 <div class="text-binance-yellow font-semibold">
                   {{ s.resetDate }}
-                  <span class="text-gray-400 font-normal">· còn {{ s.daysLeft }}d</span>
+                  <span class="text-gray-500 font-normal">· còn {{ s.daysLeft }}d</span>
                 </div>
                 <div class="truncate text-gray-500">{{ s.projectName }}</div>
               </div>
-              <span class="text-green-400 font-semibold whitespace-nowrap">
+              <span class="text-green-600 font-semibold whitespace-nowrap">
                 +{{ s.claimPoints }}đ
               </span>
             </li>
