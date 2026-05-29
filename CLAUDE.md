@@ -71,15 +71,21 @@ Column order is declared in `HEADERS` at the top of `Code.gs`. `writeAll()` rewr
 
 Two helpers handle JSON inside cells: `rewards` on alpha projects is stored as a JSON string (`{accountId: usdAmount}`) and parsed via `safeJson()`.
 
-### Fees archival (FeesMonthly cache)
+### Fees archival (FeesMonthly cache) — manual
 
-The `Fees` sheet keeps every daily row forever (needed for the 15-day points-reset window which can span months). For perf, `FeesMonthly` is an auto-populated aggregate cache: one row per `(month, accountId)` with `totalFee` / `totalPoints` / `count`, populated by `syncFeesMonthly()` on every bootstrap for any past month not yet cached. Current month is never cached (still being mutated).
+The `Fees` sheet keeps every daily row (needed for the 15-day points-reset window which can span months). `FeesMonthly` is an aggregate cache: one row per `(month, accountId)` with `totalFee` / `totalPoints` / `count`. Current month is never cached (still being mutated).
 
-Any fee mutation (`createFee` / `bulkCreateFees` / `updateFee` / `deleteFee`) calls `invalidateFeesMonthly([affected months])` to remove stale aggregate rows; the next bootstrap rebuilds them.
+**Two user-triggered actions** on the Fees tab (no auto-sync any more):
+- `fees:archive` → runs `syncFeesMonthly()` over past months not yet in the cache. Idempotent. Daily rows stay.
+- `fees:clearOld` → deletes daily rows whose month ≠ current month from the `Fees` sheet. `FeesMonthly` is untouched, so the Dashboard still has past-month aggregates if archive ran first.
 
-`getBootstrap` returns `fees` filtered to **current month only** plus the full `feesMonthly` aggregate — this slim payload is what `store.fees` and `store.feesMonthly` hold. The Fees tab therefore shows only the current month's daily entries; past months are visible aggregated on the Dashboard via `computeSummaryFast()` which merges current daily rows + past aggregates.
+Any fee mutation (`createFee` / `bulkCreateFees` / `updateFee` / `deleteFee`) calls `invalidateFeesMonthly([affected months])` to drop stale aggregate rows — next archive rebuilds them.
 
-The standalone `getSummary` / `getPoints` endpoints still read the full Fees sheet (they're used after mutations for partial refreshes), so they bypass the cache. All fee mutations in the store now call `loadAll()` instead of `loadFees()` to keep `store.fees` correctly scoped to current month.
+`createFee` and `bulkCreateFees` **upsert** by `(date, accountId)`: same-day same-account = overwrite, not duplicate. Within a single `bulkCreateFees` batch, later entries overwrite earlier ones with the same key.
+
+`getBootstrap` returns `fees` filtered to **current month only**, the full `feesMonthly` aggregate, and `pastDaily = { total, active, safeToDelete, earliestSafeDate, pendingArchiveMonths }`. `active` counts past-month daily rows whose `tradeDate + 15 >= today` — when zero, the Fees tab shows a green "safe to clear" indicator. Summary uses aggregate for archived months and raw rows for past months that aren't archived yet (no double count).
+
+The standalone `getSummary` / `getPoints` endpoints still read the full Fees sheet (used after mutations for partial refreshes), so they bypass the cache. All fee mutations in the store call `loadAll()` to keep `store.fees` correctly scoped to current month.
 
 ### Date handling
 

@@ -143,6 +143,8 @@ function dispatch(resource, action, payload, params) {
       if (action === 'bulk') return bulkCreateFees(payload);
       if (action === 'update') return updateFee(payload);
       if (action === 'delete') return deleteFee(payload);
+      if (action === 'archive') return archivePastMonths();
+      if (action === 'clearOld') return clearOldDaily();
       break;
 
     case 'alpha':
@@ -357,9 +359,27 @@ function listFees(payload) {
   return fees;
 }
 
+/**
+ * Upsert một fee theo khóa (date, accountId). Nếu đã tồn tại → ghi đè fee/points/note,
+ * giữ nguyên id + createdAt. Nếu chưa → append.
+ */
 function createFee(payload) {
   if (!payload.date || !payload.accountId)
     throw new Error('date và accountId là bắt buộc');
+  const list = listFees({});
+  const idx = list.findIndex(function (f) {
+    return f.date === payload.date && f.accountId === payload.accountId;
+  });
+  if (idx > -1) {
+    list[idx] = Object.assign({}, list[idx], {
+      fee: Number(payload.fee) || 0,
+      points: Number(payload.points) || 0,
+      note: payload.note != null ? payload.note : (list[idx].note || ''),
+    });
+    writeAll(SHEETS.FEES, list);
+    invalidateFeesMonthly([monthKey(payload.date)]);
+    return list[idx];
+  }
   const item = {
     id: String(Date.now()),
     date: payload.date,
@@ -374,30 +394,78 @@ function createFee(payload) {
   return item;
 }
 
+/**
+ * Upsert nhiều entries cùng lúc. Trong cùng batch nếu có 2 entry trùng key,
+ * entry sau ghi đè entry trước.
+ */
 function bulkCreateFees(payload) {
   const entries = payload.entries || [];
   if (!Array.isArray(entries) || entries.length === 0)
     throw new Error('entries phải là mảng');
-  const sh = getSheet(SHEETS.FEES);
-  const headers = HEADERS.Fees;
-  const now = Date.now();
+  const list = listFees({});
+  const indexByKey = {};
+  list.forEach(function (f, i) { indexByKey[f.date + '|' + f.accountId] = i; });
+
   const months = {};
-  const rows = entries.map(function (e, i) {
-    const item = {
-      id: String(now + i),
-      date: e.date,
-      accountId: e.accountId,
-      fee: Number(e.fee) || 0,
-      points: Number(e.points) || 0,
-      note: e.note || '',
-      createdAt: new Date().toISOString(),
-    };
-    months[monthKey(item.date)] = true;
-    return headers.map(function (h) { return item[h]; });
+  const now = Date.now();
+  let inserted = 0;
+  let updated = 0;
+
+  entries.forEach(function (e, i) {
+    if (!e.date || !e.accountId) return;
+    months[monthKey(e.date)] = true;
+    const key = e.date + '|' + e.accountId;
+    const idx = indexByKey[key];
+    if (idx !== undefined) {
+      const cur = list[idx];
+      list[idx] = Object.assign({}, cur, {
+        fee: Number(e.fee) || 0,
+        points: Number(e.points) || 0,
+        note: e.note != null ? e.note : (cur.note || ''),
+      });
+      updated++;
+    } else {
+      const item = {
+        id: String(now + i),
+        date: e.date,
+        accountId: e.accountId,
+        fee: Number(e.fee) || 0,
+        points: Number(e.points) || 0,
+        note: e.note || '',
+        createdAt: new Date().toISOString(),
+      };
+      indexByKey[key] = list.length;
+      list.push(item);
+      inserted++;
+    }
   });
-  sh.getRange(sh.getLastRow() + 1, 1, rows.length, headers.length).setValues(rows);
+
+  if (inserted + updated > 0) writeAll(SHEETS.FEES, list);
   invalidateFeesMonthly(Object.keys(months));
-  return { inserted: rows.length };
+  return { inserted: inserted, updated: updated };
+}
+
+/**
+ * Tổng hợp các tháng cũ vào FeesMonthly. Idempotent — gọi nhiều lần OK.
+ * Không xóa daily rows (vẫn cần cho tính điểm).
+ */
+function archivePastMonths() {
+  const allFees = listFees({});
+  const feesMonthly = syncFeesMonthly(allFees);
+  return { feesMonthly: feesMonthly, archived: feesMonthly.length };
+}
+
+/**
+ * Xóa toàn bộ daily rows thuộc tháng cũ (không phải currentMonth) khỏi sheet Fees.
+ * KHÔNG đụng FeesMonthly — aggregate đã archive vẫn còn.
+ */
+function clearOldDaily() {
+  const currentKey = currentMonthKey();
+  const all = listFees({});
+  const kept = all.filter(function (f) { return monthKey(f.date) === currentKey; });
+  const removed = all.length - kept.length;
+  if (removed > 0) writeAll(SHEETS.FEES, kept);
+  return { removed: removed, kept: kept.length };
 }
 
 function updateFee(payload) {
@@ -821,7 +889,8 @@ function computeSummaryFast(currentFees, feesMonthly, projects, vndRateInput) {
 
 // =========================================================================
 // BOOTSTRAP — gom mọi data cần thiết vào 1 request.
-// Tháng hiện tại trả raw daily rows; tháng cũ chỉ trả aggregate.
+// Tháng hiện tại trả raw daily rows; tháng cũ trả aggregate đã archive (nếu có).
+// KHÔNG auto-sync FeesMonthly — user phải bấm nút "Archive" để tổng hợp.
 // =========================================================================
 function getBootstrap(payload) {
   payload = payload || {};
@@ -829,19 +898,80 @@ function getBootstrap(payload) {
   const allFees = listFees({});
   const projects = listProjects();
   const currentKey = currentMonthKey();
-  const currentFees = allFees.filter(function (f) { return monthKey(f.date) === currentKey; });
 
-  // syncFeesMonthly trả về list đã merge new + existing → khỏi gọi listFeesMonthly() lần nữa
-  const feesMonthly = syncFeesMonthly(allFees);
+  const currentFees = [];
+  const pastFees = [];
+  allFees.forEach(function (f) {
+    if (monthKey(f.date) === currentKey) currentFees.push(f);
+    else pastFees.push(f);
+  });
+
+  const feesMonthly = listFeesMonthly();
+  const archivedMonths = {};
+  feesMonthly.forEach(function (r) { archivedMonths[r.month] = true; });
+
+  // Tháng past chưa archive → vẫn cần raw rows để Dashboard tính summary đúng.
+  // Tháng past đã archive → dùng aggregate, bỏ raw rows để tránh double count.
+  const summaryPastFees = pastFees.filter(function (f) {
+    return !archivedMonths[monthKey(f.date)];
+  });
+  const summary = computeSummaryFast(
+    currentFees.concat(summaryPastFees),
+    feesMonthly,
+    projects,
+    payload.vndRate
+  );
 
   return {
     accounts: accounts,
     fees: currentFees,
     feesMonthly: feesMonthly,
     projects: projects,
-    summary: computeSummaryFast(currentFees, feesMonthly, projects, payload.vndRate),
+    summary: summary,
     points: computePoints(allFees, payload.requiredPoints),
     currentMonth: currentKey,
+    pastDaily: computePastDailyStatus(pastFees, archivedMonths),
+  };
+}
+
+/**
+ * Tổng hợp tình trạng daily rows tháng cũ:
+ *  - total: số rows past-month trong sheet Fees
+ *  - active: số rows có tradeDate + 15 >= today (vẫn tính điểm Alpha)
+ *  - safeToDelete: true khi mọi row đã hết hiệu lực điểm
+ *  - earliestSafeDate: nếu chưa safe → DMY của ngày sẽ safeToDelete sau khi tới
+ *  - pendingArchiveMonths: tháng past có raw nhưng chưa có aggregate
+ */
+function computePastDailyStatus(pastFees, archivedMonths) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  let active = 0;
+  let latestResetTs = 0;
+  const monthsWithRaw = {};
+
+  pastFees.forEach(function (f) {
+    const d = parseDmy(f.date);
+    if (!d) return;
+    monthsWithRaw[monthKey(f.date)] = true;
+    const reset = new Date(d);
+    reset.setDate(reset.getDate() + 15);
+    if (reset.getTime() >= today.getTime()) {
+      active++;
+      if (reset.getTime() > latestResetTs) latestResetTs = reset.getTime();
+    }
+  });
+
+  const pendingArchiveMonths = Object.keys(monthsWithRaw)
+    .filter(function (m) { return !archivedMonths[m]; })
+    .sort(sortMonth);
+
+  return {
+    total: pastFees.length,
+    active: active,
+    safeToDelete: pastFees.length > 0 && active === 0,
+    earliestSafeDate: latestResetTs > 0 ? formatDmy(new Date(latestResetTs + 86400000)) : null,
+    pendingArchiveMonths: pendingArchiveMonths,
   };
 }
 

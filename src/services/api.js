@@ -197,6 +197,8 @@ export const feesApi = {
   bulk: (entries) => call('fees', 'bulk', { entries }),
   update: (id, data) => call('fees', 'update', { id, ...data }),
   remove: (id) => call('fees', 'delete', { id }),
+  archive: () => call('fees', 'archive', {}),
+  clearOld: () => call('fees', 'clearOld', {}),
 };
 
 export const alphaApi = {

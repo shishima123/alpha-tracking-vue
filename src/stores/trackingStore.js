@@ -8,6 +8,7 @@ export const useTrackingStore = defineStore('tracking', {
     fees: [],              // chỉ chứa daily rows của tháng hiện tại
     feesMonthly: [],       // aggregate cho các tháng cũ
     currentMonth: '',      // 'MM/YYYY' do server xác định
+    pastDaily: null,       // { total, active, safeToDelete, earliestSafeDate, pendingArchiveMonths }
     projects: [],
     summary: null,
     points: null,
@@ -53,6 +54,16 @@ export const useTrackingStore = defineStore('tracking', {
       await feesApi.remove(id);
       await this.loadAll();
     },
+    async archivePastMonths() {
+      const res = await feesApi.archive();
+      await this.loadAll();
+      return res;
+    },
+    async clearOldDaily() {
+      const res = await feesApi.clearOld();
+      await this.loadAll();
+      return res;
+    },
 
     async loadProjects() {
       this.projects = await alphaApi.list();
@@ -87,6 +98,7 @@ export const useTrackingStore = defineStore('tracking', {
         this.fees = data.fees;
         this.feesMonthly = data.feesMonthly || [];
         this.currentMonth = data.currentMonth || '';
+        this.pastDaily = data.pastDaily || null;
         this.projects = data.projects;
         this.summary = data.summary;
         this.points = data.points;
