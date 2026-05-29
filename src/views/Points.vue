@@ -7,18 +7,24 @@
           <h3 class="font-semibold">Theo dõi điểm Alpha</h3>
           <p class="text-xs text-gray-500 mt-1">
             Tổng = sum điểm phí trong 15 ngày gần nhất (không tính hôm nay).
-            Trừ <b class="text-gray-300">claimPoints</b> mỗi kèo alpha đã húp trong cùng cửa sổ.
+            Trừ <b class="text-gray-300">claimPoints</b> mỗi kèo alpha đã nhận trong cùng cửa sổ.
             Khi kèo hết hạn → điểm hồi lại.
           </p>
         </div>
-        <div class="flex items-center gap-2">
-          <label class="label !mb-0">Điểm yêu cầu để húp:</label>
-          <input
-            v-model.number="required"
-            type="number"
-            min="1"
-            class="input w-24 py-1"
-          />
+        <div class="flex items-center gap-3 flex-wrap">
+          <label class="flex items-center gap-2 cursor-pointer text-sm">
+            <input v-model="highlightMode" type="checkbox" class="accent-binance-yellow" />
+            <span class="text-gray-300">Highlight</span>
+          </label>
+          <div class="flex items-center gap-2">
+            <label class="label !mb-0">Điểm yêu cầu để nhận:</label>
+            <input
+              v-model.number="required"
+              type="number"
+              min="1"
+              class="input w-24 py-1"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -26,9 +32,10 @@
     <!-- Cards điểm từng account -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       <div
-        v-for="acc in store.activeAccounts"
+        v-for="acc in pointsAccounts"
         :key="acc.id"
-        class="card"
+        class="card transition-all"
+        :class="cardClass(acc.id)"
       >
         <!-- Header: name + badge -->
         <div class="flex items-center justify-between mb-3">
@@ -43,7 +50,7 @@
             v-if="data(acc.id).airdrop.eligible"
             class="badge bg-green-900 text-green-200"
           >
-            ✓ Đủ điểm húp
+            ✓ Đủ điểm nhận
           </span>
           <span v-else class="badge bg-gray-700 text-gray-400">
             Thiếu {{ data(acc.id).airdrop.deficit }}
@@ -85,7 +92,7 @@
             Ngày reset (kèo hết hạn, điểm hồi lại)
           </div>
           <div v-if="!data(acc.id).schedule.length" class="text-xs text-gray-500">
-            Chưa có kèo nào đã húp trong 14 ngày qua
+            Chưa có kèo nào đã nhận trong 14 ngày qua
           </div>
           <ul v-else class="space-y-1.5 text-xs max-h-48 overflow-y-auto">
             <li
@@ -94,11 +101,11 @@
               class="flex items-center justify-between gap-2"
             >
               <div class="flex-1 min-w-0">
-                <div class="truncate text-gray-200 font-medium">{{ s.projectName }}</div>
-                <div class="text-gray-500">
+                <div class="text-binance-yellow font-semibold">
                   {{ s.resetDate }}
-                  <span class="text-gray-600">· còn {{ s.daysLeft }}d</span>
+                  <span class="text-gray-400 font-normal">· còn {{ s.daysLeft }}d</span>
                 </div>
+                <div class="truncate text-gray-500">{{ s.projectName }}</div>
               </div>
               <span class="text-green-400 font-semibold whitespace-nowrap">
                 +{{ s.claimPoints }}đ
@@ -118,6 +125,11 @@ import { computeAlphaPoints } from '../utils/points';
 
 const store = useTrackingStore();
 const required = ref(15);
+const highlightMode = ref(false);
+
+const pointsAccounts = computed(() =>
+  store.activeAccounts.filter((a) => !a.hideInPoints)
+);
 
 const pointsData = computed(() =>
   computeAlphaPoints(store.fees || [], store.projects || [], required.value)
@@ -139,5 +151,12 @@ const emptyAccount = computed(() => ({
 
 function data(id) {
   return pointsData.value.accounts.find((a) => a.accountId === id) || emptyAccount.value;
+}
+
+function cardClass(id) {
+  if (!highlightMode.value) return '';
+  return data(id).airdrop.eligible
+    ? 'ring-2 ring-green-500/60 shadow-lg shadow-green-500/20'
+    : 'opacity-30 grayscale';
 }
 </script>

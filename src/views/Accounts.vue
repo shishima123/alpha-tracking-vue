@@ -41,6 +41,12 @@
           />
         </div>
       </div>
+      <div class="mt-3">
+        <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-300 w-fit">
+          <input v-model="form.hideInPoints" type="checkbox" class="accent-binance-yellow" />
+          Ẩn ở tab Điểm Alpha
+        </label>
+      </div>
       <div class="flex items-center justify-end gap-2 mt-4">
         <button class="btn-secondary" @click="resetForm">Reset</button>
         <button class="btn-primary" :disabled="saving || !form.name.trim()" @click="submit">
@@ -65,6 +71,7 @@
             <th class="px-3 py-2">Tên / Display</th>
             <th class="px-2 py-2 w-24">Màu</th>
             <th class="px-2 py-2 text-center w-16">Active</th>
+            <th class="px-2 py-2 text-center w-20" title="Ẩn ở tab Điểm Alpha">Ẩn điểm</th>
             <th class="px-2 py-2 text-right w-20">Đ.Trade</th>
             <th class="px-2 py-2 text-right w-20">Đ.Hold</th>
             <th class="px-2 py-2 text-right w-16">Đ.Tổng</th>
@@ -89,6 +96,11 @@
               <td class="table-td text-center">
                 <span class="badge" :class="a.active ? 'bg-green-900 text-green-200' : 'bg-gray-700 text-gray-400'">
                   {{ a.active ? '✓' : '✕' }}
+                </span>
+              </td>
+              <td class="table-td text-center">
+                <span class="badge" :class="a.hideInPoints ? 'bg-yellow-900 text-yellow-200' : 'bg-gray-700 text-gray-500'">
+                  {{ a.hideInPoints ? '✓' : '—' }}
                 </span>
               </td>
               <td class="table-td text-right">{{ a.pointTrade }}</td>
@@ -118,6 +130,9 @@
               <td class="table-td text-center">
                 <input v-model="editForm.active" type="checkbox" />
               </td>
+              <td class="table-td text-center">
+                <input v-model="editForm.hideInPoints" type="checkbox" class="accent-binance-yellow" />
+              </td>
               <td class="table-td">
                 <input v-model.number="editForm.pointTrade" type="number" min="1" max="20" class="input py-1 px-2 text-right w-16" />
               </td>
@@ -138,7 +153,7 @@
             </tr>
           </template>
           <tr v-if="store.accounts.length === 0">
-            <td colspan="8" class="text-center py-6 text-gray-500">
+            <td colspan="9" class="text-center py-6 text-gray-500">
               Chưa có tài khoản nào
             </td>
           </tr>
@@ -164,6 +179,7 @@ const DEFAULT_FORM = {
   pointTrade: 15,
   pointHold: 2,
   sortOrder: 0,
+  hideInPoints: false,
 };
 
 const form = reactive({ ...DEFAULT_FORM });
@@ -189,6 +205,7 @@ async function submit() {
       pointTrade: form.pointTrade,
       pointHold: form.pointHold,
       sortOrder: Number(form.sortOrder) || 0,
+      hideInPoints: !!form.hideInPoints,
     });
     toast.success(`Đã tạo tài khoản "${name}"`);
     resetForm();
@@ -208,6 +225,7 @@ const editForm = reactive({
   pointTrade: 15,
   pointHold: 2,
   sortOrder: 0,
+  hideInPoints: false,
 });
 const savingEdit = ref(false);
 
@@ -219,6 +237,7 @@ function startEdit(a) {
   editForm.pointTrade = a.pointTrade ?? 15;
   editForm.pointHold = a.pointHold ?? 2;
   editForm.sortOrder = a.sortOrder ?? 0;
+  editForm.hideInPoints = !!a.hideInPoints;
 }
 
 function cancelEdit() {
@@ -236,6 +255,7 @@ async function saveEdit() {
       pointTrade: editForm.pointTrade,
       pointHold: editForm.pointHold,
       sortOrder: Number(editForm.sortOrder) || 0,
+      hideInPoints: !!editForm.hideInPoints,
     });
     toast.success(`Đã cập nhật "${editForm.displayName}"`);
     editingId.value = null;

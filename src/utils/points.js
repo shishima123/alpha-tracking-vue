@@ -2,7 +2,12 @@ import { parseDate } from './format';
 
 export const ALPHA_VOLUME_MULTIPLIER = 4;
 export const MAX_POINT = 20;
+// Số ngày fee/claim được tính: window [today-15, today) — bao gồm today-15, loại today.
+// Tương đương daysAgo ∈ [1, 15].
 export const POINT_WINDOW_DAYS = 15;
+// Reset xảy ra 1 ngày sau khi hết window: claim D active D+1..D+15, reset = D+16.
+// daysLeft = 16 - daysAgo, range [1, 15].
+export const POINT_RESET_OFFSET = POINT_WINDOW_DAYS + 1;
 
 export function pointsFromVolume(volume) {
   const v = Number(volume) || 0;
@@ -23,16 +28,16 @@ export function nextThreshold(volume) {
 }
 
 /**
- * Điểm Alpha của 1 account:
- *  - Tổng điểm = sum(fees.points) trong cửa sổ 15 ngày KHÔNG tính hôm nay.
- *    Tức entry.date phải > today-15 AND entry.date < today
- *    (= 14 ngày: từ today-14 đến today-1).
- *  - Điểm trừ = sum(project.claimPoints) cho mỗi alpha project trong window
- *    mà account này có reward > 0 (= đã húp được kèo này).
- *  - Điểm còn lại = Tổng − Điểm trừ.
+ * Điểm Alpha của 1 account — match công thức Excel:
+ *   total = SUMIFS(fee.points; date >= TODAY-15; date < TODAY)
+ *   deducted = SUMIFS(claimPoints; date >= TODAY-15; date < TODAY; reward<>"")
+ *   current = total − deducted
+ *
+ *  - Window: claim/fee date phải `>= today-15 AND < today` → daysAgo ∈ [1, 15] (15 ngày).
+ *  - Điểm trừ: mỗi alpha project trong window mà account có reward > 0 = nhận được kèo.
  *  - Schedule "ngày reset" = với mỗi claim trong window:
- *      resetDate = claim.date + 15
- *      daysLeft  = resetDate − today (1..14)
+ *      resetDate = claim.date + 16  (= claim active D+1..D+15 → reset day D+16)
+ *      daysLeft  = 16 − daysAgo, range [1, 15]
  *    Sắp xếp ascending theo daysLeft.
  */
 export function computeAlphaPoints(fees, projects, requiredPoints = 15) {
@@ -41,13 +46,14 @@ export function computeAlphaPoints(fees, projects, requiredPoints = 15) {
   const required = Number(requiredPoints) || 15;
   const DAY = 86400000;
 
-  // entry hợp lệ khi 1 <= daysAgo <= 14 (today exclusive, 14 ngày trước inclusive)
+  // Trả về { date, daysAgo } nếu trong window [today-15, today), else null.
   function dateInWindow(dateStr) {
     const d = parseDate(dateStr);
     if (!d) return null;
     d.setHours(0, 0, 0, 0);
     const daysAgo = Math.round((today.getTime() - d.getTime()) / DAY);
-    return daysAgo >= 1 && daysAgo <= 14 ? d : null;
+    if (daysAgo < 1 || daysAgo > POINT_WINDOW_DAYS) return null;
+    return { date: d, daysAgo };
   }
 
   const map = {};
@@ -62,12 +68,12 @@ export function computeAlphaPoints(fees, projects, requiredPoints = 15) {
   }
 
   for (const p of projects || []) {
-    const d = dateInWindow(p.date);
-    if (!d) continue;
+    const info = dateInWindow(p.date);
+    if (!info) continue;
     const rewards = p.rewards || {};
-    const reset = new Date(d);
-    reset.setDate(reset.getDate() + POINT_WINDOW_DAYS);
-    const daysLeft = Math.round((reset.getTime() - today.getTime()) / DAY);
+    const reset = new Date(info.date);
+    reset.setDate(reset.getDate() + POINT_RESET_OFFSET);
+    const daysLeft = POINT_RESET_OFFSET - info.daysAgo;
     for (const accId in rewards) {
       if (!(Number(rewards[accId]) > 0)) continue;
       bucket(accId).claims.push({

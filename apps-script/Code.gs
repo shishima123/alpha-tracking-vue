@@ -26,7 +26,7 @@ const HEADERS = {
   Accounts: [
     'id', 'name', 'displayName', 'color', 'active',
     'pointTrade', 'pointHold', 'currentVol', 'perOrder', 'withdraw', 'lastAfter',
-    'createdAt', 'sortOrder',
+    'createdAt', 'sortOrder', 'hideInPoints',
   ],
   Fees: ['id', 'date', 'accountId', 'fee', 'points', 'note', 'createdAt'],
   AlphaProjects: ['id', 'name', 'date', 'claimPoints', 'type', 'rewards', 'note', 'createdAt'],
@@ -307,6 +307,7 @@ function normalizeAccount(r) {
       ? null : Number(r.lastAfter),
     createdAt: r.createdAt || '',
     sortOrder: numOr(r.sortOrder, 0),
+    hideInPoints: r.hideInPoints === true || r.hideInPoints === 'TRUE',
   };
 }
 
@@ -331,6 +332,7 @@ function createAccount(payload) {
     lastAfter: payload.lastAfter,
     createdAt: new Date().toISOString(),
     sortOrder: payload.sortOrder,
+    hideInPoints: payload.hideInPoints === true,
   });
   appendItem(SHEETS.ACCOUNTS, item);
   return item;
