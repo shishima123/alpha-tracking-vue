@@ -60,6 +60,7 @@
 
     <CalculatorFab v-if="!isLoginRoute" />
     <Toaster />
+    <LoadingIndicator />
   </div>
 </template>
 
@@ -70,6 +71,7 @@ import { useTrackingStore } from './stores/trackingStore';
 import { clearStoredKey, hasStoredKey } from './services/api';
 import CalculatorFab from './components/CalculatorFab.vue';
 import Toaster from './components/Toaster.vue';
+import LoadingIndicator from './components/LoadingIndicator.vue';
 
 const store = useTrackingStore();
 const route = useRoute();

@@ -18,10 +18,15 @@
  * nhưng không trộm được passphrase để dùng nơi khác.
  */
 
+import { ref } from 'vue';
+
 const APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL;
 const DB_NAME = 'alphaTracking';
 const STORE = 'auth';
 const KEY_ID = 'hmacKey';
+
+// Reactive counter: số API call đang chạy. UI watch để show loading indicator.
+export const inflightCount = ref(0);
 
 if (!APPS_SCRIPT_URL) {
   console.warn(
@@ -160,17 +165,22 @@ async function call(resource, action, payload = {}) {
     }
     throw new Error('unauthorized');
   }
-  const data = await postSigned(key, resource, action, payload);
-  if (!data.ok) {
-    if (data.error === 'unauthorized') {
-      await clearStoredKey();
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('alpha:auth-required'));
+  inflightCount.value++;
+  try {
+    const data = await postSigned(key, resource, action, payload);
+    if (!data.ok) {
+      if (data.error === 'unauthorized') {
+        await clearStoredKey();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('alpha:auth-required'));
+        }
       }
+      throw new Error(data.error || 'Apps Script error');
     }
-    throw new Error(data.error || 'Apps Script error');
+    return data.data;
+  } finally {
+    inflightCount.value--;
   }
-  return data.data;
 }
 
 export const authApi = {
