@@ -8,7 +8,7 @@ import Accounts from '../views/Accounts.vue';
 import Login from '../views/Login.vue';
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     { path: '/login', name: 'login', component: Login, meta: { title: 'Đăng nhập', public: true } },
     { path: '/', name: 'dashboard', component: Dashboard, meta: { title: 'Dashboard' } },
