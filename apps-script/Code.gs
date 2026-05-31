@@ -44,6 +44,13 @@ const ACCOUNT_CALC_DEFAULTS = {
 
 const DEFAULT_VND_RATE = 26500;
 
+// Tên 2 sheet "người đọc" (layout giống ImportFees / ImportProjects). Mỗi lần
+// thêm/sửa/xóa fee hoặc project, server mirror dữ liệu sang đây để khớp với
+// bảng tay của user. Xem section "MIRROR TO HUMAN SHEETS" ở cuối file.
+const HUMAN_SHEETS = { PHI: 'Phi', ALPHA: 'Alpha' };
+const PHI_DATA_START = 3;   // row 1 = tên account (merge), row 2 = Phí/Điểm, data từ row 3
+const ALPHA_DATA_START = 2; // row 1 = header, data từ row 2
+
 // =========================================================================
 // HTTP ENTRY POINTS
 // =========================================================================
@@ -394,6 +401,7 @@ function createFee(payload) {
     });
     writeAll(SHEETS.FEES, list);
     invalidateFeesMonthly([monthKey(payload.date)]);
+    mirrorFeesToPhi([{ date: list[idx].date, accountId: list[idx].accountId, fee: list[idx].fee, points: list[idx].points }]);
     return list[idx];
   }
   const item = {
@@ -407,6 +415,7 @@ function createFee(payload) {
   };
   appendItem(SHEETS.FEES, item);
   invalidateFeesMonthly([monthKey(item.date)]);
+  mirrorFeesToPhi([{ date: item.date, accountId: item.accountId, fee: item.fee, points: item.points }]);
   return item;
 }
 
@@ -458,6 +467,14 @@ function bulkCreateFees(payload) {
 
   if (inserted + updated > 0) writeAll(SHEETS.FEES, list);
   invalidateFeesMonthly(Object.keys(months));
+  // Mirror sang Phi: lấy giá trị cuối cùng từ list (đã upsert) cho từng (date, account).
+  const mirror = [];
+  entries.forEach(function (e) {
+    if (!e.date || !e.accountId) return;
+    const f = list[indexByKey[e.date + '|' + e.accountId]];
+    if (f) mirror.push({ date: f.date, accountId: f.accountId, fee: f.fee, points: f.points });
+  });
+  mirrorFeesToPhi(mirror);
   return { inserted: inserted, updated: updated };
 }
 
@@ -489,10 +506,17 @@ function updateFee(payload) {
   const idx = list.findIndex(function (f) { return f.id === payload.id; });
   if (idx === -1) throw new Error('Không tìm thấy');
   const oldMonth = monthKey(list[idx].date);
+  const oldKey = { date: list[idx].date, accountId: list[idx].accountId };
   list[idx] = Object.assign({}, list[idx], payload);
   const newMonth = monthKey(list[idx].date);
   writeAll(SHEETS.FEES, list);
   invalidateFeesMonthly([oldMonth, newMonth]);
+  // Nếu đổi ngày/account → xóa ô cũ trước, rồi ghi ô mới.
+  const nu = list[idx];
+  if (oldKey.date !== nu.date || oldKey.accountId !== nu.accountId) {
+    clearPhiCells(oldKey.date, oldKey.accountId);
+  }
+  mirrorFeesToPhi([{ date: nu.date, accountId: nu.accountId, fee: nu.fee, points: nu.points }]);
   return list[idx];
 }
 
@@ -501,7 +525,10 @@ function deleteFee(payload) {
   const target = all.find(function (f) { return f.id === payload.id; });
   const list = all.filter(function (f) { return f.id !== payload.id; });
   writeAll(SHEETS.FEES, list);
-  if (target) invalidateFeesMonthly([monthKey(target.date)]);
+  if (target) {
+    invalidateFeesMonthly([monthKey(target.date)]);
+    clearPhiCells(target.date, target.accountId);
+  }
   return { ok: true };
 }
 
@@ -540,6 +567,7 @@ function createProject(payload) {
     estimated: payload.estimated || {},
   };
   appendItem(SHEETS.ALPHA, item);
+  mirrorProjectToAlpha(item);
   return item;
 }
 
@@ -547,14 +575,19 @@ function updateProject(payload) {
   const list = listProjects();
   const idx = list.findIndex(function (p) { return p.id === payload.id; });
   if (idx === -1) throw new Error('Không tìm thấy');
+  const old = list[idx];
   list[idx] = Object.assign({}, list[idx], payload);
   writeAll(SHEETS.ALPHA, list);
+  mirrorProjectUpdateInAlpha(old, list[idx]);
   return list[idx];
 }
 
 function deleteProject(payload) {
-  const list = listProjects().filter(function (p) { return p.id !== payload.id; });
+  const all = listProjects();
+  const target = all.find(function (p) { return p.id === payload.id; });
+  const list = all.filter(function (p) { return p.id !== payload.id; });
   writeAll(SHEETS.ALPHA, list);
+  if (target) mirrorProjectDeleteFromAlpha(target.name, target.date);
   return { ok: true };
 }
 
@@ -1059,4 +1092,285 @@ function sortMonth(a, b) {
 
 function round2(n) {
   return Math.round(n * 100) / 100;
+}
+
+// =========================================================================
+// MIRROR TO HUMAN SHEETS (Phi / Alpha)
+// =========================================================================
+// Mỗi khi thêm/sửa/xóa fee hoặc project, mirror dữ liệu sang 2 sheet "người
+// đọc" (Phi, Alpha) — cùng layout với ImportFees / ImportProjects.
+//
+// Mapping account: header trong Phi/Alpha là displayName của account. Build map
+// displayName/name → id từ sheet Accounts (không phụ thuộc ACCOUNT_DEFS bên Import).
+//
+// Lỗi: nếu sheet thiếu hoặc cấu trúc sai → throw (user chọn "báo lỗi rõ ràng").
+// Mirror chạy SAU khi đã ghi vào Fees/AlphaProjects, nên data gốc vẫn an toàn dù
+// mirror lỗi — lần bootstrap kế tiếp app vẫn hiển thị đúng từ Fees/AlphaProjects.
+
+function findSheetByName(name) {
+  const target = String(name).toLowerCase().trim();
+  const sheets = activeSpreadsheet().getSheets();
+  for (let i = 0; i < sheets.length; i++) {
+    if (sheets[i].getName().toLowerCase().trim() === target) return sheets[i];
+  }
+  return null;
+}
+
+function buildAccountNameToId() {
+  const map = {};
+  listAccounts().forEach(function (a) {
+    if (a.displayName) map[String(a.displayName).toLowerCase().trim()] = a.id;
+    if (a.name) map[String(a.name).toLowerCase().trim()] = a.id;
+  });
+  return map;
+}
+
+// --------------------------------------------------------------------------
+// PHI (fees)
+// --------------------------------------------------------------------------
+/**
+ * Đọc cấu trúc sheet Phi → { sheet, cols }.
+ * cols = { accountId: { feeCol, pointsCol } } (số cột 1-based).
+ * Row 1 = tên account (merge ngang 2 ô → chỉ ô đầu có value), Row 2 = Phí/Điểm.
+ */
+function readPhiLayout() {
+  const sh = findSheetByName(HUMAN_SHEETS.PHI);
+  if (!sh) throw new Error('Đồng bộ Phí thất bại: không tìm thấy sheet "' + HUMAN_SHEETS.PHI + '".');
+  const lastCol = sh.getLastColumn();
+  if (lastCol < 2) throw new Error('Sheet "' + HUMAN_SHEETS.PHI + '" chưa có cột dữ liệu (cần hàng tiêu đề Account + Phí/Điểm).');
+  const headerAcc = sh.getRange(1, 2, 1, lastCol - 1).getValues()[0];
+  const headerKind = sh.getRange(2, 2, 1, lastCol - 1).getValues()[0];
+  const nameToId = buildAccountNameToId();
+  const cols = {};
+  let currentId = null;
+  for (let i = 0; i < headerAcc.length; i++) {
+    const accName = String(headerAcc[i] || '').trim();
+    if (accName) currentId = nameToId[accName.toLowerCase()] || null;
+    if (!currentId) continue;
+    const kind = String(headerKind[i] || '').toLowerCase().trim();
+    if (!cols[currentId]) cols[currentId] = { feeCol: 0, pointsCol: 0 };
+    const colNum = i + 2; // range bắt đầu từ cột 2
+    if (kind.indexOf('ph') === 0) cols[currentId].feeCol = colNum;
+    else if (kind.indexOf('đ') === 0 || kind.indexOf('d') === 0) cols[currentId].pointsCol = colNum;
+  }
+  if (Object.keys(cols).length === 0) {
+    throw new Error('Sheet "' + HUMAN_SHEETS.PHI + '" không có cột account nào khớp với danh sách Accounts.');
+  }
+  return { sheet: sh, cols: cols };
+}
+
+/**
+ * Upsert fee/points vào Phi theo ngày. Tìm hàng có cột A = date → ghi vào ô
+ * Phí/Điểm của account; nếu ngày chưa có → thêm hàng mới xuống cuối sheet.
+ * Account không có cột trong Phi (vd booster) → bỏ qua, không báo lỗi.
+ */
+function mirrorFeesToPhi(entries) {
+  if (!entries || !entries.length) return;
+  const layout = readPhiLayout();
+  const sh = layout.sheet, cols = layout.cols;
+  const startRow = PHI_DATA_START;
+  const lastRow = sh.getLastRow();
+  const lastCol = sh.getLastColumn();
+
+  const byDate = {};
+  const dateOrder = [];
+  entries.forEach(function (e) {
+    if (!e.date || !e.accountId || !cols[e.accountId]) return;
+    if (!byDate[e.date]) { byDate[e.date] = []; dateOrder.push(e.date); }
+    byDate[e.date].push(e);
+  });
+  if (!dateOrder.length) return;
+
+  const dateRow = {};
+  if (lastRow >= startRow) {
+    const dateVals = sh.getRange(startRow, 1, lastRow - startRow + 1, 1).getValues();
+    for (let i = 0; i < dateVals.length; i++) {
+      const dmy = formatDateValue(dateVals[i][0]);
+      if (dmy && dateRow[dmy] === undefined) dateRow[dmy] = startRow + i;
+    }
+  }
+
+  const newRows = [];
+  dateOrder.forEach(function (date) {
+    const items = byDate[date];
+    if (dateRow[date] !== undefined) {
+      // Hàng đã tồn tại → chỉ ghi đúng ô Phí/Điểm, KHÔNG đụng các cột khác
+      // (tránh ghi đè công thức/định dạng có sẵn trong hàng).
+      const r = dateRow[date];
+      items.forEach(function (e) {
+        const c = cols[e.accountId];
+        if (c.feeCol) sh.getRange(r, c.feeCol).setValue(round2(Number(e.fee) || 0));
+        if (c.pointsCol) sh.getRange(r, c.pointsCol).setValue(Number(e.points) || 0);
+      });
+    } else {
+      const rowVals = new Array(lastCol).fill('');
+      rowVals[0] = parseDmy(date) || date;
+      items.forEach(function (e) {
+        const c = cols[e.accountId];
+        if (c.feeCol) rowVals[c.feeCol - 1] = round2(Number(e.fee) || 0);
+        if (c.pointsCol) rowVals[c.pointsCol - 1] = Number(e.points) || 0;
+      });
+      newRows.push(rowVals);
+    }
+  });
+
+  if (newRows.length) {
+    sh.getRange(sh.getLastRow() + 1, 1, newRows.length, lastCol).setValues(newRows);
+  }
+}
+
+/** Xóa ô Phí/Điểm của (date, accountId) trong Phi nếu hàng ngày đó tồn tại. */
+function clearPhiCells(date, accountId) {
+  const layout = readPhiLayout();
+  const c = layout.cols[accountId];
+  if (!c) return;
+  const sh = layout.sheet, startRow = PHI_DATA_START, lastRow = sh.getLastRow();
+  if (lastRow < startRow) return;
+  const dateVals = sh.getRange(startRow, 1, lastRow - startRow + 1, 1).getValues();
+  for (let i = 0; i < dateVals.length; i++) {
+    if (formatDateValue(dateVals[i][0]) === date) {
+      const r = startRow + i;
+      if (c.feeCol) sh.getRange(r, c.feeCol).clearContent();
+      if (c.pointsCol) sh.getRange(r, c.pointsCol).clearContent();
+      return;
+    }
+  }
+}
+
+// --------------------------------------------------------------------------
+// ALPHA (projects)
+// --------------------------------------------------------------------------
+/**
+ * Đọc cấu trúc sheet Alpha → vị trí (0-based) các cột chính + cột reward account.
+ */
+function readAlphaLayout() {
+  const sh = findSheetByName(HUMAN_SHEETS.ALPHA);
+  if (!sh) throw new Error('Đồng bộ dự án thất bại: không tìm thấy sheet "' + HUMAN_SHEETS.ALPHA + '".');
+  const lastCol = sh.getLastColumn();
+  if (lastCol < 2) throw new Error('Sheet "' + HUMAN_SHEETS.ALPHA + '" chưa có cột dữ liệu.');
+  const header = sh.getRange(1, 1, 1, lastCol).getValues()[0]
+    .map(function (s) { return String(s || '').trim(); });
+  function findCol() {
+    for (let i = 0; i < arguments.length; i++) {
+      const idx = header.indexOf(arguments[i]);
+      if (idx >= 0) return idx;
+    }
+    return -1;
+  }
+  const colStt = findCol('STT');
+  const colName = findCol('Dự Án', 'Dự án', 'Du An', 'Project', 'Tên');
+  const colDate = findCol('Ngày', 'Date');
+  const colClaim = findCol('Claim', 'ClaimPoints');
+  const colType = findCol('Loại', 'Type');
+  if (colName < 0 || colDate < 0) {
+    throw new Error('Sheet "' + HUMAN_SHEETS.ALPHA + '" cần có cột "Dự Án" và "Ngày" ở hàng 1.');
+  }
+  const nameToId = buildAccountNameToId();
+  const accountCols = {};
+  for (let i = 0; i < header.length; i++) {
+    const id = header[i] ? nameToId[header[i].toLowerCase()] : null;
+    if (id) accountCols[id] = i;
+  }
+  return {
+    sheet: sh, lastCol: lastCol,
+    colStt: colStt, colName: colName, colDate: colDate, colClaim: colClaim, colType: colType,
+    accountCols: accountCols,
+  };
+}
+
+/**
+ * Thêm project vào Alpha. Ưu tiên điền vào hàng đã có sẵn ngày nhưng CHƯA có dự
+ * án (Dự Án trống). Nếu ngày đó đã có dự án → chèn thêm 1 hàng cùng ngày (1 ngày
+ * có thể 2 dự án). Nếu ngày chưa có → thêm xuống cuối.
+ */
+function mirrorProjectToAlpha(project) {
+  const L = readAlphaLayout();
+  const sh = L.sheet;
+  const lastRow = sh.getLastRow();
+
+  let emptyRow = -1;
+  let lastSameDateRow = -1;
+  if (lastRow >= ALPHA_DATA_START) {
+    const block = sh.getRange(ALPHA_DATA_START, 1, lastRow - ALPHA_DATA_START + 1, L.lastCol).getValues();
+    for (let i = 0; i < block.length; i++) {
+      if (formatDateValue(block[i][L.colDate]) !== project.date) continue;
+      lastSameDateRow = ALPHA_DATA_START + i;
+      const nm = String(block[i][L.colName] || '').trim();
+      if (emptyRow < 0 && !nm) emptyRow = ALPHA_DATA_START + i;
+    }
+  }
+
+  let targetRow, setStt;
+  if (emptyRow > 0) {
+    targetRow = emptyRow;            // điền vào hàng ngày trống → giữ nguyên STT có sẵn
+    setStt = false;
+  } else if (lastSameDateRow > 0) {
+    sh.insertRowsAfter(lastSameDateRow, 1); // ngày đã có dự án → thêm 1 hàng cùng ngày
+    targetRow = lastSameDateRow + 1;
+    setStt = true;
+  } else {
+    targetRow = sh.getLastRow() + 1; // ngày chưa có → cuối sheet
+    setStt = true;
+  }
+
+  writeAlphaRow(sh, L, targetRow, project, setStt);
+}
+
+/**
+ * Ghi project vào 1 hàng Alpha. Chỉ ghi đúng các ô quản lý (STT, tên, ngày,
+ * claim, loại, reward account) — không đụng cột khác để tránh đè công thức.
+ * setStt=false để giữ STT có sẵn (khi điền vào hàng ngày trống / khi update).
+ * STT mới dùng công thức =ROW()-1 để tự đánh số theo vị trí hàng.
+ */
+function writeAlphaRow(sh, L, row, project, setStt) {
+  if (setStt && L.colStt >= 0) sh.getRange(row, L.colStt + 1).setFormula('=ROW()-1');
+  sh.getRange(row, L.colName + 1).setValue(project.name);
+  sh.getRange(row, L.colDate + 1).setValue(parseDmy(project.date) || project.date);
+  if (L.colClaim >= 0) sh.getRange(row, L.colClaim + 1).setValue(Number(project.claimPoints) || 15);
+  if (L.colType >= 0) sh.getRange(row, L.colType + 1).setValue(project.type || 'FCFS');
+  const rewards = project.rewards || {};
+  for (const accId in L.accountCols) {
+    const ci = L.accountCols[accId];
+    const v = Number(rewards[accId]);
+    if (Number.isFinite(v) && v !== 0) sh.getRange(row, ci + 1).setValue(round2(v));
+    else sh.getRange(row, ci + 1).clearContent();
+  }
+}
+
+function findAlphaRow(sh, L, name, date) {
+  const lastRow = sh.getLastRow();
+  if (lastRow < ALPHA_DATA_START) return -1;
+  const block = sh.getRange(ALPHA_DATA_START, 1, lastRow - ALPHA_DATA_START + 1, L.lastCol).getValues();
+  const targetName = String(name || '').toLowerCase().trim();
+  for (let i = 0; i < block.length; i++) {
+    const nm = String(block[i][L.colName] || '').toLowerCase().trim();
+    if (nm === targetName && formatDateValue(block[i][L.colDate]) === date) {
+      return ALPHA_DATA_START + i;
+    }
+  }
+  return -1;
+}
+
+/** Cập nhật hàng Alpha khớp (oldName, oldDate). Không thấy → thêm mới. */
+function mirrorProjectUpdateInAlpha(oldProj, newProj) {
+  const L = readAlphaLayout();
+  const row = findAlphaRow(L.sheet, L, oldProj.name, oldProj.date);
+  if (row < 0) { mirrorProjectToAlpha(newProj); return; }
+  writeAlphaRow(L.sheet, L, row, newProj, false);
+}
+
+/**
+ * Xóa project khỏi Alpha: xóa nội dung dự án (tên, claim, loại, rewards) nhưng
+ * GIỮ lại STT + ngày — biến hàng về dạng "ngày trống" để không phá scaffold ngày
+ * mà user đã điền sẵn (và lần tạo dự án sau cùng ngày sẽ tái dùng hàng này).
+ */
+function mirrorProjectDeleteFromAlpha(name, date) {
+  const L = readAlphaLayout();
+  const row = findAlphaRow(L.sheet, L, name, date);
+  if (row < 0) return;
+  const sh = L.sheet;
+  sh.getRange(row, L.colName + 1).clearContent();
+  if (L.colClaim >= 0) sh.getRange(row, L.colClaim + 1).clearContent();
+  if (L.colType >= 0) sh.getRange(row, L.colType + 1).clearContent();
+  for (const accId in L.accountCols) sh.getRange(row, L.accountCols[accId] + 1).clearContent();
 }
