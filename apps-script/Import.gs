@@ -6,9 +6,9 @@
  *
  * CÁCH DÙNG:
  *   1. Mở Apps Script editor → thêm file mới (➕) tên "Import" → paste file này
- *   2. Tạo 2 sheet phụ trong cùng Google Sheet:
- *        a. "ImportFees"     — paste data fees cũ (2 hàng header + data)
- *        b. "ImportProjects" — paste data alpha projects cũ (1 hàng header + data)
+ *   2. Dùng trực tiếp 2 sheet tay có sẵn trong cùng Google Sheet:
+ *        a. "Phi"   — data fees (2 hàng header + data)
+ *        b. "Alpha" — data alpha projects (1 hàng header + data)
  *   3. Chỉnh ACCOUNT_DEFS bên dưới (tên header sheet cũ → account info) cho khớp
  *   4. Apps Script editor → dropdown chọn "importLegacy" → Run
  *   5. View → Logs để xem kết quả
@@ -118,17 +118,17 @@ function ensureAccountsFromDefs() {
 // --------------------------------------------------------------------------
 function importLegacyFees() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sh = findSheet(ss, 'ImportFees');
+  const sh = findSheet(ss, 'Phi');
   if (!sh) {
-    Logger.log('❌ Bỏ qua fees: không thấy sheet tên "ImportFees" — tạo sheet mới + paste data fees cũ vào');
+    Logger.log('❌ Bỏ qua fees: không thấy sheet tên "Phi"');
     return 0;
   }
 
   const lastRow = sh.getLastRow();
   const lastCol = sh.getLastColumn();
-  Logger.log('ImportFees (sheet "' + sh.getName() + '"): lastRow=' + lastRow + ', lastCol=' + lastCol);
+  Logger.log('Phi (sheet "' + sh.getName() + '"): lastRow=' + lastRow + ', lastCol=' + lastCol);
   if (lastRow < 3 || lastCol < 2) {
-    Logger.log('❌ ImportFees rỗng — cần paste ≥ 2 hàng header + ≥ 1 hàng data vào sheet này');
+    Logger.log('❌ Sheet "Phi" rỗng — cần ≥ 2 hàng header + ≥ 1 hàng data');
     return 0;
   }
 
@@ -220,17 +220,17 @@ function importLegacyFees() {
 // --------------------------------------------------------------------------
 function importLegacyProjects() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sh = findSheet(ss, 'ImportProjects');
+  const sh = findSheet(ss, 'Alpha');
   if (!sh) {
-    Logger.log('❌ Bỏ qua projects: không thấy sheet tên "ImportProjects" — tạo sheet mới + paste data alpha cũ vào');
+    Logger.log('❌ Bỏ qua projects: không thấy sheet tên "Alpha"');
     return 0;
   }
 
   const lastRow = sh.getLastRow();
   const lastCol = sh.getLastColumn();
-  Logger.log('ImportProjects (sheet "' + sh.getName() + '"): lastRow=' + lastRow + ', lastCol=' + lastCol);
+  Logger.log('Alpha (sheet "' + sh.getName() + '"): lastRow=' + lastRow + ', lastCol=' + lastCol);
   if (lastRow < 2 || lastCol < 2) {
-    Logger.log('❌ ImportProjects rỗng — cần paste 1 hàng header + ≥ 1 hàng data vào sheet này');
+    Logger.log('❌ Sheet "Alpha" rỗng — cần 1 hàng header + ≥ 1 hàng data');
     return 0;
   }
 
@@ -249,7 +249,7 @@ function importLegacyProjects() {
   const colClaim = findCol('Claim', 'ClaimPoints', 'Điểm');
   const colType = findCol('Loại', 'Type');
   if (colName < 0 || colDate < 0) {
-    throw new Error('Cần có cột "Dự Án" và "Ngày" ở row 1 của ImportProjects');
+    throw new Error('Cần có cột "Dự Án" và "Ngày" ở row 1 của sheet "Alpha"');
   }
 
   const accountCols = [];
