@@ -49,6 +49,19 @@
           </span>
         </h3>
         <div class="flex items-center gap-2 flex-wrap">
+          <div class="inline-flex rounded-lg border border-binance-light overflow-hidden">
+            <button
+              v-for="v in viewModes"
+              :key="v.key"
+              class="px-3 py-1 text-sm transition-colors"
+              :class="viewMode === v.key
+                ? 'bg-binance-yellow text-black font-medium'
+                : 'bg-transparent text-gray-500 hover:text-gray-700'"
+              @click="viewMode = v.key"
+            >
+              {{ v.label }}
+            </button>
+          </div>
           <select v-model="filter.accountId" class="input w-40 py-1">
             <option value="">Tất cả tài khoản</option>
             <option v-for="a in store.accounts" :key="a.id" :value="a.id">
@@ -63,7 +76,8 @@
         Chưa có bản ghi nào trong tháng này — dùng modal 🧮 (góc dưới phải) để nhập phí.
       </div>
 
-      <div v-else class="overflow-x-auto">
+      <!-- ===== View: Theo ngày (grouped) ===== -->
+      <div v-else-if="viewMode === 'grouped'" class="overflow-x-auto">
         <table class="w-full border-collapse">
           <thead>
             <tr class="table-thead">
@@ -125,6 +139,88 @@
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- ===== View: Bảng lịch sử (pivot) ===== -->
+      <div v-else class="space-y-2">
+        <div class="flex items-center gap-4 text-xs text-gray-500 flex-wrap">
+          <span class="flex items-center gap-1.5">
+            <span class="inline-block w-3 h-3 rounded-sm bg-blue-100 border border-blue-300"></span>
+            15 ngày gần nhất (đang tính cho phần Điểm)
+          </span>
+          <span class="flex items-center gap-1.5">
+            <span class="inline-block w-3 h-3 rounded-sm bg-green-100 border border-green-300"></span>
+            Hôm nay
+          </span>
+        </div>
+        <div class="overflow-auto max-h-[70vh] border border-slate-200 rounded-lg">
+          <table class="min-w-full border-separate border-spacing-0 text-sm tabular-nums">
+            <thead>
+              <tr>
+                <th
+                  rowspan="2"
+                  class="sticky top-0 left-0 z-30 bg-slate-100 h-9 px-3 text-left font-semibold border-b border-r border-slate-300 w-28"
+                >
+                  Ngày
+                </th>
+                <th
+                  v-for="a in matrixAccounts"
+                  :key="a.id"
+                  colspan="2"
+                  class="sticky top-0 z-20 bg-slate-100 h-9 px-3 text-center font-semibold border-b border-r border-slate-300 whitespace-nowrap"
+                >
+                  <span class="inline-block w-2 h-2 rounded-full mr-1.5" :style="{ background: accountColor(a.id) }"></span>
+                  {{ a.displayName }}
+                </th>
+                <th
+                  rowspan="2"
+                  class="sticky top-0 z-20 bg-slate-100 h-9 px-3 text-right font-semibold border-b border-slate-300 whitespace-nowrap"
+                >
+                  Tổng phí
+                </th>
+              </tr>
+              <tr>
+                <template v-for="a in matrixAccounts" :key="'sub-' + a.id">
+                  <th class="sticky top-9 z-20 bg-slate-50 px-2 py-1 text-right font-medium text-gray-500 border-b border-slate-300">Phí</th>
+                  <th class="sticky top-9 z-20 bg-slate-50 px-2 py-1 text-right font-medium text-rose-500 border-b border-r border-slate-300">Điểm</th>
+                </template>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="row in matrixRows"
+                :key="row.date"
+                :class="rowBg(row)"
+              >
+                <td
+                  class="sticky left-0 z-10 px-3 py-1.5 font-semibold text-slate-700 border-b border-r border-slate-200 whitespace-nowrap"
+                  :class="dateBg(row)"
+                >
+                  {{ row.date }}
+                </td>
+                <template v-for="a in matrixAccounts" :key="row.date + '-' + a.id">
+                  <td
+                    class="px-2 py-1.5 text-right border-b border-slate-200 cursor-pointer hover:bg-blue-200/60 transition-colors"
+                    @click="openEdit(row.date, a.id)"
+                  >
+                    <span v-if="row.cells[a.id]" class="font-semibold text-rose-600">{{ fmtUSD(row.cells[a.id].fee) }}</span>
+                    <span v-else class="text-gray-300">–</span>
+                  </td>
+                  <td
+                    class="px-2 py-1.5 text-right border-b border-r border-slate-200 cursor-pointer hover:bg-blue-200/60 transition-colors"
+                    @click="openEdit(row.date, a.id)"
+                  >
+                    <span v-if="row.cells[a.id]" class="font-medium text-slate-500">{{ row.cells[a.id].points }}</span>
+                    <span v-else class="text-gray-300">–</span>
+                  </td>
+                </template>
+                <td class="px-3 py-1.5 text-right font-bold text-rose-600 border-b border-slate-200 whitespace-nowrap">
+                  {{ fmtUSD(row.totalFee) }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <p v-if="groupedByDate.length > 0" class="text-xs text-gray-500 mt-3">
@@ -200,15 +296,27 @@
 </template>
 
 <script setup>
-import { reactive, computed, ref } from 'vue';
+import { reactive, computed, ref, watch } from 'vue';
 import { useTrackingStore } from '../stores/trackingStore';
 import { useToastStore } from '../stores/toastStore';
-import { fmtUSD, parseDate } from '../utils/format';
+import { fmtUSD, parseDate, todayStr } from '../utils/format';
 
 const store = useTrackingStore();
 const toast = useToastStore();
 
 const filter = reactive({ accountId: '' });
+
+const viewModes = [
+  { key: 'table', label: 'Bảng lịch sử' },
+  { key: 'grouped', label: 'Theo ngày' },
+];
+const VIEW_KEY = 'alpha:feesViewMode';
+const viewMode = ref(
+  viewModes.some((v) => v.key === localStorage.getItem(VIEW_KEY))
+    ? localStorage.getItem(VIEW_KEY)
+    : 'grouped'
+);
+watch(viewMode, (v) => localStorage.setItem(VIEW_KEY, v));
 
 const archiving = ref(false);
 const clearing = ref(false);
@@ -248,6 +356,57 @@ const groupedByDate = computed(() => {
       };
     });
 });
+
+// ===== Pivot table view =====
+// Tài khoản hiển thị làm cột (chỉ những account có dữ liệu), theo thứ tự sortOrder.
+const matrixAccounts = computed(() => {
+  const ids = new Set();
+  filteredFees.value.forEach((f) => ids.add(f.accountId));
+  return [...ids]
+    .map((id) => store.accountById(id) || { id, displayName: id, color: '#3b82f6' })
+    .sort((a, b) => store.accountOrderIndex(a.id) - store.accountOrderIndex(b.id));
+});
+
+// Một dòng = một ngày (mới nhất trên cùng). inWindow = tradeDate + 15 >= today,
+// khớp logic computePoints ở Code.gs (cửa sổ 15 ngày dùng tính điểm).
+function inPointWindow(date) {
+  const d = parseDate(date);
+  if (!d) return false;
+  const reset = new Date(d);
+  reset.setDate(reset.getDate() + 15);
+  reset.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return reset.getTime() >= today.getTime();
+}
+
+const matrixRows = computed(() => {
+  const today = todayStr();
+  return groupedByDate.value.map((g) => {
+    const cells = {};
+    g.entries.forEach((f) => { cells[f.accountId] = f; });
+    return {
+      date: g.date,
+      cells,
+      totalFee: g.totalFee,
+      inWindow: inPointWindow(g.date),
+      isToday: g.date === today,
+    };
+  });
+});
+
+// Màu nền: hôm nay (xanh lá) ưu tiên hơn cửa sổ 15 ngày (xanh dương).
+// Cột ngày freeze cần nền đặc (không trong suốt) để che nội dung cuộn bên dưới.
+function rowBg(row) {
+  if (row.isToday) return 'bg-green-50';
+  if (row.inWindow) return 'bg-blue-50';
+  return 'bg-white';
+}
+function dateBg(row) {
+  if (row.isToday) return 'bg-green-100';
+  if (row.inWindow) return 'bg-blue-100';
+  return 'bg-white';
+}
 
 // ===== Past-daily indicator =====
 const pastDaily = computed(() => store.pastDaily || { total: 0, active: 0, safeToDelete: false, pendingArchiveMonths: [] });

@@ -1,5 +1,8 @@
+import { hideMoney, MASK } from './privacy';
+
 export function fmtUSD(n, digits = 2) {
   if (n === null || n === undefined || isNaN(n)) return '-';
+  if (hideMoney.value) return MASK;
   return new Intl.NumberFormat('en-US', {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
@@ -8,11 +11,13 @@ export function fmtUSD(n, digits = 2) {
 
 export function fmtVND(n) {
   if (n === null || n === undefined || isNaN(n)) return '-';
+  if (hideMoney.value) return MASK;
   return new Intl.NumberFormat('vi-VN').format(n) + ' đ';
 }
 
 export function fmtNumber(n) {
   if (n === null || n === undefined || isNaN(n)) return '-';
+  if (hideMoney.value) return MASK;
   return new Intl.NumberFormat('vi-VN').format(n);
 }
 

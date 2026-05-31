@@ -53,7 +53,7 @@
             ✓ Đủ điểm nhận
           </span>
           <span v-else class="badge bg-gray-200 text-gray-500">
-            Thiếu {{ data(acc.id).airdrop.deficit }}
+            Thiếu {{ pt(data(acc.id).airdrop.deficit) }}
           </span>
         </div>
 
@@ -61,12 +61,12 @@
         <div class="grid grid-cols-4 gap-2 mb-3 text-center">
           <div class="border border-binance-light rounded-lg px-1 py-2">
             <div class="text-[11px] text-gray-500">Tổng điểm</div>
-            <div class="text-xl font-bold">{{ data(acc.id).totalPoints }}</div>
+            <div class="text-xl font-bold">{{ pt(data(acc.id).totalPoints) }}</div>
           </div>
           <div class="border border-binance-light rounded-lg px-1 py-2">
             <div class="text-[11px] text-gray-500">Đã trừ</div>
             <div class="text-xl font-bold text-rose-600">
-              −{{ data(acc.id).deducted }}
+              −{{ pt(data(acc.id).deducted) }}
             </div>
           </div>
           <div class="border border-binance-light bg-binance-light/30 rounded-lg px-1 py-2">
@@ -75,13 +75,13 @@
               class="text-xl font-bold"
               :class="data(acc.id).airdrop.eligible ? 'text-green-600' : 'text-binance-yellow'"
             >
-              {{ data(acc.id).currentPoints }}
+              {{ pt(data(acc.id).currentPoints) }}
             </div>
           </div>
           <div class="border border-binance-light rounded-lg px-1 py-2">
             <div class="text-[11px] text-gray-500">Số kèo</div>
             <div class="text-xl font-bold text-gray-700">
-              {{ data(acc.id).claimsCount }}
+              {{ pt(data(acc.id).claimsCount) }}
             </div>
           </div>
         </div>
@@ -108,7 +108,7 @@
                 <div class="truncate text-gray-500">{{ s.projectName }}</div>
               </div>
               <span class="text-green-600 font-semibold whitespace-nowrap">
-                +{{ s.claimPoints }}đ
+                +{{ pt(s.claimPoints) }}đ
               </span>
             </li>
           </ul>
@@ -122,10 +122,16 @@
 import { ref, computed } from 'vue';
 import { useTrackingStore } from '../stores/trackingStore';
 import { computeAlphaPoints } from '../utils/points';
+import { hideMoney, MASK } from '../utils/privacy';
 
 const store = useTrackingStore();
 const required = ref(15);
 const highlightMode = ref(false);
+
+// Khi bật chế độ ẩn, che luôn số điểm (giữ ngày & tên dự án vì không nhạy cảm).
+function pt(n) {
+  return hideMoney.value ? MASK : n;
+}
 
 const pointsAccounts = computed(() =>
   store.activeAccounts.filter((a) => !a.hideInPoints)

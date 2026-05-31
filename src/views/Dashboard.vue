@@ -29,10 +29,69 @@
 
     <ProfitChart :monthly="monthly" />
 
-    <!-- Monthly table -->
+    <!-- Tabbed summary -->
     <div class="card overflow-x-auto">
-      <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-        <h3 class="font-semibold">Chi tiết theo tháng</h3>
+      <div class="flex items-center gap-1 border-b border-binance-light/40 mb-4">
+        <button
+          v-for="t in tabs"
+          :key="t.key"
+          class="px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors"
+          :class="activeTab === t.key
+            ? 'border-binance-yellow text-binance-yellow'
+            : 'border-transparent text-gray-500 hover:text-gray-700'"
+          @click="activeTab = t.key"
+        >
+          {{ t.label }}
+        </button>
+      </div>
+
+      <!-- Per-account summary -->
+      <table v-show="activeTab === 'account'" class="w-full text-sm">
+        <thead>
+          <tr class="table-thead">
+            <th class="px-3 py-2">Tài khoản</th>
+            <th class="px-3 py-2 text-right">Thu nhập ($)</th>
+            <th class="px-3 py-2 text-right">Phí ($)</th>
+            <th class="px-3 py-2 text-right">Lợi nhuận ($)</th>
+            <th class="px-3 py-2 text-right">Lợi nhuận (VND)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="row in accountTotals"
+            :key="row.id"
+            class="hover:bg-binance-light/30"
+          >
+            <td class="table-td font-medium">
+              <span
+                class="inline-block w-2 h-2 rounded-full mr-2"
+                :style="{ background: accountColor(row.id) }"
+              ></span>
+              {{ accountName(row.id) }}
+            </td>
+            <td class="table-td text-right text-binance-yellow">{{ fmtUSD(row.revenue) }}</td>
+            <td class="table-td text-right text-rose-600">-{{ fmtUSD(row.fee) }}</td>
+            <td
+              class="table-td text-right font-semibold"
+              :class="row.profit >= 0 ? 'text-green-600' : 'text-red-600'"
+            >
+              {{ fmtUSD(row.profit) }}
+            </td>
+            <td class="table-td text-right text-gray-700">
+              {{ fmtVND(row.profit * store.vndRate) }}
+            </td>
+          </tr>
+          <tr v-if="accountTotals.length === 0">
+            <td colspan="5" class="text-center py-6 text-gray-500">
+              Chưa có dữ liệu
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Monthly table -->
+      <div v-show="activeTab === 'month'">
+      <div class="flex items-center justify-end mb-3 flex-wrap gap-2">
         <span class="text-xs text-gray-500">
           Bấm vào tháng để xem chi tiết từng tài khoản
         </span>
@@ -138,12 +197,13 @@
             : `Xem tất cả ${monthlyDesc.length} tháng` }}
         </button>
       </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { useTrackingStore } from '../stores/trackingStore';
 import StatCard from '../components/StatCard.vue';
 import ProfitChart from '../components/ProfitChart.vue';
@@ -152,6 +212,18 @@ import { fmtUSD, fmtVND } from '../utils/format';
 const DEFAULT_MONTHS = 3;
 
 const store = useTrackingStore();
+
+const tabs = [
+  { key: 'month', label: 'Chi tiết theo tháng' },
+  { key: 'account', label: 'Tổng kết theo tài khoản' },
+];
+const TAB_KEY = 'alpha:dashboardTab';
+const activeTab = ref(
+  tabs.some((t) => t.key === localStorage.getItem(TAB_KEY))
+    ? localStorage.getItem(TAB_KEY)
+    : 'account'
+);
+watch(activeTab, (v) => localStorage.setItem(TAB_KEY, v));
 
 const monthly = computed(() => store.summary?.monthly || []);
 const total = computed(() => store.summary?.total || { revenue: 0, fee: 0, profit: 0, profitVND: 0, projects: 0 });
@@ -166,6 +238,23 @@ const expanded = reactive({});
 function toggleMonth(key) {
   expanded[key] = !expanded[key];
 }
+
+// Tổng hợp toàn bộ tháng → một dòng / tài khoản
+const accountTotals = computed(() => {
+  const agg = {};
+  monthly.value.forEach((m) => {
+    const ba = m.byAccount || {};
+    Object.keys(ba).forEach((id) => {
+      if (!agg[id]) agg[id] = { id, revenue: 0, fee: 0, profit: 0 };
+      agg[id].revenue += ba[id].revenue || 0;
+      agg[id].fee += ba[id].fee || 0;
+      agg[id].profit += ba[id].profit || 0;
+    });
+  });
+  return Object.values(agg).sort(
+    (a, b) => store.accountOrderIndex(a.id) - store.accountOrderIndex(b.id)
+  );
+});
 
 function hasAccountBreakdown(m) {
   return m && m.byAccount && Object.keys(m.byAccount).length > 0;

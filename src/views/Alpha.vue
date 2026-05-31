@@ -79,6 +79,19 @@
           </span>
         </h3>
         <div class="flex items-center gap-2 flex-wrap">
+          <div class="inline-flex rounded-lg border border-binance-light overflow-hidden">
+            <button
+              v-for="v in viewModes"
+              :key="v.key"
+              class="px-3 py-1.5 text-sm transition-colors"
+              :class="viewMode === v.key
+                ? 'bg-binance-yellow text-black font-medium'
+                : 'bg-transparent text-gray-500 hover:text-gray-700'"
+              @click="viewMode = v.key"
+            >
+              {{ v.label }}
+            </button>
+          </div>
           <label
             class="flex items-center gap-1.5 text-sm cursor-pointer select-none px-2.5 py-1.5 rounded-lg border transition-colors"
             :class="onlyEstimated ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-slate-200 text-gray-500 hover:bg-slate-50'"
@@ -112,7 +125,8 @@
         {{ onlyEstimated ? 'Không có dự án nào có giá trị ước lượng' : 'Chưa có dự án nào' }}
       </div>
 
-      <div v-else class="overflow-x-auto">
+      <!-- ===== View: Danh sách (card list) ===== -->
+      <div v-else-if="viewMode === 'list'" class="overflow-x-auto">
         <table class="w-full border-collapse">
           <thead>
             <tr class="table-thead">
@@ -274,6 +288,67 @@
         </table>
       </div>
 
+      <!-- ===== View: Bảng (pivot) ===== -->
+      <div v-else class="space-y-2">
+        <div class="flex items-center gap-1.5 text-xs text-gray-500">
+          <span class="inline-block w-3 h-3 rounded-sm bg-amber-100 border border-amber-300"></span>
+          Giá trị ~ (nền vàng) = ước lượng · bấm tên dự án để sửa
+        </div>
+        <div class="overflow-auto max-h-[70vh] border border-slate-200 rounded-lg">
+          <table class="min-w-full border-separate border-spacing-0 text-sm tabular-nums">
+            <thead>
+              <tr>
+                <th class="sticky top-0 left-0 z-30 bg-slate-100 h-9 px-3 text-left font-semibold border-b border-r border-slate-300 min-w-[140px]">Dự án</th>
+                <th class="sticky top-0 z-20 bg-slate-100 h-9 px-3 text-left font-semibold border-b border-slate-300 whitespace-nowrap">Ngày</th>
+                <th class="sticky top-0 z-20 bg-slate-100 h-9 px-2 text-right font-semibold border-b border-slate-300 whitespace-nowrap">Claim</th>
+                <th class="sticky top-0 z-20 bg-slate-100 h-9 px-3 text-left font-semibold border-b border-r border-slate-300 whitespace-nowrap">Loại</th>
+                <th
+                  v-for="a in projectMatrixAccounts"
+                  :key="a.id"
+                  class="sticky top-0 z-20 bg-slate-100 h-9 px-2 text-right font-semibold border-b border-slate-300 whitespace-nowrap"
+                >
+                  <span class="inline-block w-2 h-2 rounded-full mr-1" :style="{ background: a.color }"></span>
+                  {{ a.displayName }}
+                </th>
+                <th class="sticky top-0 z-20 bg-slate-100 h-9 px-3 text-right font-semibold border-b border-l border-slate-300 whitespace-nowrap">Tổng</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="p in visibleProjects" :key="p.id" class="bg-white hover:bg-blue-50/60">
+                <td
+                  class="sticky left-0 z-10 bg-white px-3 py-1.5 font-semibold text-slate-800 border-b border-r border-slate-200 whitespace-nowrap cursor-pointer hover:text-blue-700"
+                  @click="editFromTable(p)"
+                >
+                  {{ p.name }}
+                </td>
+                <td class="px-3 py-1.5 text-slate-600 border-b border-slate-200 whitespace-nowrap">{{ p.date }}</td>
+                <td class="px-2 py-1.5 text-right text-slate-500 border-b border-slate-200">{{ p.claimPoints }}</td>
+                <td class="px-3 py-1.5 border-b border-r border-slate-200">
+                  <span class="badge text-[11px]" :class="typeClass(p.type)">{{ p.type }}</span>
+                </td>
+                <td
+                  v-for="a in projectMatrixAccounts"
+                  :key="p.id + '-' + a.id"
+                  class="px-2 py-1.5 text-right border-b border-slate-200"
+                >
+                  <template v-if="hasReward(p, a.id)">
+                    <span
+                      v-if="isEstimated(p, a.id)"
+                      class="font-bold text-amber-600 bg-amber-50 border border-amber-200 rounded px-1 tabular-nums"
+                    >~{{ fmtUSD(p.rewards[a.id]) }}</span>
+                    <span v-else class="font-semibold text-slate-700">{{ fmtUSD(p.rewards[a.id]) }}</span>
+                  </template>
+                  <span v-else class="text-gray-300">–</span>
+                </td>
+                <td class="px-3 py-1.5 text-right font-bold text-green-600 border-b border-l border-slate-200 whitespace-nowrap">
+                  {{ fmtUSD(projectTotal(p)) }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div
         v-if="filteredProjects.length > visibleProjects.length || (showAll && filteredProjects.length > recentProjects.length)"
         class="flex justify-center mt-4"
@@ -302,6 +377,18 @@ const saving = ref(false);
 const search = ref('');
 const showAll = ref(false);
 const onlyEstimated = ref(false);
+
+const viewModes = [
+  { key: 'list', label: 'Danh sách' },
+  { key: 'table', label: 'Bảng' },
+];
+const VIEW_KEY = 'alpha:projectsViewMode';
+const viewMode = ref(
+  viewModes.some((v) => v.key === localStorage.getItem(VIEW_KEY))
+    ? localStorage.getItem(VIEW_KEY)
+    : 'list'
+);
+watch(viewMode, (v) => localStorage.setItem(VIEW_KEY, v));
 
 const projectTypes = ['FCFS', 'TGE', 'Phase', 'Pre-Tge', 'Booster'];
 
@@ -382,6 +469,31 @@ function hasAnyReward(p) {
     const n = Number(v);
     return Number.isFinite(n) && n !== 0;
   });
+}
+
+function hasReward(p, accId) {
+  const n = Number(p.rewards?.[accId]);
+  return Number.isFinite(n) && n !== 0;
+}
+
+// Cột tài khoản cho view bảng: account có reward ở bất kỳ dự án nào (đã lọc), theo sortOrder.
+const projectMatrixAccounts = computed(() => {
+  const ids = new Set();
+  filteredProjects.value.forEach((p) => {
+    for (const id of Object.keys(p.rewards || {})) {
+      if (hasReward(p, id)) ids.add(id);
+    }
+  });
+  return [...ids]
+    .map((id) => store.accountById(id) || { id, displayName: id, color: '#3b82f6' })
+    .sort((a, b) => store.accountOrderIndex(a.id) - store.accountOrderIndex(b.id));
+});
+
+// Từ view bảng → chuyển sang view danh sách + mở sửa (showAll để chắc chắn dự án hiển thị).
+function editFromTable(p) {
+  viewMode.value = 'list';
+  showAll.value = true;
+  startEdit(p);
 }
 
 function accountsWithReward(p) {
