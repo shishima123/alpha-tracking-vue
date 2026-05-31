@@ -17,7 +17,8 @@
  *  - Tháng 06/2026 toàn 0 → skip.
  *  - `totalPoints` và `count` set = 0 vì ảnh không có dữ liệu này. Field không
  *    được dùng để tính summary nên không ảnh hưởng Dashboard.
- *  - Idempotent: chạy nhiều lần OK — row trùng id sẽ ghi đè.
+ *  - Idempotent: chạy nhiều lần OK — chỉ thêm row CÒN THIẾU, row đã có giữ nguyên
+ *    (KHÔNG ghi đè). Muốn ghi đè giá trị cũ → clearFeesMonthlySheet() rồi import lại.
  *  - Sau import, nếu mutate fee trong tháng đã import, aggregate bị drop (qua
  *    `invalidateFeesMonthly`). Tháng đó sẽ mất khỏi Dashboard cho đến khi
  *    re-import hoặc có daily rows + bấm "Tổng hợp tháng cũ".
@@ -90,17 +91,25 @@ function importFeesMonthlyFromSnapshot() {
     );
   }
 
-  // Merge với existing: row trùng id ghi đè, row khác giữ nguyên
+  // Merge với existing: CHỈ thêm row còn thiếu, row đã có giữ nguyên (không ghi đè)
   const existing = listFeesMonthly();
   const merged = {};
   existing.forEach(function (r) { merged[r.id] = r; });
-  items.forEach(function (it) { merged[it.id] = it; });
+  let added = 0;
+  let skipped = 0;
+  items.forEach(function (it) {
+    if (merged[it.id]) { skipped++; return; }
+    merged[it.id] = it;
+    added++;
+  });
+  if (skipped > 0) Logger.log('Bỏ qua %s row đã tồn tại (month+account)', skipped);
 
   const final = Object.keys(merged).map(function (k) { return merged[k]; });
   writeAll(SHEETS.FEES_MONTHLY, final);
 
   const result = {
-    imported: items.length,
+    added: added,
+    skipped: skipped,
     months: FEES_MONTHLY_SNAPSHOT.length,
     totalRowsInSheet: final.length,
   };

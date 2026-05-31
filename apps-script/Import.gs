@@ -13,7 +13,8 @@
  *   4. Apps Script editor → dropdown chọn "importLegacy" → Run
  *   5. View → Logs để xem kết quả
  *
- * ⚠️ Chạy 2 lần sẽ DUPLICATE. Mọi row imported có note="imported" để dễ lọc/xóa.
+ * ✅ Idempotent: chạy nhiều lần OK — chỉ import record CÒN THIẾU (fees dedupe theo
+ *    date+account, projects theo name+date). Mọi row imported có note="imported".
  */
 
 /**
@@ -148,11 +149,18 @@ function importLegacyFees() {
     colMap.push({ accountId: currentAcc, kind });
   }
 
+  // Khóa (date, accountId) đã tồn tại trong sheet Fees → skip để không duplicate
+  const existingFees = {};
+  listFees().forEach(function (f) {
+    existingFees[f.date + '|' + f.accountId] = true;
+  });
+
   const data = sh.getRange(3, 1, lastRow - 2, lastCol).getValues();
   const feesRows = [];
   const months = {};
   const baseId = Date.now();
   let idx = 0;
+  let skipped = 0;
 
   data.forEach(function (row) {
     const dateStr = formatDateValue(row[0]);
@@ -173,6 +181,8 @@ function importLegacyFees() {
     for (const accId in perAcc) {
       const e = perAcc[accId];
       if (!e.fee && !e.points) continue;
+      if (existingFees[dateStr + '|' + accId]) { skipped++; continue; }
+      existingFees[dateStr + '|' + accId] = true; // tránh trùng trong cùng batch
       feesRows.push({
         id: String(baseId + (idx++)),
         date: dateStr,
@@ -186,8 +196,10 @@ function importLegacyFees() {
     }
   });
 
+  if (skipped > 0) Logger.log('Fees: bỏ qua ' + skipped + ' row đã tồn tại (date+account)');
+
   if (feesRows.length === 0) {
-    Logger.log('Fees: không có row hợp lệ');
+    Logger.log('Fees: không có row mới để import');
     return 0;
   }
 
@@ -246,16 +258,27 @@ function importLegacyProjects() {
     if (def) accountCols.push({ col: i, accountId: def.id });
   }
 
+  // Khóa (name, date) đã tồn tại → skip để không duplicate
+  const existingProj = {};
+  listProjects().forEach(function (p) {
+    existingProj[String(p.name).toLowerCase().trim() + '|' + p.date] = true;
+  });
+
   const data = sh.getRange(2, 1, lastRow - 1, lastCol).getValues();
   const projRows = [];
   const baseId = Date.now();
   let idx = 0;
+  let skipped = 0;
 
   data.forEach(function (row) {
     const name = String(row[colName] || '').trim();
     if (!name) return;
     const date = formatDateValue(row[colDate]);
     if (!date) return;
+
+    const projKey = name.toLowerCase() + '|' + date;
+    if (existingProj[projKey]) { skipped++; return; }
+    existingProj[projKey] = true; // tránh trùng trong cùng batch
 
     const rewards = {};
     accountCols.forEach(function (a) {
@@ -280,8 +303,10 @@ function importLegacyProjects() {
     });
   });
 
+  if (skipped > 0) Logger.log('Projects: bỏ qua ' + skipped + ' row đã tồn tại (name+date)');
+
   if (projRows.length === 0) {
-    Logger.log('Projects: không có row hợp lệ');
+    Logger.log('Projects: không có row mới để import');
     return 0;
   }
 

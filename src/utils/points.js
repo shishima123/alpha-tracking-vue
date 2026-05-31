@@ -75,7 +75,8 @@ export function computeAlphaPoints(fees, projects, requiredPoints = 15) {
     reset.setDate(reset.getDate() + POINT_RESET_OFFSET);
     const daysLeft = POINT_RESET_OFFSET - info.daysAgo;
     for (const accId in rewards) {
-      if (!(Number(rewards[accId]) > 0)) continue;
+      const amt = Number(rewards[accId]);
+      if (!Number.isFinite(amt) || amt === 0) continue;
       bucket(accId).claims.push({
         projectId: p.id,
         projectName: p.name,

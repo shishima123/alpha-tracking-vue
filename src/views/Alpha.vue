@@ -87,11 +87,24 @@
             Chỉ coin có ước lượng
             <span v-if="estimatedCount" class="text-[11px] font-semibold">({{ estimatedCount }})</span>
           </label>
-          <input
-            v-model="search"
-            class="input w-60"
-            placeholder="Tìm theo tên dự án..."
-          />
+          <div class="relative group/search w-60">
+            <input
+              v-model="search"
+              class="input w-full pr-8"
+              placeholder="Tìm theo tên dự án..."
+            />
+            <button
+              v-if="search"
+              type="button"
+              title="Xóa tìm kiếm"
+              class="absolute right-2 top-1/2 -translate-y-1/2 grid place-items-center w-5 h-5 rounded-full text-gray-400 opacity-0 group-hover/search:opacity-100 group-focus-within/search:opacity-100 hover:bg-slate-200 hover:text-gray-700 transition"
+              @click="search = ''"
+            >
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 6 6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -319,7 +332,8 @@ watch(
 );
 
 function isEstimated(p, accId) {
-  return !!(p.estimated && p.estimated[accId]) && Number(p.rewards?.[accId]) > 0;
+  const n = Number(p.rewards?.[accId]);
+  return !!(p.estimated && p.estimated[accId]) && Number.isFinite(n) && n !== 0;
 }
 
 function projectHasEstimate(p) {
@@ -364,12 +378,18 @@ function projectTotal(p) {
 }
 
 function hasAnyReward(p) {
-  return Object.values(p.rewards || {}).some((v) => Number(v) > 0);
+  return Object.values(p.rewards || {}).some((v) => {
+    const n = Number(v);
+    return Number.isFinite(n) && n !== 0;
+  });
 }
 
 function accountsWithReward(p) {
-  // Bao gồm cả inactive accounts để không "ẩn" reward cũ
-  return store.accounts.filter((a) => Number(p.rewards?.[a.id]) > 0);
+  // Bao gồm cả inactive accounts để không "ẩn" reward cũ. Cho phép cả giá trị âm.
+  return store.accounts.filter((a) => {
+    const n = Number(p.rewards?.[a.id]);
+    return Number.isFinite(n) && n !== 0;
+  });
 }
 
 function typeClass(type) {
@@ -390,8 +410,9 @@ async function submit() {
   const rewards = {};
   const estimated = {};
   for (const [k, v] of Object.entries(form.rewards)) {
-    if (v && Number(v) > 0) {
-      rewards[k] = Number(v);
+    const n = Number(v);
+    if (Number.isFinite(n) && n !== 0) {
+      rewards[k] = n;
       if (form.estimated[k]) estimated[k] = true;
     }
   }
@@ -470,8 +491,9 @@ async function saveEdit() {
   const rewards = {};
   const estimated = {};
   for (const [k, v] of Object.entries(editForm.rewards)) {
-    if (v && Number(v) > 0) {
-      rewards[k] = Number(v);
+    const n = Number(v);
+    if (Number.isFinite(n) && n !== 0) {
+      rewards[k] = n;
       if (editForm.estimated[k]) estimated[k] = true;
     }
   }
