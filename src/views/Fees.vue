@@ -1,10 +1,27 @@
 <template>
   <div class="space-y-6">
-    <!-- Management panel: archive + clear old -->
+    <!-- Management panel: archive + clear old (thu gọn mặc định) -->
     <div class="card">
-      <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-        <h3 class="font-semibold">Quản lý lịch sử phí</h3>
-        <div class="flex items-center gap-2">
+      <button
+        class="w-full flex items-center justify-between text-left"
+        @click="showManage = !showManage"
+      >
+        <h3 class="font-semibold">
+          Quản lý lịch sử phí
+          <span class="text-base ml-1">{{ indicatorIcon }}</span>
+        </h3>
+        <span class="flex items-center gap-1 text-sm text-gray-500">
+          {{ showManage ? 'Thu gọn' : 'Mở' }}
+          <span class="transition-transform" :class="showManage ? 'rotate-180' : ''">▾</span>
+        </span>
+      </button>
+
+      <div
+        class="grid transition-[grid-template-rows] duration-300 ease-in-out"
+        :class="showManage ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'"
+      >
+      <div class="overflow-hidden">
+        <div class="flex items-center gap-2 flex-wrap pt-3 mb-3">
           <button
             class="btn-secondary"
             :disabled="archiving || !canArchive"
@@ -17,25 +34,27 @@
           </button>
           <button
             class="btn-secondary text-red-600 hover:text-red-700"
-            :disabled="clearing || !hasPastDaily"
+            :disabled="clearing || !canClear"
             @click="onClearOld"
+            :title="canClear ? 'Xóa các row đã ra khỏi cửa sổ 15 ngày' : 'Không có row nào đã hết 15 ngày'"
           >
             <span v-if="clearing" class="inline-block w-3 h-3 border-2 border-red-600 border-t-transparent rounded-full animate-spin mr-1"></span>
             Xóa lịch sử cũ
-            <span v-if="hasPastDaily" class="text-gray-500 ml-1">({{ pastDaily.total }})</span>
+            <span v-if="canClear" class="text-gray-500 ml-1">({{ pastDaily.deletable }})</span>
           </button>
         </div>
-      </div>
 
-      <div
-        class="px-3 py-2 rounded-lg border text-sm flex items-start gap-2"
-        :class="indicatorClass"
-      >
-        <span class="text-lg leading-none">{{ indicatorIcon }}</span>
-        <div class="flex-1">
-          <div class="font-medium">{{ indicatorTitle }}</div>
-          <div class="text-xs text-gray-500 mt-0.5">{{ indicatorDetail }}</div>
+        <div
+          class="px-3 py-2 rounded-lg border text-sm flex items-start gap-2"
+          :class="indicatorClass"
+        >
+          <span class="text-lg leading-none">{{ indicatorIcon }}</span>
+          <div class="flex-1">
+            <div class="font-medium">{{ indicatorTitle }}</div>
+            <div class="text-xs text-gray-500 mt-0.5">{{ indicatorDetail }}</div>
+          </div>
         </div>
+      </div>
       </div>
     </div>
 
@@ -43,7 +62,7 @@
     <div class="card">
       <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
         <h3 class="font-semibold">
-          Phí tháng <span class="text-amber-600">{{ store.currentMonth || '—' }}</span>
+          Tất cả phí trade
           <span class="text-gray-500 font-normal">
             ({{ filteredFees.length }} bản ghi · {{ groupedByDate.length }} ngày)
           </span>
@@ -68,12 +87,12 @@
               {{ a.displayName }}
             </option>
           </select>
-          <button class="btn-secondary" @click="store.loadAll()">↻</button>
+          <button class="btn-secondary" @click="store.loadAllFees()">↻</button>
         </div>
       </div>
 
       <div v-if="groupedByDate.length === 0" class="text-center py-8 text-gray-500">
-        Chưa có bản ghi nào trong tháng này — dùng modal 🧮 (góc dưới phải) để nhập phí.
+        Chưa có bản ghi nào — dùng modal 🧮 (góc dưới phải) để nhập phí.
       </div>
 
       <!-- ===== View: Theo ngày (grouped) ===== -->
@@ -224,9 +243,10 @@
       </div>
 
       <p v-if="groupedByDate.length > 0" class="text-xs text-gray-500 mt-3">
-        Chỉ hiển thị daily của tháng hiện tại. Phí các tháng cũ — bấm
-        <b class="text-gray-700">Tổng hợp tháng cũ</b> để gộp vào sheet
-        <code class="text-gray-500">FeesMonthly</code>; Dashboard sẽ đọc aggregate này.
+        Hiển thị toàn bộ daily còn trong sheet Fees. Sau khi bấm
+        <b class="text-gray-700">Xóa lịch sử cũ</b>, các tháng đã
+        <b class="text-gray-700">Tổng hợp</b> vào
+        <code class="text-gray-500">FeesMonthly</code> sẽ không còn dòng chi tiết ở đây.
       </p>
     </div>
 
@@ -296,7 +316,7 @@
 </template>
 
 <script setup>
-import { reactive, computed, ref, watch } from 'vue';
+import { reactive, computed, ref, watch, onMounted } from 'vue';
 import { useTrackingStore } from '../stores/trackingStore';
 import { useToastStore } from '../stores/toastStore';
 import { fmtUSD, parseDate, todayStr } from '../utils/format';
@@ -320,11 +340,18 @@ watch(viewMode, (v) => localStorage.setItem(VIEW_KEY, v));
 
 const archiving = ref(false);
 const clearing = ref(false);
+const showManage = ref(false); // panel quản lý lịch sử thu gọn mặc định
 
 const filteredFees = computed(() => {
-  let list = [...store.fees];
+  let list = [...store.allFees];
   if (filter.accountId) list = list.filter((f) => f.accountId === filter.accountId);
   return list;
+});
+
+// Tab này hiển thị toàn bộ daily rows còn trong sheet Fees (mọi tháng),
+// nên cần load riêng — bootstrap (store.fees) chỉ trả về tháng hiện tại.
+onMounted(() => {
+  if (store.allFees.length === 0) store.loadAllFees();
 });
 
 const cellMap = computed(() => {
@@ -409,37 +436,39 @@ function dateBg(row) {
 }
 
 // ===== Past-daily indicator =====
-const pastDaily = computed(() => store.pastDaily || { total: 0, active: 0, safeToDelete: false, pendingArchiveMonths: [] });
+const pastDaily = computed(() => store.pastDaily || { total: 0, deletable: 0, active: 0, safeToDelete: false, pendingArchiveMonths: [] });
 const hasPastDaily = computed(() => pastDaily.value.total > 0);
+const canClear = computed(() => pastDaily.value.deletable > 0);
 const pendingMonths = computed(() => pastDaily.value.pendingArchiveMonths || []);
 const canArchive = computed(() => pendingMonths.value.length > 0);
 
 const indicatorIcon = computed(() => {
-  if (!hasPastDaily.value) return 'ℹ';
-  if (pastDaily.value.safeToDelete) return '✓';
-  return '⚠';
+  if (canClear.value) return '✓';
+  return 'ℹ';
 });
 const indicatorTitle = computed(() => {
-  if (!hasPastDaily.value) return 'Không có dữ liệu cũ';
-  if (pastDaily.value.safeToDelete) return `Có thể xóa ${pastDaily.value.total} bản ghi cũ`;
-  return `Còn ${pastDaily.value.active}/${pastDaily.value.total} bản ghi tháng cũ đang tính điểm Alpha`;
+  if (canClear.value) return `Có thể xóa ${pastDaily.value.deletable} bản ghi đã hết 15 ngày`;
+  if (pastDaily.value.active > 0) return `Còn ${pastDaily.value.active} bản ghi cũ đang trong cửa sổ 15 ngày`;
+  return 'Không có dữ liệu cũ';
 });
 const indicatorDetail = computed(() => {
-  if (!hasPastDaily.value) return 'Sheet Fees chỉ chứa tháng hiện tại.';
-  if (pastDaily.value.safeToDelete) {
+  if (canClear.value) {
     const arch = pendingMonths.value.length;
     if (arch > 0) return `Nên bấm "Tổng hợp tháng cũ" trước (còn ${arch} tháng chưa archive) — sau khi clear, Dashboard sẽ chỉ thấy aggregate.`;
-    return 'Đã hết hạn 15 ngày — xóa sẽ không ảnh hưởng tab Điểm.';
+    return 'Các row này không còn tính điểm (không còn màu xanh) — xóa không ảnh hưởng tab Điểm.';
   }
-  const safe = pastDaily.value.earliestSafeDate;
-  return safe
-    ? `Tất cả sẽ hết hiệu lực vào ${safe}. Xóa sớm hơn sẽ làm sai số điểm hiện tại.`
-    : 'Vẫn còn bản ghi trong cửa sổ 15 ngày — chưa nên xóa.';
+  if (pastDaily.value.active > 0) {
+    const safe = pastDaily.value.earliestSafeDate;
+    return safe
+      ? `Chưa có gì để xóa — row cũ nhất sẽ rời cửa sổ 15 ngày vào ${safe}.`
+      : 'Tất cả bản ghi cũ vẫn trong cửa sổ 15 ngày — chưa có gì để xóa.';
+  }
+  return 'Sheet Fees chỉ chứa tháng hiện tại.';
 });
 const indicatorClass = computed(() => {
-  if (!hasPastDaily.value) return 'bg-slate-100 border-binance-light text-gray-600';
-  if (pastDaily.value.safeToDelete) return 'bg-green-50 border-green-300 text-green-700';
-  return 'bg-amber-50 border-amber-300 text-amber-700';
+  if (canClear.value) return 'bg-green-50 border-green-300 text-green-700';
+  if (pastDaily.value.active > 0) return 'bg-amber-50 border-amber-300 text-amber-700';
+  return 'bg-slate-100 border-binance-light text-gray-600';
 });
 
 // ===== Helpers =====
@@ -514,10 +543,7 @@ async function onArchive() {
 }
 
 async function onClearOld() {
-  const warn = pastDaily.value.safeToDelete
-    ? `Xóa ${pastDaily.value.total} bản ghi tháng cũ khỏi sheet Fees?`
-    : `CẢNH BÁO: còn ${pastDaily.value.active} bản ghi đang tính điểm Alpha — xóa bây giờ sẽ làm sai tab Điểm. Vẫn xóa?`;
-  if (!confirm(warn)) return;
+  if (!confirm(`Xóa ${pastDaily.value.deletable} bản ghi đã hết cửa sổ 15 ngày (không còn tính điểm)? Các row còn trong cửa sổ và tháng hiện tại được giữ lại.`)) return;
   if (pendingMonths.value.length > 0) {
     if (!confirm(`Còn ${pendingMonths.value.length} tháng chưa archive — sau khi clear sẽ mất khỏi Dashboard. Tiếp tục?`)) return;
   }

@@ -492,10 +492,22 @@ function archivePastMonths() {
  * Xóa toàn bộ daily rows thuộc tháng cũ (không phải currentMonth) khỏi sheet Fees.
  * KHÔNG đụng FeesMonthly — aggregate đã archive vẫn còn.
  */
+// Chỉ xóa daily rows đã ra khỏi cửa sổ 15 ngày (không còn tính điểm — "không còn
+// màu xanh" ở UI). Luôn giữ row tháng hiện tại: tháng hiện tại không được archive
+// nên xóa sẽ làm sai tổng tháng trên Dashboard, không khôi phục được.
 function clearOldDaily() {
   const currentKey = currentMonthKey();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
   const all = listFees({});
-  const kept = all.filter(function (f) { return monthKey(f.date) === currentKey; });
+  const kept = all.filter(function (f) {
+    if (monthKey(f.date) === currentKey) return true;
+    const d = parseDmy(f.date);
+    if (!d) return true;
+    const reset = new Date(d);
+    reset.setDate(reset.getDate() + 15);
+    return reset.getTime() >= today.getTime(); // vẫn trong cửa sổ → giữ
+  });
   const removed = all.length - kept.length;
   if (removed > 0) writeAll(SHEETS.FEES, kept);
   return { removed: removed, kept: kept.length };
@@ -996,19 +1008,21 @@ function getBootstrap(payload) {
 }
 
 /**
- * Tổng hợp tình trạng daily rows tháng cũ:
+ * Tổng hợp tình trạng daily rows tháng cũ (clearOld chỉ xóa row đã ra khỏi cửa sổ
+ * 15 ngày — "không còn màu xanh"):
  *  - total: số rows past-month trong sheet Fees
- *  - active: số rows có tradeDate + 15 >= today (vẫn tính điểm Alpha)
- *  - safeToDelete: true khi mọi row đã hết hiệu lực điểm
- *  - earliestSafeDate: nếu chưa safe → DMY của ngày sẽ safeToDelete sau khi tới
+ *  - deletable: số rows past-month đã hết 15 ngày → clearOld sẽ xóa
+ *  - active: số rows past-month vẫn trong cửa sổ 15 ngày → giữ lại (vẫn tính điểm)
+ *  - safeToDelete: true khi có ít nhất 1 row deletable
+ *  - earliestSafeDate: ngày sớm nhất mà 1 row active sẽ rời cửa sổ (thành deletable)
  *  - pendingArchiveMonths: tháng past có raw nhưng chưa có aggregate
  */
 function computePastDailyStatus(pastFees, archivedMonths) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  let active = 0;
-  let latestResetTs = 0;
+  let deletable = 0;
+  let earliestActiveResetTs = Infinity;
   const monthsWithRaw = {};
 
   pastFees.forEach(function (f) {
@@ -1017,9 +1031,10 @@ function computePastDailyStatus(pastFees, archivedMonths) {
     monthsWithRaw[monthKey(f.date)] = true;
     const reset = new Date(d);
     reset.setDate(reset.getDate() + 15);
-    if (reset.getTime() >= today.getTime()) {
-      active++;
-      if (reset.getTime() > latestResetTs) latestResetTs = reset.getTime();
+    if (reset.getTime() < today.getTime()) {
+      deletable++;
+    } else if (reset.getTime() < earliestActiveResetTs) {
+      earliestActiveResetTs = reset.getTime();
     }
   });
 
@@ -1029,9 +1044,10 @@ function computePastDailyStatus(pastFees, archivedMonths) {
 
   return {
     total: pastFees.length,
-    active: active,
-    safeToDelete: pastFees.length > 0 && active === 0,
-    earliestSafeDate: latestResetTs > 0 ? formatDmy(new Date(latestResetTs + 86400000)) : null,
+    deletable: deletable,
+    active: pastFees.length - deletable,
+    safeToDelete: deletable > 0,
+    earliestSafeDate: earliestActiveResetTs < Infinity ? formatDmy(new Date(earliestActiveResetTs)) : null,
     pendingArchiveMonths: pendingArchiveMonths,
   };
 }

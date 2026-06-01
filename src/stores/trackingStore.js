@@ -5,7 +5,8 @@ import { useCalculatorStore } from './calculatorStore';
 export const useTrackingStore = defineStore('tracking', {
   state: () => ({
     accounts: [],
-    fees: [],              // chỉ chứa daily rows của tháng hiện tại
+    fees: [],              // chỉ chứa daily rows của tháng hiện tại (dùng cho Dashboard/Points)
+    allFees: [],           // toàn bộ daily rows còn trong sheet Fees (dùng cho tab Phí Trade)
     feesMonthly: [],       // aggregate cho các tháng cũ
     currentMonth: '',      // 'MM/YYYY' do server xác định
     pastDaily: null,       // { total, active, safeToDelete, earliestSafeDate, pendingArchiveMonths }
@@ -49,26 +50,30 @@ export const useTrackingStore = defineStore('tracking', {
     async loadFees(params) {
       this.fees = await feesApi.list(params);
     },
+    // Toàn bộ daily rows còn trong sheet Fees (mọi tháng chưa bị clear)
+    async loadAllFees(params) {
+      this.allFees = await feesApi.list(params);
+    },
     async addFees(entries) {
       await feesApi.bulk(entries);
-      await this.loadAll();
+      await Promise.all([this.loadAll(), this.loadAllFees()]);
     },
     async updateFee(id, data) {
       await feesApi.update(id, data);
-      await this.loadAll();
+      await Promise.all([this.loadAll(), this.loadAllFees()]);
     },
     async deleteFee(id) {
       await feesApi.remove(id);
-      await this.loadAll();
+      await Promise.all([this.loadAll(), this.loadAllFees()]);
     },
     async archivePastMonths() {
       const res = await feesApi.archive();
-      await this.loadAll();
+      await Promise.all([this.loadAll(), this.loadAllFees()]);
       return res;
     },
     async clearOldDaily() {
       const res = await feesApi.clearOld();
-      await this.loadAll();
+      await Promise.all([this.loadAll(), this.loadAllFees()]);
       return res;
     },
 

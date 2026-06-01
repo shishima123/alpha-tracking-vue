@@ -1,9 +1,24 @@
 <template>
   <div class="space-y-6">
-    <!-- Form thêm dự án mới -->
+    <!-- Form thêm dự án mới (thu gọn mặc định) -->
     <div class="card">
-      <h3 class="font-semibold mb-4">Thêm dự án Alpha</h3>
-      <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+      <button
+        class="w-full flex items-center justify-between text-left"
+        @click="showForm = !showForm"
+      >
+        <h3 class="font-semibold">Thêm dự án Alpha</h3>
+        <span class="flex items-center gap-1 text-sm text-gray-500">
+          {{ showForm ? 'Thu gọn' : 'Thêm dự án' }}
+          <span class="transition-transform" :class="showForm ? 'rotate-180' : ''">▾</span>
+        </span>
+      </button>
+
+      <div
+        class="grid transition-[grid-template-rows] duration-300 ease-in-out"
+        :class="showForm ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'"
+      >
+      <div class="overflow-hidden">
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-3 pt-4">
         <div>
           <label class="label">Tên dự án</label>
           <input v-model="form.name" class="input" placeholder="VD: BILL" />
@@ -66,6 +81,8 @@
           <span v-if="saving" class="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
           {{ saving ? 'Đang lưu...' : 'Lưu dự án' }}
         </button>
+      </div>
+      </div>
       </div>
     </div>
 
@@ -377,6 +394,7 @@ const saving = ref(false);
 const search = ref('');
 const showAll = ref(false);
 const onlyEstimated = ref(false);
+const showForm = ref(false); // form thêm dự án thu gọn mặc định để tiết kiệm diện tích
 
 const viewModes = [
   { key: 'list', label: 'Danh sách' },
@@ -438,7 +456,9 @@ const filteredProjects = computed(() => {
       p.name.toLowerCase().includes(search.value.toLowerCase())
     );
   if (onlyEstimated.value) list = list.filter((p) => projectHasEstimate(p));
-  return list.sort((a, b) => (a.date < b.date ? 1 : -1));
+  // Sort theo ngày thực (mới nhất trước). Không so sánh chuỗi DMY trực tiếp vì
+  // "31/05/2025" > "30/12/2025" theo lexicographic (ưu tiên ngày).
+  return list.sort((a, b) => (parseDate(b.date)?.getTime() || 0) - (parseDate(a.date)?.getTime() || 0));
 });
 
 const recentProjects = computed(() => {

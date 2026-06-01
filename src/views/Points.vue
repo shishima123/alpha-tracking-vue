@@ -119,14 +119,25 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useTrackingStore } from '../stores/trackingStore';
 import { computeAlphaPoints } from '../utils/points';
 import { hideMoney, MASK } from '../utils/privacy';
 
 const store = useTrackingStore();
-const required = ref(15);
-const highlightMode = ref(false);
+
+// Lưu "Điểm yêu cầu" + "Highlight" vào localStorage để giữ giữa các phiên.
+const REQUIRED_KEY = 'alpha:pointsRequired';
+const HIGHLIGHT_KEY = 'alpha:pointsHighlight';
+const required = ref(Number(localStorage.getItem(REQUIRED_KEY)) || 15);
+const highlightMode = ref(localStorage.getItem(HIGHLIGHT_KEY) === '1');
+watch(required, (v) => localStorage.setItem(REQUIRED_KEY, Number(v) || 15));
+watch(highlightMode, (v) => localStorage.setItem(HIGHLIGHT_KEY, v ? '1' : '0'));
+
+// allFees không nằm trong bootstrap → load riêng khi mở tab Điểm.
+onMounted(() => {
+  if (store.allFees.length === 0) store.loadAllFees();
+});
 
 // Khi bật chế độ ẩn, che luôn số điểm (giữ ngày & tên dự án vì không nhạy cảm).
 function pt(n) {
@@ -137,8 +148,10 @@ const pointsAccounts = computed(() =>
   store.activeAccounts.filter((a) => !a.hideInPoints)
 );
 
+// Dùng allFees (toàn bộ daily) chứ không phải store.fees (chỉ tháng hiện tại):
+// cửa sổ 15 ngày có thể trải sang tháng trước, đặc biệt đầu tháng mới.
 const pointsData = computed(() =>
-  computeAlphaPoints(store.fees || [], store.projects || [], required.value)
+  computeAlphaPoints(store.allFees || [], store.projects || [], required.value)
 );
 
 const emptyAccount = computed(() => ({

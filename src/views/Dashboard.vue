@@ -1,5 +1,17 @@
 <template>
   <div class="space-y-6">
+    <!-- Exchange rate -->
+    <div class="flex items-center justify-end gap-2 text-sm text-gray-500">
+      <span>Tỉ giá:</span>
+      <input
+        v-model.number="store.vndRate"
+        type="number"
+        class="input w-28 py-1"
+        @change="store.loadSummary()"
+      />
+      <span>VND/USD</span>
+    </div>
+
     <!-- Stat overview -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
       <StatCard

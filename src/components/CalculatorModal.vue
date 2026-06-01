@@ -216,9 +216,12 @@
               <div>
                 <label class="label">Ngày</label>
                 <input
-                  v-model="fillDateIso"
-                  type="date"
+                  v-model="fill.date"
+                  type="text"
+                  inputmode="numeric"
+                  placeholder="DD/MM/YYYY"
                   class="input"
+                  @blur="normalizeFillDate"
                 />
               </div>
               <div>
@@ -280,7 +283,7 @@ import { ref, reactive, computed, watch } from 'vue';
 import { useTrackingStore } from '../stores/trackingStore';
 import { useCalculatorStore, CALC_DEFAULTS, CALC_FIELDS } from '../stores/calculatorStore';
 import { useToastStore } from '../stores/toastStore';
-import { fmtNumber, fmtUSD, todayStr, isoToDmy, dmyToIso } from '../utils/format';
+import { fmtNumber, fmtUSD, todayStr, isoToDmy, parseDate } from '../utils/format';
 import {
   ALPHA_VOLUME_MULTIPLIER,
   pointsFromVolume,
@@ -363,10 +366,11 @@ const fill = reactive({
 });
 const saving = ref(false);
 
-const fillDateIso = computed({
-  get: () => dmyToIso(fill.date),
-  set: (v) => { fill.date = isoToDmy(v) || fill.date; },
-});
+// Chuẩn hóa ngày user gõ về DD/MM/YYYY; gõ sai → quay về hôm nay.
+function normalizeFillDate() {
+  const d = parseDate(fill.date);
+  fill.date = d ? isoToDmy(d) : todayStr();
+}
 
 const fee = computed(() => {
   const before = Number(cfg.withdraw) || 0;

@@ -3,10 +3,9 @@
     <template v-if="!isLoginRoute">
       <!-- Top Nav -->
       <header class="border-b border-binance-light bg-binance-gray/60 backdrop-blur sticky top-0 z-10">
-        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-6">
-          <router-link to="/" class="flex items-center gap-2">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4 flex-nowrap">
+          <router-link to="/" class="flex items-center shrink-0">
             <span class="text-binance-yellow text-2xl font-bold">α</span>
-            <span class="font-semibold">Binance Alpha Tracking</span>
           </router-link>
           <nav class="flex items-center gap-1 text-sm">
             <router-link
@@ -19,17 +18,7 @@
               {{ r.label }}
             </router-link>
           </nav>
-          <div class="ml-auto flex items-center gap-3 text-sm">
-            <div class="flex items-center gap-2 text-gray-500">
-              <span>Tỉ giá:</span>
-              <input
-                v-model.number="store.vndRate"
-                type="number"
-                class="input w-24 py-1"
-                @change="store.loadSummary()"
-              />
-              <span>VND/USD</span>
-            </div>
+          <div class="ml-auto flex items-center gap-2 text-sm shrink-0">
             <button
               class="btn-secondary"
               @click="toggleHideMoney"
@@ -55,14 +44,13 @@
               </svg>
               <span class="hidden sm:inline">Máy tính</span>
             </button>
-            <button class="btn-secondary" @click="store.loadAll()" :disabled="store.loading">
+            <button class="btn-secondary" @click="store.loadAll()" :disabled="store.loading" :title="store.loading ? 'Đang tải...' : 'Refresh'">
               <svg class="w-4 h-4" :class="store.loading ? 'animate-spin' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
                 <path d="M21 3v5h-5" />
                 <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
                 <path d="M3 21v-5h5" />
               </svg>
-              <span class="hidden sm:inline">{{ store.loading ? 'Đang tải...' : 'Refresh' }}</span>
             </button>
             <button class="btn-secondary" @click="logout" title="Đăng xuất">
               <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
