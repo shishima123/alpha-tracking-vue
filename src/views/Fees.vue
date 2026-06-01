@@ -40,7 +40,7 @@
     </div>
 
     <!-- Tất cả phí trade -->
-    <div class="card">
+    <div class="card gray-card">
       <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
         <h3 class="font-semibold">
           Tất cả phí trade
@@ -65,7 +65,7 @@
       <n-empty v-if="groupedByDate.length === 0" description="Chưa có bản ghi nào — bấm nút Máy tính (góc trên phải) để nhập phí." style="padding: 32px 0" />
 
       <!-- ===== View: Theo ngày (grouped) ===== -->
-      <div v-else-if="viewMode === 'grouped'" class="overflow-x-auto">
+      <div v-else-if="viewMode === 'grouped'" class="overflow-x-auto bg-white border border-[#efeff5] rounded-lg">
         <table class="w-full border-collapse">
           <thead>
             <tr class="table-thead">
@@ -141,7 +141,7 @@
             Hôm nay
           </span>
         </div>
-        <div class="overflow-auto max-h-[70vh] border border-[#efeff5] rounded-lg">
+        <div class="overflow-auto max-h-[70vh] border border-[#efeff5] rounded-lg bg-white">
           <table class="pivot min-w-full border-separate border-spacing-0 text-sm tabular-nums">
             <thead>
               <tr>

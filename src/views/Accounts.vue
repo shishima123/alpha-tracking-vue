@@ -84,6 +84,7 @@
         </n-checkbox>
       </n-flex>
 
+      <div class="table-scroll">
       <n-table :bordered="false" :single-line="false" size="small">
         <thead>
           <tr>
@@ -169,6 +170,7 @@
           </tr>
         </tbody>
       </n-table>
+      </div>
     </n-card>
   </n-flex>
 </template>
@@ -320,6 +322,9 @@ function del(a) {
 /* Hover row — đồng bộ với các bảng khác. */
 tbody td { transition: background-color 0.15s; }
 tbody tr:hover > td { background-color: #f3f4f5; }
+.table-scroll { overflow-x: auto; }
+.table-scroll :deep(th),
+.table-scroll :deep(td) { white-space: nowrap; }
 .actions-cell :deep(.n-button) {
   padding: 3px 10px;
   border-radius: 6px;

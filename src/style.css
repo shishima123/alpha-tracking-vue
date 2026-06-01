@@ -33,6 +33,10 @@ body,
     border: 1px solid #efeff5; /* n-card border (rgb 239,239,245) */
     box-shadow: none;
   }
+  /* Card nền xám (đồng bộ với tab Điểm) — nội dung dạng khối trắng nổi lên trên. */
+  .gray-card {
+    background: #eef1f6;
+  }
   .input {
     @apply w-full rounded-lg px-3 py-1.5 text-sm focus:outline-none transition-colors;
     color: #333639;

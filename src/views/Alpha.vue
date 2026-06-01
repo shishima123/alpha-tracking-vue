@@ -91,7 +91,7 @@
     </div>
 
     <!-- Danh sách dự án (card list) -->
-    <div class="card">
+    <div class="card gray-card">
       <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
         <h3 class="font-semibold">
           Danh sách dự án
@@ -118,7 +118,7 @@
       />
 
       <!-- ===== View: Danh sách (card list) ===== -->
-      <div v-else-if="viewMode === 'list'" class="overflow-x-auto">
+      <div v-else-if="viewMode === 'list'" class="overflow-x-auto bg-white border border-[#efeff5] rounded-lg">
         <table class="w-full border-collapse">
           <thead>
             <tr class="table-thead">
@@ -290,7 +290,7 @@
           <span class="inline-block w-3 h-3 rounded-sm bg-amber-100 border border-amber-300"></span>
           Giá trị ~ (nền vàng) = ước lượng · bấm tên dự án để sửa
         </div>
-        <div class="overflow-auto max-h-[70vh] border border-[#efeff5] rounded-lg">
+        <div class="overflow-auto max-h-[70vh] border border-[#efeff5] rounded-lg bg-white">
           <table class="pivot min-w-full border-separate border-spacing-0 text-sm tabular-nums">
             <thead>
               <tr>

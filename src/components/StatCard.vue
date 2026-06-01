@@ -1,5 +1,5 @@
 <template>
-  <n-card size="small" :bordered="true">
+  <n-card size="small" :bordered="true" class="stat-card">
     <div class="stat-label">{{ label }}</div>
     <div class="stat-value" :style="color ? { color } : null">{{ value }}</div>
     <div v-if="sub" class="stat-sub">{{ sub }}</div>
@@ -24,10 +24,17 @@ defineProps({
   letter-spacing: 0.04em;
   color: #94a3b8;
 }
+.stat-card {
+  height: 100%; /* các card trong cùng hàng cao bằng nhau */
+}
 .stat-value {
   font-size: 24px;
   font-weight: 700;
   margin-top: 4px;
+  white-space: nowrap;
+}
+@media (max-width: 480px) {
+  .stat-value { font-size: 19px; }
 }
 .stat-sub {
   font-size: 12px;

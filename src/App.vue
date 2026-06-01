@@ -3,13 +3,30 @@
     <div class="app-shell">
       <header v-if="!isLoginRoute" class="app-header">
         <div class="app-header__inner">
+          <!-- Hamburger + tên trang đang chọn (mobile) -->
+          <n-dropdown
+            trigger="click"
+            :options="menuOptions"
+            @select="onNav"
+          >
+            <n-button class="nav-trigger" quaternary circle aria-label="Menu">
+              <template #icon>
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="3" x2="21" y1="6" y2="6" /><line x1="3" x2="21" y1="12" y2="12" /><line x1="3" x2="21" y1="18" y2="18" />
+                </svg>
+              </template>
+            </n-button>
+          </n-dropdown>
+
           <router-link to="/" class="app-logo">α</router-link>
 
+          <span class="nav-current">{{ activeLabel }}</span>
+
           <n-menu
+            class="nav-menu"
             mode="horizontal"
             :value="activeKey"
             :options="menuOptions"
-            responsive
             @update:value="onNav"
           />
 
@@ -84,7 +101,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { NConfigProvider, NMenu, NButton, NFlex, NTooltip } from 'naive-ui';
+import { NConfigProvider, NMenu, NButton, NFlex, NTooltip, NDropdown } from 'naive-ui';
 import { useTrackingStore } from './stores/trackingStore';
 import { useCalculatorStore } from './stores/calculatorStore';
 import { clearStoredKey, hasStoredKey, inflightCount } from './services/api';
@@ -109,6 +126,7 @@ const routes = [
 
 const menuOptions = routes.map((r) => ({ label: r.label, key: r.name }));
 const activeKey = computed(() => route.name);
+const activeLabel = computed(() => routes.find((r) => r.name === route.name)?.label || '');
 function onNav(name) {
   const r = routes.find((x) => x.name === name);
   if (r) router.push(r.path);
@@ -175,6 +193,23 @@ onBeforeUnmount(() => {
 }
 .app-header__actions {
   flex-shrink: 0;
+}
+
+/* Nav: desktop = menu ngang; mobile = hamburger + tên trang đang chọn. */
+.nav-trigger { display: none; }
+.nav-current {
+  display: none;
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  font-size: 16px;
+  color: #1e293b;
+}
+@media (max-width: 900px) {
+  .nav-trigger { display: inline-flex; flex-shrink: 0; }
+  .nav-current { display: block; }
+  .app-logo { display: none; }
+  .nav-menu { display: none; }
 }
 .app-main {
   flex: 1;

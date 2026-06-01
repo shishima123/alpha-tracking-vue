@@ -14,7 +14,7 @@
     </n-flex>
 
     <!-- Stat overview -->
-    <n-grid cols="1 s:2 m:4" responsive="screen" :x-gap="16" :y-gap="16">
+    <n-grid cols="2 m:4" responsive="screen" :x-gap="12" :y-gap="12">
       <n-gi>
         <StatCard label="Tổng thu nhập" :value="'$' + fmtUSD(total.revenue)"
           :sub="fmtVND(total.revenue * store.vndRate)" color="#2563eb" />
@@ -35,17 +35,18 @@
     <ProfitChart :monthly="monthly" />
 
     <!-- Tabbed summary -->
-    <n-card>
+    <n-card class="summary-card">
       <n-tabs v-model:value="activeTab" type="line" animated>
                 <!-- Monthly table -->
         <n-tab-pane name="month" tab="Chi tiết theo tháng">
           <n-text depth="3" style="font-size: 12px; display: block; text-align: right; margin-bottom: 8px">
             Bấm vào tháng để xem chi tiết từng tài khoản
           </n-text>
+          <div class="table-scroll">
           <n-table :bordered="false" :single-line="false" size="small">
             <thead>
               <tr>
-                <th style="width: 24px"></th>
+                <th></th>
                 <th>Tháng</th>
                 <th class="ta-r">Thu nhập ($)</th>
                 <th class="ta-r">Phí ($)</th>
@@ -105,6 +106,7 @@
               </tr>
             </tbody>
           </n-table>
+          </div>
 
           <n-flex v-if="monthlyDesc.length > DEFAULT_MONTHS" justify="center" style="margin-top: 12px">
             <n-button size="small" tertiary @click="showAllMonths = !showAllMonths">
@@ -117,6 +119,7 @@
 
         <!-- Per-account summary -->
         <n-tab-pane name="account" tab="Tổng kết theo tài khoản">
+          <div class="table-scroll freeze-first">
           <n-table class="hov-table" :bordered="false" :single-line="false" size="small">
             <thead>
               <tr>
@@ -145,6 +148,7 @@
               </tr>
             </tbody>
           </n-table>
+          </div>
         </n-tab-pane>
       </n-tabs>
     </n-card>
@@ -242,5 +246,40 @@ tr.clickable > td {
 .hov-table tbody tr:hover > td,
 tr.clickable:hover > td {
   background-color: #f3f4f5;
+}
+.table-scroll {
+  overflow-x: auto;
+  background: #fff;
+  border: 1px solid #efeff5;
+  border-radius: 8px;
+}
+.table-scroll :deep(th),
+.table-scroll :deep(td) { white-space: nowrap; }
+
+/* Card tổng kết: nền xám + padding 16px (đồng bộ với các tab khác). */
+.summary-card { background: #eef1f6; }
+.summary-card :deep(.n-card-content) { padding: 16px !important; }
+
+/* Freeze cột đầu (sticky khi cuộn ngang) — cho cả PC lẫn mobile.
+   naive .n-table có overflow:hidden làm hỏng sticky → override visible. */
+.table-scroll :deep(table) { overflow: visible; }
+
+/* "Tổng kết theo tài khoản": freeze cột Tài khoản. */
+.freeze-first :deep(> table > tbody > tr > td:first-child) {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: #fff;
+  border-right: 1px solid #efeff5;
+}
+.freeze-first :deep(> table > thead > tr > th:first-child) {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #fafafc;
+  border-right: 1px solid #efeff5;
+}
+.freeze-first :deep(> table > tbody > tr:hover > td:first-child) {
+  background: #f3f4f5;
 }
 </style>
