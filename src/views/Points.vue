@@ -119,20 +119,17 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { computed, onMounted } from 'vue';
+import { useStorage } from '@vueuse/core';
 import { useTrackingStore } from '../stores/trackingStore';
 import { computeAlphaPoints } from '../utils/points';
 import { hideMoney, MASK } from '../utils/privacy';
 
 const store = useTrackingStore();
 
-// Lưu "Điểm yêu cầu" + "Highlight" vào localStorage để giữ giữa các phiên.
-const REQUIRED_KEY = 'alpha:pointsRequired';
-const HIGHLIGHT_KEY = 'alpha:pointsHighlight';
-const required = ref(Number(localStorage.getItem(REQUIRED_KEY)) || 15);
-const highlightMode = ref(localStorage.getItem(HIGHLIGHT_KEY) === '1');
-watch(required, (v) => localStorage.setItem(REQUIRED_KEY, Number(v) || 15));
-watch(highlightMode, (v) => localStorage.setItem(HIGHLIGHT_KEY, v ? '1' : '0'));
+// "Điểm yêu cầu" + "Highlight" tự đồng bộ localStorage qua useStorage.
+const required = useStorage('alpha:pointsRequired', 15);
+const highlightMode = useStorage('alpha:pointsHighlight', false);
 
 // allFees không nằm trong bootstrap → load riêng khi mở tab Điểm.
 onMounted(() => {

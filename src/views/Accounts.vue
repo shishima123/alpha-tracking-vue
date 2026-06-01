@@ -1,9 +1,24 @@
 <template>
   <div class="space-y-6">
-    <!-- Form thêm account mới -->
+    <!-- Form thêm account mới (thu gọn mặc định) -->
     <div class="card">
-      <h3 class="font-semibold mb-4">Thêm tài khoản mới</h3>
-      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
+      <button
+        class="w-full flex items-center justify-between text-left"
+        @click="showForm = !showForm"
+      >
+        <h3 class="font-semibold">Thêm tài khoản mới</h3>
+        <span class="flex items-center gap-1 text-sm text-gray-500">
+          {{ showForm ? 'Thu gọn' : 'Thêm tài khoản' }}
+          <span class="transition-transform" :class="showForm ? 'rotate-180' : ''">▾</span>
+        </span>
+      </button>
+
+      <div
+        class="grid transition-[grid-template-rows] duration-300 ease-in-out"
+        :class="showForm ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'"
+      >
+      <div class="overflow-hidden">
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3 pt-4">
         <div>
           <label class="label">Tên (name)</label>
           <input v-model="form.name" class="input" placeholder="vd: bo" />
@@ -57,13 +72,27 @@
       <p class="text-xs text-gray-500 mt-2">
         Vol mỗi lệnh, Vol hiện tại, Trước, Sau — chỉnh trực tiếp trong modal 🧮 (góc dưới phải).
       </p>
+      </div>
+      </div>
     </div>
 
     <!-- Danh sách + edit inline -->
     <div class="card overflow-x-auto">
-      <h3 class="font-semibold mb-3">
-        Danh sách tài khoản ({{ store.accounts.length }})
-      </h3>
+      <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <h3 class="font-semibold">
+          Danh sách tài khoản
+          <span class="text-gray-500 font-normal">
+            ({{ visibleAccounts.length }}{{ inactiveCount ? '/' + store.accounts.length : '' }})
+          </span>
+        </h3>
+        <label
+          v-if="inactiveCount"
+          class="flex items-center gap-2 cursor-pointer text-sm text-gray-600 select-none"
+        >
+          <input v-model="showInactive" type="checkbox" class="accent-binance-yellow" />
+          Hiện {{ inactiveCount }} tài khoản không active
+        </label>
+      </div>
       <table class="w-full text-sm">
         <thead>
           <tr class="table-thead">
@@ -79,7 +108,7 @@
           </tr>
         </thead>
         <tbody>
-          <template v-for="a in store.accounts" :key="a.id">
+          <template v-for="a in visibleAccounts" :key="a.id">
             <!-- Display row -->
             <tr v-if="editingId !== a.id" class="hover:bg-binance-light/30">
               <td class="table-td text-right text-gray-700">{{ a.sortOrder ?? 0 }}</td>
@@ -152,9 +181,9 @@
               </td>
             </tr>
           </template>
-          <tr v-if="store.accounts.length === 0">
+          <tr v-if="visibleAccounts.length === 0">
             <td colspan="9" class="text-center py-6 text-gray-500">
-              Chưa có tài khoản nào
+              {{ store.accounts.length === 0 ? 'Chưa có tài khoản nào' : 'Tất cả tài khoản đang bị ẩn (không active)' }}
             </td>
           </tr>
         </tbody>
@@ -164,12 +193,22 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue';
+import { reactive, ref, computed } from 'vue';
+import { useStorage } from '@vueuse/core';
 import { useTrackingStore } from '../stores/trackingStore';
 import { useToastStore } from '../stores/toastStore';
 
 const store = useTrackingStore();
 const toast = useToastStore();
+
+const showForm = ref(false); // form thêm tài khoản thu gọn mặc định
+
+// Mặc định ẩn tài khoản không active; checkbox để hiện (lưu localStorage).
+const showInactive = useStorage('alpha:accountsShowInactive', false);
+const inactiveCount = computed(() => store.accounts.filter((a) => !a.active).length);
+const visibleAccounts = computed(() =>
+  showInactive.value ? store.accounts : store.accounts.filter((a) => a.active)
+);
 
 const DEFAULT_FORM = {
   name: '',

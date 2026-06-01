@@ -382,6 +382,7 @@
 
 <script setup>
 import { reactive, ref, computed, watch } from 'vue';
+import { useStorage } from '@vueuse/core';
 import { useTrackingStore } from '../stores/trackingStore';
 import { useToastStore } from '../stores/toastStore';
 import { fmtUSD, todayStr, isoToDmy, dmyToIso, parseDate } from '../utils/format';
@@ -400,13 +401,7 @@ const viewModes = [
   { key: 'list', label: 'Danh sách' },
   { key: 'table', label: 'Bảng' },
 ];
-const VIEW_KEY = 'alpha:projectsViewMode';
-const viewMode = ref(
-  viewModes.some((v) => v.key === localStorage.getItem(VIEW_KEY))
-    ? localStorage.getItem(VIEW_KEY)
-    : 'list'
-);
-watch(viewMode, (v) => localStorage.setItem(VIEW_KEY, v));
+const viewMode = useStorage('alpha:projectsViewMode', 'list');
 
 const projectTypes = ['FCFS', 'TGE', 'Phase', 'Pre-Tge', 'Booster'];
 

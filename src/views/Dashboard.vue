@@ -215,7 +215,8 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, reactive, ref } from 'vue';
+import { useStorage } from '@vueuse/core';
 import { useTrackingStore } from '../stores/trackingStore';
 import StatCard from '../components/StatCard.vue';
 import ProfitChart from '../components/ProfitChart.vue';
@@ -229,13 +230,7 @@ const tabs = [
   { key: 'month', label: 'Chi tiết theo tháng' },
   { key: 'account', label: 'Tổng kết theo tài khoản' },
 ];
-const TAB_KEY = 'alpha:dashboardTab';
-const activeTab = ref(
-  tabs.some((t) => t.key === localStorage.getItem(TAB_KEY))
-    ? localStorage.getItem(TAB_KEY)
-    : 'account'
-);
-watch(activeTab, (v) => localStorage.setItem(TAB_KEY, v));
+const activeTab = useStorage('alpha:dashboardTab', 'account');
 
 const monthly = computed(() => store.summary?.monthly || []);
 const total = computed(() => store.summary?.total || { revenue: 0, fee: 0, profit: 0, profitVND: 0, projects: 0 });

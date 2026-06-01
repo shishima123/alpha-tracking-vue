@@ -316,7 +316,8 @@
 </template>
 
 <script setup>
-import { reactive, computed, ref, watch, onMounted } from 'vue';
+import { reactive, computed, ref, onMounted } from 'vue';
+import { useStorage } from '@vueuse/core';
 import { useTrackingStore } from '../stores/trackingStore';
 import { useToastStore } from '../stores/toastStore';
 import { fmtUSD, parseDate, todayStr } from '../utils/format';
@@ -330,13 +331,7 @@ const viewModes = [
   { key: 'table', label: 'Bảng lịch sử' },
   { key: 'grouped', label: 'Theo ngày' },
 ];
-const VIEW_KEY = 'alpha:feesViewMode';
-const viewMode = ref(
-  viewModes.some((v) => v.key === localStorage.getItem(VIEW_KEY))
-    ? localStorage.getItem(VIEW_KEY)
-    : 'grouped'
-);
-watch(viewMode, (v) => localStorage.setItem(VIEW_KEY, v));
+const viewMode = useStorage('alpha:feesViewMode', 'grouped');
 
 const archiving = ref(false);
 const clearing = ref(false);
