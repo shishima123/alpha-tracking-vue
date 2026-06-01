@@ -133,7 +133,7 @@
               <!-- DISPLAY ROW -->
               <tr
                 v-if="editingId !== p.id"
-                class="group border-b border-[#efeff5] align-top hover:bg-blue-50/50 hover:shadow-[inset_3px_0_0_0_#2563eb] transition-all duration-150"
+                class="group border-b border-[#efeff5] align-top hover:bg-[#f3f4f5] hover:shadow-[inset_3px_0_0_0_#2563eb] transition-all duration-150"
               >
                 <!-- Dự án -->
                 <td class="px-3 py-3">
@@ -164,7 +164,7 @@
                       <tr
                         v-for="acc in accountsWithReward(p)"
                         :key="acc.id"
-                        class="border-b border-[#f3f3f5] last:border-0 hover:bg-blue-100 rounded transition-colors"
+                        class="border-b border-[#f3f3f5] last:border-0 hover:bg-[#e2e3e5] rounded transition-colors"
                       >
                         <td class="py-1 pr-2 w-1">
                           <span class="inline-block w-2.5 h-2.5 rounded-full align-middle" :style="{ background: acc.color }"></span>
@@ -291,7 +291,7 @@
           Giá trị ~ (nền vàng) = ước lượng · bấm tên dự án để sửa
         </div>
         <div class="overflow-auto max-h-[70vh] border border-[#efeff5] rounded-lg">
-          <table class="min-w-full border-separate border-spacing-0 text-sm tabular-nums">
+          <table class="pivot min-w-full border-separate border-spacing-0 text-sm tabular-nums">
             <thead>
               <tr>
                 <th class="sticky top-0 left-0 z-30 bg-[#fafafc] h-9 px-3 text-left font-semibold border-b border-r border-[#e6e6eb] min-w-[140px]">Dự án</th>
@@ -310,7 +310,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="p in visibleProjects" :key="p.id" class="bg-white hover:bg-[#fafafc]">
+              <tr v-for="p in visibleProjects" :key="p.id" class="bg-white">
                 <td
                   class="sticky left-0 z-10 bg-white px-3 py-1.5 font-semibold text-slate-800 border-b border-r border-[#efeff5] whitespace-nowrap cursor-pointer hover:text-blue-700"
                   @click="editFromTable(p)"
@@ -655,5 +655,16 @@ function del(p) {
 }
 .row-actions :deep(.n-button:hover) {
   background-color: #f1f3f5;
+}
+
+/* Hover bảng pivot: overlay xám trung tính (đồng bộ với bảng Fees). */
+.pivot tbody td {
+  transition: box-shadow 0.15s;
+}
+.pivot tbody tr:hover td {
+  box-shadow: inset 0 0 0 999px rgba(15, 23, 42, 0.05); /* hover cả row */
+}
+.pivot tbody tr:hover td:hover {
+  box-shadow: inset 0 0 0 999px rgba(15, 23, 42, 0.12); /* hover cell */
 }
 </style>

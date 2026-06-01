@@ -77,7 +77,7 @@
             <tr
               v-for="group in groupedByDate"
               :key="group.date"
-              class="group border-b border-[#efeff5] align-top hover:bg-blue-50/50 hover:shadow-[inset_3px_0_0_0_#2563eb] transition-all duration-150"
+              class="group border-b border-[#efeff5] align-top hover:bg-[#f3f4f5] hover:shadow-[inset_3px_0_0_0_#2563eb] transition-all duration-150"
             >
               <!-- TD ngày -->
               <td class="px-3 py-3">
@@ -103,7 +103,7 @@
                     <tr
                       v-for="f in group.entries"
                       :key="f.id"
-                      class="cursor-pointer hover:bg-blue-100 rounded transition-colors border-b border-[#f3f3f5] last:border-0"
+                      class="cursor-pointer hover:bg-[#e2e3e5] rounded transition-colors border-b border-[#f3f3f5] last:border-0"
                       :title="f.note ? `${accountName(f.accountId)} · ${f.note}` : accountName(f.accountId)"
                       @click="openEdit(f.date, f.accountId)"
                     >
