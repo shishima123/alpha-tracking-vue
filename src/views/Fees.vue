@@ -142,7 +142,7 @@
           </span>
         </div>
         <div class="overflow-auto max-h-[70vh] border border-[#efeff5] rounded-lg">
-          <table class="min-w-full border-separate border-spacing-0 text-sm tabular-nums">
+          <table class="pivot min-w-full border-separate border-spacing-0 text-sm tabular-nums">
             <thead>
               <tr>
                 <th
@@ -188,14 +188,14 @@
                 </td>
                 <template v-for="a in matrixAccounts" :key="row.date + '-' + a.id">
                   <td
-                    class="px-2 py-1.5 text-right border-b border-[#efeff5] cursor-pointer hover:bg-[#eef4ff] transition-colors"
+                    class="px-2 py-1.5 text-right border-b border-[#efeff5] cursor-pointer"
                     @click="openEdit(row.date, a.id)"
                   >
                     <span v-if="row.cells[a.id]" class="font-semibold text-rose-600">{{ fmtUSD(row.cells[a.id].fee) }}</span>
                     <span v-else class="text-gray-300">–</span>
                   </td>
                   <td
-                    class="px-2 py-1.5 text-right border-b border-r border-[#efeff5] cursor-pointer hover:bg-[#eef4ff] transition-colors"
+                    class="px-2 py-1.5 text-right border-b border-r border-[#efeff5] cursor-pointer"
                     @click="openEdit(row.date, a.id)"
                   >
                     <span v-if="row.cells[a.id]" class="font-medium text-slate-500">{{ row.cells[a.id].points }}</span>
@@ -533,3 +533,17 @@ function onClearOld() {
   });
 }
 </script>
+
+<style scoped>
+/* Hover bảng pivot: overlay xám trung tính (box-shadow inset) — luôn tối hơn
+   nền gốc nên không trùng màu với các dòng nền xanh/xanh lá. */
+.pivot tbody td {
+  transition: box-shadow 0.15s;
+}
+.pivot tbody tr:hover td {
+  box-shadow: inset 0 0 0 999px rgba(15, 23, 42, 0.05); /* hover cả row (nhạt) */
+}
+.pivot tbody tr:hover td:hover {
+  box-shadow: inset 0 0 0 999px rgba(15, 23, 42, 0.12); /* hover cell (đậm hơn) */
+}
+</style>

@@ -317,6 +317,14 @@ function del(a) {
 .ta-r { text-align: right; }
 .ta-c { text-align: center; }
 .actions-cell { vertical-align: middle; }
+.actions-cell :deep(.n-button) {
+  padding: 3px 10px;
+  border-radius: 6px;
+  transition: background-color 0.15s;
+}
+.actions-cell :deep(.n-button:hover) {
+  background-color: #f1f3f5;
+}
 .empty { text-align: center; padding: 24px; color: #94a3b8; }
 .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 .head-toggle {

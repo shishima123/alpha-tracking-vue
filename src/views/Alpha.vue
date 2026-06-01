@@ -195,8 +195,8 @@
                 </td>
 
                 <!-- Actions -->
-                <td class="px-3 py-3 text-right whitespace-nowrap">
-                  <div class="flex justify-end gap-1">
+                <td class="px-3 py-3">
+                  <div class="row-actions">
                     <n-button size="tiny" text type="primary" @click="startEdit(p)">Sửa</n-button>
                     <n-button size="tiny" text type="error" @click="del(p)">Xóa</n-button>
                   </div>
@@ -640,3 +640,20 @@ function del(p) {
   });
 }
 </script>
+
+<style scoped>
+.row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.row-actions :deep(.n-button) {
+  padding: 3px 10px;
+  border-radius: 6px;
+  transition: background-color 0.15s;
+}
+.row-actions :deep(.n-button:hover) {
+  background-color: #f1f3f5;
+}
+</style>
