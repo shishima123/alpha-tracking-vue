@@ -87,7 +87,7 @@
       <n-table :bordered="false" :single-line="false" size="small">
         <thead>
           <tr>
-            <th class="ta-r" style="width: 80px">Thứ tự</th>
+            <th class="ta-c" style="width: 80px">Thứ tự</th>
             <th>Tên / Display</th>
             <th style="width: 110px">Màu</th>
             <th class="ta-c" style="width: 70px">Active</th>
@@ -102,7 +102,7 @@
           <template v-for="a in visibleAccounts" :key="a.id">
             <!-- Display row -->
             <tr v-if="editingId !== a.id">
-              <td class="ta-r muted">{{ a.sortOrder ?? 0 }}</td>
+              <td class="ta-c muted">{{ a.sortOrder ?? 0 }}</td>
               <td>
                 <n-flex align="center" :size="8" :wrap="false">
                   <span class="dot" :style="{ background: a.color }"></span>
@@ -126,8 +126,8 @@
               <td class="ta-r">{{ a.pointTrade }}</td>
               <td class="ta-r">{{ a.pointHold }}</td>
               <td class="ta-r strong" style="color: #2563eb">{{ (a.pointTrade || 0) + (a.pointHold || 0) }}</td>
-              <td class="ta-r">
-                <n-flex justify="end" :size="4" :wrap="false">
+              <td class="actions-cell">
+                <n-flex justify="center" align="center" :size="12" :wrap="false">
                   <n-button size="tiny" text type="primary" @click="startEdit(a)">Sửa</n-button>
                   <n-button size="tiny" text type="error" @click="del(a)">Xóa</n-button>
                 </n-flex>
@@ -136,7 +136,7 @@
 
             <!-- Edit row -->
             <tr v-else>
-              <td><n-input-number v-model:value="editForm.sortOrder" size="small" style="width: 70px" /></td>
+              <td class="ta-c"><n-input-number v-model:value="editForm.sortOrder" size="small" style="width: 70px" /></td>
               <td>
                 <n-flex align="center" :size="8" :wrap="false">
                   <n-color-picker v-model:value="editForm.color" :show-alpha="false" :modes="['hex']" style="width: 40px" />
@@ -152,8 +152,8 @@
               <td class="ta-r strong" style="color: #2563eb">
                 {{ (Number(editForm.pointTrade) || 0) + (Number(editForm.pointHold) || 0) }}
               </td>
-              <td class="ta-r">
-                <n-flex justify="end" :size="4" :wrap="false">
+              <td class="actions-cell">
+                <n-flex justify="center" align="center" :size="12" :wrap="false">
                   <n-button size="tiny" text type="success" :disabled="savingEdit" @click="saveEdit">
                     {{ savingEdit ? '...' : 'Lưu' }}
                   </n-button>
@@ -316,6 +316,7 @@ function del(a) {
 .mono { font-family: ui-monospace, monospace; font-size: 12px; }
 .ta-r { text-align: right; }
 .ta-c { text-align: center; }
+.actions-cell { vertical-align: middle; }
 .empty { text-align: center; padding: 24px; color: #94a3b8; }
 .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 .head-toggle {
