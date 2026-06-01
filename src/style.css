@@ -33,28 +33,6 @@ body,
     border: 1px solid #efeff5; /* n-card border (rgb 239,239,245) */
     box-shadow: none;
   }
-  .btn {
-    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-1.5
-           text-sm font-medium transition-colors;
-  }
-  .btn-primary {
-    @apply btn text-white;
-    background: #2563eb;
-  }
-  .btn-primary:hover { background: #1d4ed8; }
-  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-  .btn-secondary {
-    @apply btn;
-    background: #ffffff;
-    color: #333639;
-    border: 1px solid #e0e0e6; /* n-button default border */
-  }
-  .btn-secondary:hover { color: #2563eb; border-color: #2563eb; }
-  .btn-danger {
-    @apply btn text-white;
-    background: #d03050; /* n error color */
-  }
-  .btn-danger:hover { background: #de576d; }
   .input {
     @apply w-full rounded-lg px-3 py-1.5 text-sm focus:outline-none transition-colors;
     color: #333639;
@@ -78,14 +56,6 @@ body,
   .table-thead > th {
     background: #fafafc;
     border-bottom: 1px solid #efeff5;
-  }
-  .table-td {
-    @apply px-3 py-2 text-sm;
-    color: #333639;
-    border-bottom: 1px solid #efeff5;
-  }
-  .badge {
-    @apply inline-flex items-center text-xs font-medium px-2 py-0.5 rounded;
   }
 }
 

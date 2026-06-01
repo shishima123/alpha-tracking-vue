@@ -21,25 +21,30 @@
       <div class="grid grid-cols-1 md:grid-cols-5 gap-3 pt-4">
         <div>
           <label class="label">Tên dự án</label>
-          <input v-model="form.name" class="input" placeholder="VD: BILL" />
+          <n-input v-model:value="form.name" placeholder="VD: BILL" />
         </div>
         <div>
           <label class="label">Ngày</label>
-          <input v-model="formDateIso" type="date" class="input" />
+          <n-date-picker
+            v-model:formatted-value="form.date"
+            value-format="dd/MM/yyyy"
+            format="dd/MM/yyyy"
+            type="date"
+            :clearable="false"
+            style="width: 100%"
+          />
         </div>
         <div>
           <label class="label">Điểm yêu cầu</label>
-          <input v-model.number="form.claimPoints" type="number" class="input" />
+          <n-input-number v-model:value="form.claimPoints" style="width: 100%" />
         </div>
         <div>
           <label class="label">Loại</label>
-          <select v-model="form.type" class="input">
-            <option v-for="t in projectTypes" :key="t" :value="t">{{ t }}</option>
-          </select>
+          <n-select v-model:value="form.type" :options="typeOptions" />
         </div>
         <div>
           <label class="label">Ghi chú</label>
-          <input v-model="form.note" class="input" placeholder="Không bắt buộc" />
+          <n-input v-model:value="form.note" placeholder="Không bắt buộc" />
         </div>
       </div>
 
@@ -56,31 +61,30 @@
               ></span>
               {{ acc.displayName }}
             </label>
-            <input
-              v-model.number="form.rewards[acc.id]"
-              type="number"
-              step="0.01"
-              class="input"
-              :class="form.estimated[acc.id] ? 'border-amber-400 bg-amber-50' : ''"
+            <n-input-number
+              v-model:value="form.rewards[acc.id]"
+              :step="0.01"
+              :show-button="false"
+              :status="form.estimated[acc.id] ? 'warning' : undefined"
               placeholder="0"
+              style="width: 100%"
             />
-            <label
-              class="mt-1 flex items-center gap-1 text-[11px] cursor-pointer select-none"
-              :class="form.estimated[acc.id] ? 'text-amber-600 font-medium' : 'text-gray-400'"
+            <n-checkbox
+              v-model:checked="form.estimated[acc.id]"
+              size="small"
+              style="margin-top: 4px; font-size: 11px"
             >
-              <input v-model="form.estimated[acc.id]" type="checkbox" class="accent-amber-500 w-3 h-3" />
               ước lượng
-            </label>
+            </n-checkbox>
           </div>
         </div>
       </div>
 
       <div class="flex justify-end gap-2 mt-4">
-        <button class="btn-secondary" @click="resetForm">Reset</button>
-        <button class="btn-primary" @click="submit" :disabled="saving">
-          <span v-if="saving" class="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+        <n-button @click="resetForm">Reset</n-button>
+        <n-button type="primary" :loading="saving" @click="submit">
           {{ saving ? 'Đang lưu...' : 'Lưu dự án' }}
-        </button>
+        </n-button>
       </div>
       </div>
       </div>
@@ -96,51 +100,22 @@
           </span>
         </h3>
         <div class="flex items-center gap-2 flex-wrap">
-          <div class="inline-flex rounded-lg border border-[#e0e0e6] overflow-hidden">
-            <button
-              v-for="v in viewModes"
-              :key="v.key"
-              class="px-3 py-1.5 text-sm transition-colors"
-              :class="viewMode === v.key
-                ? 'bg-[#2563eb] text-white font-medium'
-                : 'bg-white text-gray-500 hover:text-[#2563eb] hover:bg-[#fafafc]'"
-              @click="viewMode = v.key"
-            >
-              {{ v.label }}
-            </button>
-          </div>
-          <label
-            class="flex items-center gap-1.5 text-sm cursor-pointer select-none px-2.5 py-1.5 rounded-lg border transition-colors"
-            :class="onlyEstimated ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-[#e0e0e6] text-gray-500 hover:bg-[#fafafc]'"
-          >
-            <input v-model="onlyEstimated" type="checkbox" class="accent-amber-500" />
+          <n-radio-group v-model:value="viewMode" size="small">
+            <n-radio-button v-for="v in viewModes" :key="v.key" :value="v.key">{{ v.label }}</n-radio-button>
+          </n-radio-group>
+          <n-checkbox v-model:checked="onlyEstimated">
             Chỉ coin có ước lượng
-            <span v-if="estimatedCount" class="text-[11px] font-semibold">({{ estimatedCount }})</span>
-          </label>
-          <div class="relative group/search w-60">
-            <input
-              v-model="search"
-              class="input w-full pr-8"
-              placeholder="Tìm theo tên dự án..."
-            />
-            <button
-              v-if="search"
-              type="button"
-              title="Xóa tìm kiếm"
-              class="absolute right-2 top-1/2 -translate-y-1/2 grid place-items-center w-5 h-5 rounded-full text-gray-400 opacity-0 group-hover/search:opacity-100 group-focus-within/search:opacity-100 hover:bg-slate-200 hover:text-gray-700 transition"
-              @click="search = ''"
-            >
-              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M18 6 6 18M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
+            <span v-if="estimatedCount" class="text-gray-400 text-[11px]">({{ estimatedCount }})</span>
+          </n-checkbox>
+          <n-input v-model:value="search" clearable placeholder="Tìm theo tên dự án..." size="small" style="width: 240px" />
         </div>
       </div>
 
-      <div v-if="filteredProjects.length === 0" class="text-center py-8 text-gray-500">
-        {{ onlyEstimated ? 'Không có dự án nào có giá trị ước lượng' : 'Chưa có dự án nào' }}
-      </div>
+      <n-empty
+        v-if="filteredProjects.length === 0"
+        :description="onlyEstimated ? 'Không có dự án nào có giá trị ước lượng' : 'Chưa có dự án nào'"
+        style="padding: 32px 0"
+      />
 
       <!-- ===== View: Danh sách (card list) ===== -->
       <div v-else-if="viewMode === 'list'" class="overflow-x-auto">
@@ -164,18 +139,22 @@
                 <td class="px-3 py-3">
                   <div class="flex items-center gap-2 flex-wrap">
                     <span class="font-bold text-slate-800 text-base group-hover:text-blue-700 transition-colors">{{ p.name }}</span>
-                    <span class="badge" :class="typeClass(p.type)">{{ p.type }}</span>
+                    <n-tag size="small" :color="typeColor(p.type)" :bordered="false">{{ p.type }}</n-tag>
                   </div>
                   <div class="text-xs text-gray-500 mt-1">
                     {{ p.date }} · Yêu cầu <b class="text-gray-700">{{ p.claimPoints }}đ</b>
                     <span v-if="p.note" class="italic">· {{ p.note }}</span>
                   </div>
-                  <div
+                  <n-tag
                     v-if="projectHasEstimate(p)"
-                    class="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5"
+                    type="warning"
+                    size="small"
+                    :bordered="false"
+                    round
+                    style="margin-top: 6px"
                   >
                     ⚠ Có giá trị ước lượng
-                  </div>
+                  </n-tag>
                 </td>
 
                 <!-- Table nhỏ: account nào được bao nhiêu -->
@@ -217,14 +196,10 @@
 
                 <!-- Actions -->
                 <td class="px-3 py-3 text-right whitespace-nowrap">
-                  <button
-                    class="text-[#2563eb] hover:bg-[#eff4ff] text-xs font-medium px-2 py-1 rounded-md transition-colors"
-                    @click="startEdit(p)"
-                  >Sửa</button>
-                  <button
-                    class="text-[#d03050] hover:bg-[#fdeef0] text-xs font-medium px-2 py-1 rounded-md transition-colors ml-1"
-                    @click="del(p)"
-                  >Xóa</button>
+                  <div class="flex justify-end gap-1">
+                    <n-button size="tiny" text type="primary" @click="startEdit(p)">Sửa</n-button>
+                    <n-button size="tiny" text type="error" @click="del(p)">Xóa</n-button>
+                  </div>
                 </td>
               </tr>
 
@@ -234,25 +209,30 @@
                   <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
                     <div>
                       <label class="label">Tên dự án</label>
-                      <input v-model="editForm.name" class="input" />
+                      <n-input v-model:value="editForm.name" />
                     </div>
                     <div>
                       <label class="label">Ngày</label>
-                      <input v-model="editDateIso" type="date" class="input" />
+                      <n-date-picker
+                        v-model:formatted-value="editForm.date"
+                        value-format="dd/MM/yyyy"
+                        format="dd/MM/yyyy"
+                        type="date"
+                        :clearable="false"
+                        style="width: 100%"
+                      />
                     </div>
                     <div>
                       <label class="label">Điểm yêu cầu</label>
-                      <input v-model.number="editForm.claimPoints" type="number" class="input" />
+                      <n-input-number v-model:value="editForm.claimPoints" style="width: 100%" />
                     </div>
                     <div>
                       <label class="label">Loại</label>
-                      <select v-model="editForm.type" class="input">
-                        <option v-for="t in projectTypes" :key="t" :value="t">{{ t }}</option>
-                      </select>
+                      <n-select v-model:value="editForm.type" :options="typeOptions" />
                     </div>
                     <div>
                       <label class="label">Ghi chú</label>
-                      <input v-model="editForm.note" class="input" placeholder="Không bắt buộc" />
+                      <n-input v-model:value="editForm.note" placeholder="Không bắt buộc" />
                     </div>
                   </div>
 
@@ -266,21 +246,21 @@
                           <span class="inline-block w-2 h-2 rounded-full" :style="{ background: acc.color }"></span>
                           {{ acc.displayName }}
                         </label>
-                        <input
-                          v-model.number="editForm.rewards[acc.id]"
-                          type="number"
-                          step="0.01"
-                          class="input"
-                          :class="editForm.estimated[acc.id] ? 'border-amber-400 bg-amber-50' : ''"
+                        <n-input-number
+                          v-model:value="editForm.rewards[acc.id]"
+                          :step="0.01"
+                          :show-button="false"
+                          :status="editForm.estimated[acc.id] ? 'warning' : undefined"
                           placeholder="0"
+                          style="width: 100%"
                         />
-                        <label
-                          class="mt-1 flex items-center gap-1 text-[11px] cursor-pointer select-none"
-                          :class="editForm.estimated[acc.id] ? 'text-amber-600 font-medium' : 'text-gray-400'"
+                        <n-checkbox
+                          v-model:checked="editForm.estimated[acc.id]"
+                          size="small"
+                          style="margin-top: 4px; font-size: 11px"
                         >
-                          <input v-model="editForm.estimated[acc.id]" type="checkbox" class="accent-amber-500 w-3 h-3" />
                           ước lượng
-                        </label>
+                        </n-checkbox>
                       </div>
                     </div>
                   </div>
@@ -291,11 +271,10 @@
                       <span class="text-green-600 font-semibold">{{ fmtUSD(editTotal) }}</span>
                     </div>
                     <div class="flex gap-2">
-                      <button class="btn-secondary" :disabled="savingEdit" @click="cancelEdit">Hủy</button>
-                      <button class="btn-primary" :disabled="savingEdit" @click="saveEdit">
-                        <span v-if="savingEdit" class="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                      <n-button :disabled="savingEdit" @click="cancelEdit">Hủy</n-button>
+                      <n-button type="primary" :loading="savingEdit" @click="saveEdit">
                         {{ savingEdit ? 'Đang lưu...' : 'Lưu' }}
-                      </button>
+                      </n-button>
                     </div>
                   </div>
                 </td>
@@ -341,7 +320,7 @@
                 <td class="px-3 py-1.5 text-slate-600 border-b border-[#efeff5] whitespace-nowrap">{{ p.date }}</td>
                 <td class="px-2 py-1.5 text-right text-slate-500 border-b border-[#efeff5]">{{ p.claimPoints }}</td>
                 <td class="px-3 py-1.5 border-b border-r border-[#efeff5]">
-                  <span class="badge text-[11px]" :class="typeClass(p.type)">{{ p.type }}</span>
+                  <n-tag size="small" :color="typeColor(p.type)" :bordered="false">{{ p.type }}</n-tag>
                 </td>
                 <td
                   v-for="a in projectMatrixAccounts"
@@ -370,11 +349,11 @@
         v-if="filteredProjects.length > visibleProjects.length || (showAll && filteredProjects.length > recentProjects.length)"
         class="flex justify-center mt-4"
       >
-        <button class="btn-secondary text-xs" @click="showAll = !showAll">
+        <n-button size="small" tertiary @click="showAll = !showAll">
           {{ showAll
             ? `Thu gọn (chỉ ${RECENT_DAYS} ngày gần nhất — ${recentProjects.length} dự án)`
             : `Xem tất cả ${filteredProjects.length} dự án` }}
-        </button>
+        </n-button>
       </div>
     </div>
   </div>
@@ -383,9 +362,14 @@
 <script setup>
 import { reactive, ref, computed, watch } from 'vue';
 import { useStorage } from '@vueuse/core';
+import {
+  NInput, NInputNumber, NSelect, NDatePicker, NCheckbox,
+  NRadioGroup, NRadioButton, NButton, NTag, NEmpty,
+} from 'naive-ui';
 import { useTrackingStore } from '../stores/trackingStore';
 import { useToastStore } from '../stores/toastStore';
-import { fmtUSD, todayStr, isoToDmy, dmyToIso, parseDate } from '../utils/format';
+import { dialog } from '../utils/naive';
+import { fmtUSD, todayStr, parseDate } from '../utils/format';
 
 const RECENT_DAYS = 15;
 
@@ -404,6 +388,7 @@ const viewModes = [
 const viewMode = useStorage('alpha:projectsViewMode', 'list');
 
 const projectTypes = ['FCFS', 'TGE', 'Phase', 'Pre-Tge', 'Booster'];
+const typeOptions = projectTypes.map((t) => ({ label: t, value: t }));
 
 const form = reactive({
   name: '',
@@ -413,11 +398,6 @@ const form = reactive({
   note: '',
   rewards: {},
   estimated: {},
-});
-
-const formDateIso = computed({
-  get: () => dmyToIso(form.date),
-  set: (v) => { form.date = isoToDmy(v) || form.date; },
 });
 
 watch(
@@ -519,14 +499,16 @@ function accountsWithReward(p) {
   });
 }
 
-function typeClass(type) {
-  return {
-    TGE: 'bg-purple-100 text-purple-700',
-    FCFS: 'bg-blue-100 text-blue-700',
-    Phase: 'bg-green-100 text-green-700',
-    'Pre-Tge': 'bg-orange-100 text-orange-700',
-    Booster: 'bg-amber-100 text-amber-700',
-  }[type] || 'bg-gray-200 text-gray-700';
+// Màu tag theo loại dự án (n-tag :color = { color, textColor }).
+function typeColor(type) {
+  const map = {
+    TGE: { color: '#f3e8ff', textColor: '#7e22ce' },
+    FCFS: { color: '#dbeafe', textColor: '#1d4ed8' },
+    Phase: { color: '#dcfce7', textColor: '#15803d' },
+    'Pre-Tge': { color: '#ffedd5', textColor: '#c2410c' },
+    Booster: { color: '#fef3c7', textColor: '#b45309' },
+  };
+  return map[type] || { color: '#e5e7eb', textColor: '#374151' };
 }
 
 async function submit() {
@@ -584,11 +566,6 @@ const editForm = reactive({
 });
 const savingEdit = ref(false);
 
-const editDateIso = computed({
-  get: () => dmyToIso(editForm.date),
-  set: (v) => { editForm.date = isoToDmy(v) || editForm.date; },
-});
-
 const editTotal = computed(() =>
   Object.values(editForm.rewards).reduce((s, v) => s + (Number(v) || 0), 0)
 );
@@ -645,14 +622,21 @@ async function saveEdit() {
   }
 }
 
-async function del(p) {
-  if (!confirm(`Xóa dự án "${p.name}"?`)) return;
-  try {
-    await store.deleteProject(p.id);
-    await store.loadSummary();
-    toast.success(`Đã xóa "${p.name}"`);
-  } catch (e) {
-    toast.error('Lỗi: ' + e.message);
-  }
+function del(p) {
+  dialog.warning({
+    title: 'Xóa dự án',
+    content: `Xóa dự án "${p.name}"?`,
+    positiveText: 'Xóa',
+    negativeText: 'Hủy',
+    onPositiveClick: async () => {
+      try {
+        await store.deleteProject(p.id);
+        await store.loadSummary();
+        toast.success(`Đã xóa "${p.name}"`);
+      } catch (e) {
+        toast.error('Lỗi: ' + e.message);
+      }
+    },
+  });
 }
 </script>

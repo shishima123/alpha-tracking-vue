@@ -22,43 +22,24 @@
       >
       <div class="overflow-hidden">
         <div class="flex items-center gap-2 flex-wrap pt-3 mb-3">
-          <button
-            class="btn-secondary"
-            :disabled="archiving || !canArchive"
-            @click="onArchive"
-            :title="canArchive ? '' : 'Không có tháng cũ chưa tổng hợp'"
-          >
-            <span v-if="archiving" class="inline-block w-3 h-3 border-2 border-binance-yellow border-t-transparent rounded-full animate-spin mr-1"></span>
+          <n-button :loading="archiving" :disabled="!canArchive" @click="onArchive">
             Tổng hợp tháng cũ
-            <span v-if="pendingMonths.length" class="text-binance-yellow ml-1">({{ pendingMonths.length }})</span>
-          </button>
-          <button
-            class="btn-secondary text-red-600 hover:text-red-700"
-            :disabled="clearing || !canClear"
-            @click="onClearOld"
-            :title="canClear ? 'Xóa các row đã ra khỏi cửa sổ 15 ngày' : 'Không có row nào đã hết 15 ngày'"
-          >
-            <span v-if="clearing" class="inline-block w-3 h-3 border-2 border-red-600 border-t-transparent rounded-full animate-spin mr-1"></span>
+            <span v-if="pendingMonths.length" style="color: #2563eb; margin-left: 4px">({{ pendingMonths.length }})</span>
+          </n-button>
+          <n-button type="error" ghost :loading="clearing" :disabled="!canClear" @click="onClearOld">
             Xóa lịch sử cũ
-            <span v-if="canClear" class="text-gray-500 ml-1">({{ pastDaily.deletable }})</span>
-          </button>
+            <span v-if="canClear" class="text-gray-500" style="margin-left: 4px">({{ pastDaily.deletable }})</span>
+          </n-button>
         </div>
 
-        <div
-          class="px-3 py-2 rounded-lg border text-sm flex items-start gap-2"
-          :class="indicatorClass"
-        >
-          <span class="text-lg leading-none">{{ indicatorIcon }}</span>
-          <div class="flex-1">
-            <div class="font-medium">{{ indicatorTitle }}</div>
-            <div class="text-xs text-gray-500 mt-0.5">{{ indicatorDetail }}</div>
-          </div>
-        </div>
+        <n-alert :type="indicatorType" :title="indicatorTitle" :bordered="true">
+          {{ indicatorDetail }}
+        </n-alert>
       </div>
       </div>
     </div>
 
-    <!-- Phí tháng hiện tại -->
+    <!-- Tất cả phí trade -->
     <div class="card">
       <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
         <h3 class="font-semibold">
@@ -68,32 +49,20 @@
           </span>
         </h3>
         <div class="flex items-center gap-2 flex-wrap">
-          <div class="inline-flex rounded-lg border border-[#e0e0e6] overflow-hidden">
-            <button
-              v-for="v in viewModes"
-              :key="v.key"
-              class="px-3 py-1 text-sm transition-colors"
-              :class="viewMode === v.key
-                ? 'bg-[#2563eb] text-white font-medium'
-                : 'bg-white text-gray-500 hover:text-[#2563eb] hover:bg-[#fafafc]'"
-              @click="viewMode = v.key"
-            >
-              {{ v.label }}
-            </button>
-          </div>
-          <select v-model="filter.accountId" class="input w-40 py-1">
-            <option value="">Tất cả tài khoản</option>
-            <option v-for="a in store.accounts" :key="a.id" :value="a.id">
-              {{ a.displayName }}
-            </option>
-          </select>
-          <button class="btn-secondary" @click="store.loadAllFees()">↻</button>
+          <n-radio-group v-model:value="viewMode" size="small">
+            <n-radio-button v-for="v in viewModes" :key="v.key" :value="v.key">{{ v.label }}</n-radio-button>
+          </n-radio-group>
+          <n-select
+            v-model:value="filter.accountId"
+            :options="accountOptions"
+            size="small"
+            style="width: 180px"
+          />
+          <n-button size="small" quaternary circle @click="store.loadAllFees()">↻</n-button>
         </div>
       </div>
 
-      <div v-if="groupedByDate.length === 0" class="text-center py-8 text-gray-500">
-        Chưa có bản ghi nào — dùng modal 🧮 (góc dưới phải) để nhập phí.
-      </div>
+      <n-empty v-if="groupedByDate.length === 0" description="Chưa có bản ghi nào — dùng modal 🧮 (góc dưới phải) để nhập phí." style="padding: 32px 0" />
 
       <!-- ===== View: Theo ngày (grouped) ===== -->
       <div v-else-if="viewMode === 'grouped'" class="overflow-x-auto">
@@ -251,75 +220,69 @@
     </div>
 
     <!-- ===== Edit modal (matrix cell) ===== -->
-    <Teleport to="body">
-      <div
-        v-if="cellModal"
-        class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-        @click.self="closeCellModal"
-      >
-        <div class="bg-white border border-[#efeff5] rounded-lg shadow-xl w-full max-w-md">
-          <div class="px-5 py-3 border-b border-[#efeff5] flex items-center justify-between">
-            <h3 class="font-semibold">
-              {{ cellModal.existing ? 'Sửa phí' : 'Thêm phí' }}
-            </h3>
-            <button class="text-gray-500 hover:text-gray-800 text-xl leading-none" @click="closeCellModal">✕</button>
-          </div>
-          <div class="p-5 space-y-3">
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="label">Ngày</label>
-                <div class="input bg-[#fafafc] text-gray-700">{{ cellModal.date }}</div>
+    <n-modal
+      :show="!!cellModal"
+      preset="card"
+      :title="cellModal?.existing ? 'Sửa phí' : 'Thêm phí'"
+      style="max-width: 460px"
+      @update:show="(v) => { if (!v) closeCellModal(); }"
+    >
+      <template v-if="cellModal">
+        <n-grid :cols="2" :x-gap="12" :y-gap="12">
+          <n-gi>
+            <n-form-item label="Ngày" :show-feedback="false">
+              <n-input :value="cellModal.date" readonly />
+            </n-form-item>
+          </n-gi>
+          <n-gi>
+            <n-form-item label="Tài khoản" :show-feedback="false">
+              <div class="input flex items-center gap-2" style="background: #fafafc">
+                <span class="inline-block w-2.5 h-2.5 rounded-full" :style="{ background: accountColor(cellModal.accountId) }"></span>
+                {{ accountName(cellModal.accountId) }}
               </div>
-              <div>
-                <label class="label">Tài khoản</label>
-                <div class="input bg-[#fafafc] text-gray-700 flex items-center gap-2">
-                  <span class="inline-block w-2 h-2 rounded-full" :style="{ background: accountColor(cellModal.accountId) }"></span>
-                  {{ accountName(cellModal.accountId) }}
-                </div>
-              </div>
-              <div>
-                <label class="label">Phí ($)</label>
-                <input v-model.number="cellModal.fee" type="number" step="0.01" class="input text-right" autofocus />
-              </div>
-              <div>
-                <label class="label">Điểm</label>
-                <input v-model.number="cellModal.points" type="number" class="input text-right" />
-              </div>
-            </div>
-            <div>
-              <label class="label">Ghi chú</label>
-              <input v-model="cellModal.note" type="text" class="input" placeholder="Không bắt buộc" />
-            </div>
-          </div>
-          <div class="px-5 py-3 border-t border-[#efeff5] flex items-center justify-between">
-            <button
-              v-if="cellModal.existing"
-              class="text-red-600 hover:text-red-700 text-sm"
-              :disabled="cellModal.saving"
-              @click="deleteCell"
-            >
-              Xóa bản ghi
-            </button>
-            <span v-else></span>
-            <div class="flex gap-2">
-              <button class="btn-secondary" :disabled="cellModal.saving" @click="closeCellModal">Hủy</button>
-              <button class="btn-primary" :disabled="cellModal.saving" @click="saveCell">
-                <span v-if="cellModal.saving" class="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-1"></span>
-                Lưu
-              </button>
-            </div>
+            </n-form-item>
+          </n-gi>
+          <n-gi>
+            <n-form-item label="Phí ($)" :show-feedback="false">
+              <n-input-number v-model:value="cellModal.fee" :step="0.01" style="width: 100%" />
+            </n-form-item>
+          </n-gi>
+          <n-gi>
+            <n-form-item label="Điểm" :show-feedback="false">
+              <n-input-number v-model:value="cellModal.points" style="width: 100%" />
+            </n-form-item>
+          </n-gi>
+        </n-grid>
+        <n-form-item label="Ghi chú" :show-feedback="false" style="margin-top: 12px">
+          <n-input v-model:value="cellModal.note" placeholder="Không bắt buộc" />
+        </n-form-item>
+      </template>
+      <template #footer v-if="cellModal">
+        <div class="flex items-center justify-between">
+          <n-button v-if="cellModal.existing" text type="error" :disabled="cellModal.saving" @click="deleteCell">
+            Xóa bản ghi
+          </n-button>
+          <span v-else></span>
+          <div class="flex gap-2">
+            <n-button :disabled="cellModal.saving" @click="closeCellModal">Hủy</n-button>
+            <n-button type="primary" :loading="cellModal.saving" @click="saveCell">Lưu</n-button>
           </div>
         </div>
-      </div>
-    </Teleport>
+      </template>
+    </n-modal>
   </div>
 </template>
 
 <script setup>
 import { reactive, computed, ref, onMounted } from 'vue';
 import { useStorage } from '@vueuse/core';
+import {
+  NButton, NSelect, NRadioGroup, NRadioButton, NAlert, NEmpty,
+  NModal, NGrid, NGi, NFormItem, NInput, NInputNumber,
+} from 'naive-ui';
 import { useTrackingStore } from '../stores/trackingStore';
 import { useToastStore } from '../stores/toastStore';
+import { dialog } from '../utils/naive';
 import { fmtUSD, parseDate, todayStr } from '../utils/format';
 
 const store = useTrackingStore();
@@ -332,6 +295,11 @@ const viewModes = [
   { key: 'grouped', label: 'Theo ngày' },
 ];
 const viewMode = useStorage('alpha:feesViewMode', 'grouped');
+
+const accountOptions = computed(() => [
+  { label: 'Tất cả tài khoản', value: '' },
+  ...store.accounts.map((a) => ({ label: a.displayName, value: a.id })),
+]);
 
 const archiving = ref(false);
 const clearing = ref(false);
@@ -432,14 +400,15 @@ function dateBg(row) {
 
 // ===== Past-daily indicator =====
 const pastDaily = computed(() => store.pastDaily || { total: 0, deletable: 0, active: 0, safeToDelete: false, pendingArchiveMonths: [] });
-const hasPastDaily = computed(() => pastDaily.value.total > 0);
 const canClear = computed(() => pastDaily.value.deletable > 0);
 const pendingMonths = computed(() => pastDaily.value.pendingArchiveMonths || []);
 const canArchive = computed(() => pendingMonths.value.length > 0);
 
-const indicatorIcon = computed(() => {
-  if (canClear.value) return '✓';
-  return 'ℹ';
+const indicatorIcon = computed(() => (canClear.value ? '✓' : 'ℹ'));
+const indicatorType = computed(() => {
+  if (canClear.value) return 'success';
+  if (pastDaily.value.active > 0) return 'warning';
+  return 'info';
 });
 const indicatorTitle = computed(() => {
   if (canClear.value) return `Có thể xóa ${pastDaily.value.deletable} bản ghi đã hết 15 ngày`;
@@ -459,11 +428,6 @@ const indicatorDetail = computed(() => {
       : 'Tất cả bản ghi cũ vẫn trong cửa sổ 15 ngày — chưa có gì để xóa.';
   }
   return 'Sheet Fees chỉ chứa tháng hiện tại.';
-});
-const indicatorClass = computed(() => {
-  if (canClear.value) return 'bg-green-50 border-green-300 text-green-700';
-  if (pastDaily.value.active > 0) return 'bg-amber-50 border-amber-300 text-amber-700';
-  return 'bg-[#f5f5f7] border-[#e6e6eb] text-gray-600';
 });
 
 // ===== Helpers =====
@@ -510,18 +474,26 @@ async function saveCell() {
   }
 }
 
-async function deleteCell() {
+function deleteCell() {
   if (!cellModal.value?.existing) return;
-  if (!confirm(`Xóa bản ghi ${cellModal.value.date} - ${accountName(cellModal.value.accountId)}?`)) return;
-  cellModal.value.saving = true;
-  try {
-    await store.deleteFee(cellModal.value.existing.id);
-    toast.success('Đã xóa');
-    cellModal.value = null;
-  } catch (e) {
-    toast.error('Lỗi: ' + e.message);
-    cellModal.value.saving = false;
-  }
+  const m = cellModal.value;
+  dialog.warning({
+    title: 'Xóa bản ghi',
+    content: `Xóa bản ghi ${m.date} - ${accountName(m.accountId)}?`,
+    positiveText: 'Xóa',
+    negativeText: 'Hủy',
+    onPositiveClick: async () => {
+      m.saving = true;
+      try {
+        await store.deleteFee(m.existing.id);
+        toast.success('Đã xóa');
+        cellModal.value = null;
+      } catch (e) {
+        toast.error('Lỗi: ' + e.message);
+        m.saving = false;
+      }
+    },
+  });
 }
 
 // ===== Management actions =====
@@ -537,19 +509,27 @@ async function onArchive() {
   }
 }
 
-async function onClearOld() {
-  if (!confirm(`Xóa ${pastDaily.value.deletable} bản ghi đã hết cửa sổ 15 ngày (không còn tính điểm)? Các row còn trong cửa sổ và tháng hiện tại được giữ lại.`)) return;
+function onClearOld() {
+  let content = `Xóa ${pastDaily.value.deletable} bản ghi đã hết cửa sổ 15 ngày (không còn tính điểm)? Các row còn trong cửa sổ và tháng hiện tại được giữ lại.`;
   if (pendingMonths.value.length > 0) {
-    if (!confirm(`Còn ${pendingMonths.value.length} tháng chưa archive — sau khi clear sẽ mất khỏi Dashboard. Tiếp tục?`)) return;
+    content += ` Lưu ý: còn ${pendingMonths.value.length} tháng chưa archive — sau khi clear sẽ mất khỏi Dashboard.`;
   }
-  clearing.value = true;
-  try {
-    const res = await store.clearOldDaily();
-    toast.success(`Đã xóa ${res?.removed ?? 0} bản ghi cũ`);
-  } catch (e) {
-    toast.error('Lỗi clear: ' + e.message);
-  } finally {
-    clearing.value = false;
-  }
+  dialog.warning({
+    title: 'Xóa lịch sử cũ',
+    content,
+    positiveText: 'Xóa',
+    negativeText: 'Hủy',
+    onPositiveClick: async () => {
+      clearing.value = true;
+      try {
+        const res = await store.clearOldDaily();
+        toast.success(`Đã xóa ${res?.removed ?? 0} bản ghi cũ`);
+      } catch (e) {
+        toast.error('Lỗi clear: ' + e.message);
+      } finally {
+        clearing.value = false;
+      }
+    },
+  });
 }
 </script>
