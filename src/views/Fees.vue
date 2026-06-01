@@ -62,7 +62,7 @@
         </div>
       </div>
 
-      <n-empty v-if="groupedByDate.length === 0" description="Chưa có bản ghi nào — dùng modal 🧮 (góc dưới phải) để nhập phí." style="padding: 32px 0" />
+      <n-empty v-if="groupedByDate.length === 0" description="Chưa có bản ghi nào — bấm nút Máy tính (góc trên phải) để nhập phí." style="padding: 32px 0" />
 
       <!-- ===== View: Theo ngày (grouped) ===== -->
       <div v-else-if="viewMode === 'grouped'" class="overflow-x-auto">

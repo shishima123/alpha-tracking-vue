@@ -64,7 +64,7 @@
             </n-button>
           </n-flex>
           <n-text depth="3" style="font-size: 12px; display: block; margin-top: 8px">
-            Vol mỗi lệnh, Vol hiện tại, Trước, Sau — chỉnh trực tiếp trong modal 🧮 (góc dưới phải).
+            Vol mỗi lệnh, Vol hiện tại, Trước, Sau — chỉnh trực tiếp trong Máy tính (nút góc trên phải).
           </n-text>
         </div>
       </n-collapse-transition>
@@ -317,6 +317,9 @@ function del(a) {
 .ta-r { text-align: right; }
 .ta-c { text-align: center; }
 .actions-cell { vertical-align: middle; }
+/* Hover row — đồng bộ với các bảng khác. */
+tbody td { transition: background-color 0.15s; }
+tbody tr:hover > td { background-color: #f3f4f5; }
 .actions-cell :deep(.n-button) {
   padding: 3px 10px;
   border-radius: 6px;

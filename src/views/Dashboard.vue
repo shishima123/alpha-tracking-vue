@@ -37,39 +37,7 @@
     <!-- Tabbed summary -->
     <n-card>
       <n-tabs v-model:value="activeTab" type="line" animated>
-        <!-- Per-account summary -->
-        <n-tab-pane name="account" tab="Tổng kết theo tài khoản">
-          <n-table :bordered="false" :single-line="false" size="small">
-            <thead>
-              <tr>
-                <th>Tài khoản</th>
-                <th class="ta-r">Thu nhập ($)</th>
-                <th class="ta-r">Phí ($)</th>
-                <th class="ta-r">Lợi nhuận ($)</th>
-                <th class="ta-r">Lợi nhuận (VND)</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in accountTotals" :key="row.id">
-                <td>
-                  <n-flex align="center" :size="8" :wrap="false">
-                    <span class="dot" :style="{ background: accountColor(row.id) }"></span>
-                    <span class="strong">{{ accountName(row.id) }}</span>
-                  </n-flex>
-                </td>
-                <td class="ta-r rev">{{ fmtUSD(row.revenue) }}</td>
-                <td class="ta-r fee">-{{ fmtUSD(row.fee) }}</td>
-                <td class="ta-r strong" :class="row.profit >= 0 ? 'pos' : 'neg'">{{ fmtUSD(row.profit) }}</td>
-                <td class="ta-r muted">{{ fmtVND(row.profit * store.vndRate) }}</td>
-              </tr>
-              <tr v-if="accountTotals.length === 0">
-                <td colspan="5" class="empty">Chưa có dữ liệu</td>
-              </tr>
-            </tbody>
-          </n-table>
-        </n-tab-pane>
-
-        <!-- Monthly table -->
+                <!-- Monthly table -->
         <n-tab-pane name="month" tab="Chi tiết theo tháng">
           <n-text depth="3" style="font-size: 12px; display: block; text-align: right; margin-bottom: 8px">
             Bấm vào tháng để xem chi tiết từng tài khoản
@@ -106,7 +74,7 @@
                     <div v-if="!hasAccountBreakdown(m)" class="muted" style="font-style: italic; font-size: 12px; margin-top: 8px">
                       Không có dữ liệu chi tiết
                     </div>
-                    <n-table v-else :bordered="false" :single-line="false" size="small" style="margin-top: 8px">
+                    <n-table v-else class="hov-table" :bordered="false" :single-line="false" size="small" style="margin-top: 8px">
                       <thead>
                         <tr>
                           <th>Tài khoản</th>
@@ -145,6 +113,38 @@
                 : `Xem tất cả ${monthlyDesc.length} tháng` }}
             </n-button>
           </n-flex>
+        </n-tab-pane>
+
+        <!-- Per-account summary -->
+        <n-tab-pane name="account" tab="Tổng kết theo tài khoản">
+          <n-table class="hov-table" :bordered="false" :single-line="false" size="small">
+            <thead>
+              <tr>
+                <th>Tài khoản</th>
+                <th class="ta-r">Thu nhập ($)</th>
+                <th class="ta-r">Phí ($)</th>
+                <th class="ta-r">Lợi nhuận ($)</th>
+                <th class="ta-r">Lợi nhuận (VND)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in accountTotals" :key="row.id">
+                <td>
+                  <n-flex align="center" :size="8" :wrap="false">
+                    <span class="dot" :style="{ background: accountColor(row.id) }"></span>
+                    <span class="strong">{{ accountName(row.id) }}</span>
+                  </n-flex>
+                </td>
+                <td class="ta-r rev">{{ fmtUSD(row.revenue) }}</td>
+                <td class="ta-r fee">-{{ fmtUSD(row.fee) }}</td>
+                <td class="ta-r strong" :class="row.profit >= 0 ? 'pos' : 'neg'">{{ fmtUSD(row.profit) }}</td>
+                <td class="ta-r muted">{{ fmtVND(row.profit * store.vndRate) }}</td>
+              </tr>
+              <tr v-if="accountTotals.length === 0">
+                <td colspan="5" class="empty">Chưa có dữ liệu</td>
+              </tr>
+            </tbody>
+          </n-table>
         </n-tab-pane>
       </n-tabs>
     </n-card>
@@ -233,4 +233,14 @@ function accountColor(id) {
 .empty { text-align: center; padding: 24px; color: #94a3b8; }
 .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 .clickable { cursor: pointer; }
+
+/* Hover row — đồng bộ với các bảng khác (#f3f4f5 = overlay xám trên nền trắng). */
+.hov-table tbody td,
+tr.clickable > td {
+  transition: background-color 0.15s;
+}
+.hov-table tbody tr:hover > td,
+tr.clickable:hover > td {
+  background-color: #f3f4f5;
+}
 </style>
