@@ -1,202 +1,188 @@
 <template>
-  <div class="space-y-6">
+  <n-flex vertical :size="20">
     <!-- Form thêm account mới (thu gọn mặc định) -->
-    <div class="card">
-      <button
-        class="w-full flex items-center justify-between text-left"
-        @click="showForm = !showForm"
-      >
-        <h3 class="font-semibold">Thêm tài khoản mới</h3>
-        <span class="flex items-center gap-1 text-sm text-gray-500">
+    <n-card>
+      <div class="head-toggle" @click="showForm = !showForm">
+        <span class="card-title">Thêm tài khoản mới</span>
+        <n-flex align="center" :size="4" class="muted">
           {{ showForm ? 'Thu gọn' : 'Thêm tài khoản' }}
-          <span class="transition-transform" :class="showForm ? 'rotate-180' : ''">▾</span>
-        </span>
-      </button>
+          <span class="chevron" :class="{ open: showForm }">▾</span>
+        </n-flex>
+      </div>
 
-      <div
-        class="grid transition-[grid-template-rows] duration-300 ease-in-out"
-        :class="showForm ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'"
-      >
-      <div class="overflow-hidden">
-      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3 pt-4">
-        <div>
-          <label class="label">Tên (name)</label>
-          <input v-model="form.name" class="input" placeholder="vd: bo" />
+      <n-collapse-transition :show="showForm">
+        <div style="padding-top: 16px">
+          <n-grid cols="2 m:3 l:7" responsive="screen" :x-gap="12" :y-gap="8">
+            <n-gi>
+              <n-form-item label="Tên (name)" :show-feedback="false">
+                <n-input v-model:value="form.name" placeholder="vd: bo" />
+              </n-form-item>
+            </n-gi>
+            <n-gi>
+              <n-form-item label="Display name" :show-feedback="false">
+                <n-input v-model:value="form.displayName" placeholder="vd: Bo" />
+              </n-form-item>
+            </n-gi>
+            <n-gi>
+              <n-form-item label="Màu" :show-feedback="false">
+                <n-color-picker v-model:value="form.color" :show-alpha="false" :modes="['hex']" />
+              </n-form-item>
+            </n-gi>
+            <n-gi>
+              <n-form-item label="Active" :show-feedback="false">
+                <n-switch v-model:value="form.active">
+                  <template #checked>Có</template>
+                  <template #unchecked>Không</template>
+                </n-switch>
+              </n-form-item>
+            </n-gi>
+            <n-gi>
+              <n-form-item label="Điểm Trade" :show-feedback="false">
+                <n-input-number v-model:value="form.pointTrade" :min="1" :max="20" style="width: 100%" />
+              </n-form-item>
+            </n-gi>
+            <n-gi>
+              <n-form-item label="Điểm Hold" :show-feedback="false">
+                <n-input-number v-model:value="form.pointHold" :min="0" style="width: 100%" />
+              </n-form-item>
+            </n-gi>
+            <n-gi>
+              <n-form-item label="Thứ tự" :show-feedback="false">
+                <n-input-number v-model:value="form.sortOrder" placeholder="0" style="width: 100%" />
+              </n-form-item>
+            </n-gi>
+          </n-grid>
+
+          <n-checkbox v-model:checked="form.hideInPoints" style="margin-top: 8px">
+            Ẩn ở tab Điểm Alpha
+          </n-checkbox>
+
+          <n-flex justify="end" :size="8" style="margin-top: 16px">
+            <n-button @click="resetForm">Reset</n-button>
+            <n-button type="primary" :loading="saving" :disabled="!form.name.trim()" @click="submit">
+              {{ saving ? 'Đang lưu...' : 'Tạo tài khoản' }}
+            </n-button>
+          </n-flex>
+          <n-text depth="3" style="font-size: 12px; display: block; margin-top: 8px">
+            Vol mỗi lệnh, Vol hiện tại, Trước, Sau — chỉnh trực tiếp trong modal 🧮 (góc dưới phải).
+          </n-text>
         </div>
-        <div>
-          <label class="label">Display name</label>
-          <input v-model="form.displayName" class="input" placeholder="vd: Bo" />
-        </div>
-        <div>
-          <label class="label">Màu</label>
-          <input v-model="form.color" type="color" class="input h-10 p-1" />
-        </div>
-        <div>
-          <label class="label">Active</label>
-          <label class="input flex items-center gap-2 cursor-pointer">
-            <input v-model="form.active" type="checkbox" />
-            <span class="text-sm">{{ form.active ? 'Có' : 'Không' }}</span>
-          </label>
-        </div>
-        <div>
-          <label class="label">Điểm Trade</label>
-          <input v-model.number="form.pointTrade" type="number" min="1" max="20" class="input" />
-        </div>
-        <div>
-          <label class="label">Điểm Hold</label>
-          <input v-model.number="form.pointHold" type="number" min="0" class="input" />
-        </div>
-        <div>
-          <label class="label">Thứ tự</label>
-          <input
-            v-model.number="form.sortOrder"
-            type="number"
-            class="input"
-            placeholder="0"
-          />
-        </div>
-      </div>
-      <div class="mt-3">
-        <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-700 w-fit">
-          <input v-model="form.hideInPoints" type="checkbox" class="accent-binance-yellow" />
-          Ẩn ở tab Điểm Alpha
-        </label>
-      </div>
-      <div class="flex items-center justify-end gap-2 mt-4">
-        <button class="btn-secondary" @click="resetForm">Reset</button>
-        <button class="btn-primary" :disabled="saving || !form.name.trim()" @click="submit">
-          <span v-if="saving" class="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-          {{ saving ? 'Đang lưu...' : 'Tạo tài khoản' }}
-        </button>
-      </div>
-      <p class="text-xs text-gray-500 mt-2">
-        Vol mỗi lệnh, Vol hiện tại, Trước, Sau — chỉnh trực tiếp trong modal 🧮 (góc dưới phải).
-      </p>
-      </div>
-      </div>
-    </div>
+      </n-collapse-transition>
+    </n-card>
 
     <!-- Danh sách + edit inline -->
-    <div class="card overflow-x-auto">
-      <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-        <h3 class="font-semibold">
+    <n-card>
+      <n-flex justify="space-between" align="center" :wrap="true" style="margin-bottom: 12px">
+        <span class="card-title">
           Danh sách tài khoản
-          <span class="text-gray-500 font-normal">
+          <span class="muted" style="font-weight: 400">
             ({{ visibleAccounts.length }}{{ inactiveCount ? '/' + store.accounts.length : '' }})
           </span>
-        </h3>
-        <label
-          v-if="inactiveCount"
-          class="flex items-center gap-2 cursor-pointer text-sm text-gray-600 select-none"
-        >
-          <input v-model="showInactive" type="checkbox" class="accent-binance-yellow" />
+        </span>
+        <n-checkbox v-if="inactiveCount" v-model:checked="showInactive">
           Hiện {{ inactiveCount }} tài khoản không active
-        </label>
-      </div>
-      <table class="w-full text-sm">
+        </n-checkbox>
+      </n-flex>
+
+      <n-table :bordered="false" :single-line="false" size="small">
         <thead>
-          <tr class="table-thead">
-            <th class="px-2 py-2 text-right w-20">Thứ tự</th>
-            <th class="px-3 py-2">Tên / Display</th>
-            <th class="px-2 py-2 w-24">Màu</th>
-            <th class="px-2 py-2 text-center w-16">Active</th>
-            <th class="px-2 py-2 text-center w-20" title="Ẩn ở tab Điểm Alpha">Ẩn điểm</th>
-            <th class="px-2 py-2 text-right w-20">Đ.Trade</th>
-            <th class="px-2 py-2 text-right w-20">Đ.Hold</th>
-            <th class="px-2 py-2 text-right w-16">Đ.Tổng</th>
-            <th class="px-3 py-2 w-24 text-right"></th>
+          <tr>
+            <th class="ta-r" style="width: 80px">Thứ tự</th>
+            <th>Tên / Display</th>
+            <th style="width: 110px">Màu</th>
+            <th class="ta-c" style="width: 70px">Active</th>
+            <th class="ta-c" style="width: 80px">Ẩn điểm</th>
+            <th class="ta-r" style="width: 80px">Đ.Trade</th>
+            <th class="ta-r" style="width: 80px">Đ.Hold</th>
+            <th class="ta-r" style="width: 70px">Đ.Tổng</th>
+            <th style="width: 110px"></th>
           </tr>
         </thead>
         <tbody>
           <template v-for="a in visibleAccounts" :key="a.id">
             <!-- Display row -->
-            <tr v-if="editingId !== a.id" class="hover:bg-binance-light/30">
-              <td class="table-td text-right text-gray-700">{{ a.sortOrder ?? 0 }}</td>
-              <td class="table-td">
-                <div class="flex items-center gap-2">
-                  <span class="inline-block w-3 h-3 rounded-full" :style="{ background: a.color }"></span>
+            <tr v-if="editingId !== a.id">
+              <td class="ta-r muted">{{ a.sortOrder ?? 0 }}</td>
+              <td>
+                <n-flex align="center" :size="8" :wrap="false">
+                  <span class="dot" :style="{ background: a.color }"></span>
                   <div>
-                    <div class="font-medium">{{ a.displayName }}</div>
-                    <div class="text-xs text-gray-500">{{ a.id }}</div>
+                    <div class="strong">{{ a.displayName }}</div>
+                    <div class="muted" style="font-size: 12px">{{ a.id }}</div>
                   </div>
-                </div>
+                </n-flex>
               </td>
-              <td class="table-td text-xs text-gray-500 font-mono">{{ a.color }}</td>
-              <td class="table-td text-center">
-                <span class="badge" :class="a.active ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'">
+              <td class="muted mono">{{ a.color }}</td>
+              <td class="ta-c">
+                <n-tag size="small" :type="a.active ? 'success' : 'default'" :bordered="false">
                   {{ a.active ? '✓' : '✕' }}
-                </span>
+                </n-tag>
               </td>
-              <td class="table-td text-center">
-                <span class="badge" :class="a.hideInPoints ? 'bg-amber-100 text-amber-700' : 'bg-gray-200 text-gray-500'">
+              <td class="ta-c">
+                <n-tag size="small" :type="a.hideInPoints ? 'warning' : 'default'" :bordered="false">
                   {{ a.hideInPoints ? '✓' : '—' }}
-                </span>
+                </n-tag>
               </td>
-              <td class="table-td text-right">{{ a.pointTrade }}</td>
-              <td class="table-td text-right">{{ a.pointHold }}</td>
-              <td class="table-td text-right text-binance-yellow font-semibold">
-                {{ (a.pointTrade || 0) + (a.pointHold || 0) }}
-              </td>
-              <td class="table-td text-right space-x-2 whitespace-nowrap">
-                <button class="text-binance-yellow hover:text-blue-700 text-xs" @click="startEdit(a)">Sửa</button>
-                <button class="text-red-600 hover:text-red-700 text-xs" @click="del(a)">Xóa</button>
+              <td class="ta-r">{{ a.pointTrade }}</td>
+              <td class="ta-r">{{ a.pointHold }}</td>
+              <td class="ta-r strong" style="color: #2563eb">{{ (a.pointTrade || 0) + (a.pointHold || 0) }}</td>
+              <td class="ta-r">
+                <n-flex justify="end" :size="4" :wrap="false">
+                  <n-button size="tiny" text type="primary" @click="startEdit(a)">Sửa</n-button>
+                  <n-button size="tiny" text type="error" @click="del(a)">Xóa</n-button>
+                </n-flex>
               </td>
             </tr>
 
             <!-- Edit row -->
-            <tr v-else class="bg-binance-light/30">
-              <td class="table-td">
-                <input v-model.number="editForm.sortOrder" type="number" class="input py-1 px-2 text-right w-16" />
+            <tr v-else>
+              <td><n-input-number v-model:value="editForm.sortOrder" size="small" style="width: 70px" /></td>
+              <td>
+                <n-flex align="center" :size="8" :wrap="false">
+                  <n-color-picker v-model:value="editForm.color" :show-alpha="false" :modes="['hex']" style="width: 40px" />
+                  <n-input v-model:value="editForm.displayName" size="small" placeholder="Display name" />
+                </n-flex>
+                <div class="muted" style="font-size: 12px; margin-top: 4px">{{ a.id }} (cố định)</div>
               </td>
-              <td class="table-td">
-                <div class="flex items-center gap-2">
-                  <input v-model="editForm.color" type="color" class="w-8 h-8 rounded border border-binance-light p-0 cursor-pointer shrink-0" />
-                  <input v-model="editForm.displayName" class="input py-1 min-w-0 flex-1" placeholder="Display name" />
-                </div>
-                <div class="text-xs text-gray-500 mt-1">{{ a.id }} (cố định)</div>
-              </td>
-              <td class="table-td text-xs text-gray-500 font-mono">{{ editForm.color }}</td>
-              <td class="table-td text-center">
-                <input v-model="editForm.active" type="checkbox" />
-              </td>
-              <td class="table-td text-center">
-                <input v-model="editForm.hideInPoints" type="checkbox" class="accent-binance-yellow" />
-              </td>
-              <td class="table-td">
-                <input v-model.number="editForm.pointTrade" type="number" min="1" max="20" class="input py-1 px-2 text-right w-16" />
-              </td>
-              <td class="table-td">
-                <input v-model.number="editForm.pointHold" type="number" min="0" class="input py-1 px-2 text-right w-16" />
-              </td>
-              <td class="table-td text-right text-binance-yellow font-semibold">
+              <td class="muted mono">{{ editForm.color }}</td>
+              <td class="ta-c"><n-switch v-model:value="editForm.active" size="small" /></td>
+              <td class="ta-c"><n-checkbox v-model:checked="editForm.hideInPoints" /></td>
+              <td><n-input-number v-model:value="editForm.pointTrade" :min="1" :max="20" size="small" style="width: 70px" /></td>
+              <td><n-input-number v-model:value="editForm.pointHold" :min="0" size="small" style="width: 70px" /></td>
+              <td class="ta-r strong" style="color: #2563eb">
                 {{ (Number(editForm.pointTrade) || 0) + (Number(editForm.pointHold) || 0) }}
               </td>
-              <td class="table-td text-right space-x-2 whitespace-nowrap">
-                <button class="text-green-600 hover:text-green-700 text-xs" :disabled="savingEdit" @click="saveEdit">
-                  {{ savingEdit ? '...' : 'Lưu' }}
-                </button>
-                <button class="text-gray-500 hover:text-gray-700 text-xs" :disabled="savingEdit" @click="cancelEdit">
-                  Hủy
-                </button>
+              <td class="ta-r">
+                <n-flex justify="end" :size="4" :wrap="false">
+                  <n-button size="tiny" text type="success" :disabled="savingEdit" @click="saveEdit">
+                    {{ savingEdit ? '...' : 'Lưu' }}
+                  </n-button>
+                  <n-button size="tiny" text :disabled="savingEdit" @click="cancelEdit">Hủy</n-button>
+                </n-flex>
               </td>
             </tr>
           </template>
           <tr v-if="visibleAccounts.length === 0">
-            <td colspan="9" class="text-center py-6 text-gray-500">
+            <td colspan="9" class="empty">
               {{ store.accounts.length === 0 ? 'Chưa có tài khoản nào' : 'Tất cả tài khoản đang bị ẩn (không active)' }}
             </td>
           </tr>
         </tbody>
-      </table>
-    </div>
-  </div>
+      </n-table>
+    </n-card>
+  </n-flex>
 </template>
 
 <script setup>
 import { reactive, ref, computed } from 'vue';
 import { useStorage } from '@vueuse/core';
+import {
+  NFlex, NCard, NButton, NCollapseTransition, NGrid, NGi, NFormItem,
+  NInput, NInputNumber, NColorPicker, NSwitch, NCheckbox, NTable, NTag, NText,
+} from 'naive-ui';
 import { useTrackingStore } from '../stores/trackingStore';
 import { useToastStore } from '../stores/toastStore';
+import { dialog } from '../utils/naive';
 
 const store = useTrackingStore();
 const toast = useToastStore();
@@ -305,13 +291,40 @@ async function saveEdit() {
   }
 }
 
-async function del(a) {
-  if (!confirm(`Xóa tài khoản "${a.displayName}" (id: ${a.id})? Phí + reward đã ghi sẽ KHÔNG bị xóa nhưng sẽ trỏ về account đã mất.`)) return;
-  try {
-    await store.removeAccount(a.id);
-    toast.success(`Đã xóa "${a.displayName}"`);
-  } catch (e) {
-    toast.error('Lỗi xóa: ' + e.message);
-  }
+function del(a) {
+  dialog.warning({
+    title: 'Xóa tài khoản',
+    content: `Xóa "${a.displayName}" (id: ${a.id})? Phí + reward đã ghi sẽ KHÔNG bị xóa nhưng sẽ trỏ về account đã mất.`,
+    positiveText: 'Xóa',
+    negativeText: 'Hủy',
+    onPositiveClick: async () => {
+      try {
+        await store.removeAccount(a.id);
+        toast.success(`Đã xóa "${a.displayName}"`);
+      } catch (e) {
+        toast.error('Lỗi xóa: ' + e.message);
+      }
+    },
+  });
 }
 </script>
+
+<style scoped>
+.card-title { font-weight: 600; }
+.muted { color: #94a3b8; }
+.strong { font-weight: 600; }
+.mono { font-family: ui-monospace, monospace; font-size: 12px; }
+.ta-r { text-align: right; }
+.ta-c { text-align: center; }
+.empty { text-align: center; padding: 24px; color: #94a3b8; }
+.dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.head-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+.chevron { transition: transform 0.2s; display: inline-block; }
+.chevron.open { transform: rotate(180deg); }
+</style>

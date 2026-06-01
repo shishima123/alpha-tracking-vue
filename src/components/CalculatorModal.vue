@@ -1,289 +1,182 @@
 <template>
-  <Teleport to="body">
-    <div
-      v-if="calc.open"
-      class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm flex items-start md:items-center justify-center p-3 md:p-6 overflow-y-auto"
-    >
-      <div class="bg-binance-gray border border-binance-light rounded-2xl shadow-xl w-full max-w-3xl my-auto">
-        <!-- Header -->
-        <div class="flex items-center justify-between px-5 py-3 border-b border-binance-light">
-          <h2 class="font-semibold text-lg flex items-center gap-2">
-            <svg class="w-5 h-5 text-binance-yellow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect width="16" height="20" x="4" y="2" rx="2" />
-              <line x1="8" x2="16" y1="6" y2="6" />
-              <line x1="16" x2="16" y1="14" y2="18" />
-              <path d="M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M8 18h.01M12 18h.01" />
-            </svg>
-            Máy tính Volume → Phí Alpha
-          </h2>
-          <button
-            class="text-gray-500 hover:text-gray-800 text-xl leading-none"
-            @click="calc.hide()"
-          >
-            ✕
-          </button>
-        </div>
+  <n-modal
+    :show="calc.open"
+    preset="card"
+    style="max-width: 760px"
+    :bordered="false"
+    @update:show="(v) => { if (!v) calc.hide(); }"
+  >
+    <template #header>
+      <n-flex align="center" :size="8">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect width="16" height="20" x="4" y="2" rx="2" /><line x1="8" x2="16" y1="6" y2="6" /><line x1="16" x2="16" y1="14" y2="18" /><path d="M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M8 18h.01M12 18h.01" />
+        </svg>
+        <span style="font-weight: 600; font-size: 17px">Máy tính Volume → Phí Alpha</span>
+      </n-flex>
+    </template>
 
-        <div v-if="!store.activeAccounts.length" class="p-6 text-center text-gray-500">
-          Chưa có tài khoản nào. Tạo tài khoản ở tab Dashboard trước.
-        </div>
+    <n-empty v-if="!store.activeAccounts.length" description="Chưa có tài khoản nào. Tạo tài khoản ở tab Tài khoản trước." style="padding: 24px 0" />
 
-        <div v-else class="p-5 space-y-4">
-          <!-- Account selector -->
-          <div class="flex items-center gap-3">
-            <label class="label !mb-0">Tài khoản:</label>
-            <select v-model="selectedId" class="input flex-1 max-w-xs">
-              <option
-                v-for="a in store.activeAccounts"
-                :key="a.id"
-                :value="a.id"
-              >
-                {{ a.displayName }}
-              </option>
-            </select>
-            <span
-              v-if="selectedAccount"
-              class="inline-block w-3 h-3 rounded-full"
-              :style="{ background: selectedAccount.color }"
-            ></span>
-          </div>
+    <n-flex v-else vertical :size="16">
+      <!-- Account selector -->
+      <n-flex align="center" :size="12">
+        <span class="muted">Tài khoản:</span>
+        <n-select v-model:value="selectedId" :options="accountOptions" style="max-width: 280px" />
+        <span v-if="selectedAccount" class="dot-lg" :style="{ background: selectedAccount.color }"></span>
+      </n-flex>
 
-          <!-- Config section -->
-          <div class="border border-binance-light rounded-xl p-3">
-            <div class="text-xs text-gray-500 mb-2 uppercase tracking-wider">
-              Cấu hình điểm
-            </div>
-            <div class="grid grid-cols-3 gap-3">
-              <div>
-                <label class="label">Điểm Trade</label>
-                <input
-                  v-model.number="cfg.pointTrade"
-                  type="number"
-                  min="1"
-                  max="20"
-                  class="input"
-                  @change="persistCfg"
-                />
-              </div>
-              <div>
-                <label class="label">Điểm Hold</label>
-                <input
-                  v-model.number="cfg.pointHold"
-                  type="number"
-                  min="0"
-                  class="input"
-                  @change="persistCfg"
-                />
-              </div>
-              <div>
-                <label class="label">Điểm Tổng</label>
-                <div class="input bg-binance-light/30 text-binance-yellow font-semibold">
-                  {{ totalPoint }}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Volume calculator -->
-          <div class="border border-binance-light rounded-xl p-3">
-            <div class="text-xs text-gray-500 mb-2 uppercase tracking-wider">
-              Volume calculator
-            </div>
-
-            <!-- Status banner -->
-            <div
-              class="mb-3 px-3 py-2 rounded-lg border text-sm font-medium flex items-center gap-2"
-              :class="reached
-                ? 'bg-green-50 border-green-300 text-green-700'
-                : 'bg-red-50 border-red-300 text-red-700'"
-            >
-              <template v-if="reached">
-                <span class="text-lg">✓</span>
-                Đã đạt mốc {{ cfg.pointTrade }} điểm
-              </template>
-              <template v-else>
-                <span class="text-lg">⚠</span>
-                Chưa đạt mốc {{ cfg.pointTrade }} điểm — còn thiếu
-                <b>{{ fmtNumber(res.rawNeeded) }}</b> vol raw
-              </template>
-            </div>
-
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div>
-                <label class="label">Tổng vol hiện tại (x{{ MULT }})</label>
-                <input
-                  v-model.number="cfg.currentVol"
-                  type="number"
-                  class="input"
-                  :class="reached ? 'border-green-600' : ''"
-                  @change="persistCfg"
-                />
-              </div>
-              <div>
-                <label class="label">Volume mỗi lệnh (raw)</label>
-                <select
-                  v-model.number="cfg.perOrder"
-                  class="input"
-                  @change="persistCfg"
-                >
-                  <option v-for="v in perOrderOptions" :key="v" :value="v">
-                    {{ fmtNumber(v) }}
-                  </option>
-                </select>
-              </div>
-              <div class="bg-binance-light/30 rounded-lg px-3 py-2">
-                <div class="text-xs text-gray-500">Điểm hiện tại</div>
-                <div
-                  class="text-xl font-bold"
-                  :class="reached ? 'text-green-600' : 'text-binance-yellow'"
-                >
-                  {{ res.currentPoint }}
-                </div>
-              </div>
-              <div class="bg-binance-light/30 rounded-lg px-3 py-2">
-                <div class="text-xs text-gray-500">Mốc cần đạt (= 2^{{ cfg.pointTrade }})</div>
-                <div class="text-xl font-bold">
-                  {{ fmtNumber(res.targetVol) }}
-                </div>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
-              <div class="border rounded-lg px-3 py-2"
-                   :class="reached ? 'border-green-300 bg-green-50' : 'border-binance-light'">
-                <div class="text-xs text-gray-500">Vol raw cần trade</div>
-                <div class="text-lg font-semibold"
-                     :class="reached ? 'text-green-600' : 'text-gray-800'">
-                  {{ fmtNumber(res.rawNeeded) }}
-                </div>
-              </div>
-              <div class="border rounded-lg px-3 py-2"
-                   :class="reached ? 'border-green-300 bg-green-50' : 'border-binance-light'">
-                <div class="text-xs text-gray-500">Vol x{{ MULT }} còn thiếu</div>
-                <div
-                  class="text-lg font-semibold"
-                  :class="reached ? 'text-green-600' : 'text-red-600'"
-                >
-                  {{ fmtNumber(res.deltaX4) }}
-                </div>
-              </div>
-              <div class="border rounded-lg px-3 py-2"
-                   :class="reached ? 'border-green-300 bg-green-50' : 'border-binance-light'">
-                <div class="text-xs text-gray-500">Số lệnh còn lại</div>
-                <div
-                  class="text-lg font-semibold"
-                  :class="reached ? 'text-green-600' : 'text-binance-yellow'"
-                >
-                  {{ res.ordersNeeded }}
-                </div>
-              </div>
-              <div class="border rounded-lg px-3 py-2"
-                   :class="reached ? 'border-green-300 bg-green-50' : 'border-binance-light'">
-                <div class="text-xs text-gray-500">
-                  {{ reached ? 'Đã đạt' : `Sau khi trade ${res.ordersNeeded} lệnh` }}
-                </div>
-                <div class="text-lg font-semibold text-green-600">
-                  {{ reached ? '✓' : `+${res.pointsGain} điểm` }}
-                </div>
-              </div>
-            </div>
-
-            <details class="mt-2">
-              <summary class="cursor-pointer text-xs text-gray-500 hover:text-gray-800">
-                Bảng quy đổi Volume → Điểm
-              </summary>
-              <div class="grid grid-cols-3 md:grid-cols-5 gap-2 mt-2 text-xs">
-                <div
-                  v-for="t in thresholds"
-                  :key="t.point"
-                  class="border border-binance-light rounded px-2 py-1"
-                  :class="t.point === res.currentPoint ? 'bg-binance-yellow/20 border-binance-yellow' : ''"
-                >
-                  <span class="text-binance-yellow">{{ t.point }}đ</span>
-                  =
-                  <span class="text-gray-700">{{ fmtNumber(t.volume) }}</span>
-                </div>
-              </div>
-            </details>
-          </div>
-
-          <!-- Fill phí -->
-          <div class="border border-binance-light rounded-xl p-3">
-            <div class="text-xs text-gray-500 mb-2 uppercase tracking-wider">
-              Fill phí vào hệ thống
-            </div>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div>
-                <label class="label">Ngày</label>
-                <input
-                  v-model="fill.date"
-                  type="text"
-                  inputmode="numeric"
-                  placeholder="DD/MM/YYYY"
-                  class="input"
-                  @blur="normalizeFillDate"
-                />
-              </div>
-              <div>
-                <label class="label">Trước ($)</label>
-                <input
-                  v-model.number="cfg.withdraw"
-                  type="number"
-                  step="0.01"
-                  class="input"
-                  @change="persistCfg"
-                />
-              </div>
-              <div>
-                <label class="label">Sau ($)</label>
-                <input
-                  v-model.number="cfg.lastAfter"
-                  type="number"
-                  step="0.01"
-                  class="input"
-                  placeholder="số dư còn"
-                  @change="persistCfg"
-                />
-              </div>
-              <div>
-                <label class="label">Phí ($)</label>
-                <div class="input bg-binance-light/30 text-rose-600 text-right">
-                  {{ fmtUSD(fee) }}
-                </div>
-              </div>
-            </div>
-
-            <div class="flex items-center justify-between mt-3">
-              <div class="text-xs text-gray-500">
-                Phí = Trước − Sau. Điểm khi lưu = Điểm Tổng (<b class="text-binance-yellow">{{ totalPoint }}</b>).
-              </div>
-              <div class="flex gap-2">
-                <button class="btn-secondary" :disabled="saving" @click="calc.hide()">
-                  Đóng
-                </button>
-                <button
-                  class="btn-primary"
-                  :disabled="saving || !canSave"
-                  @click="saveFee"
-                >
-                  <span v-if="saving" class="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                  {{ saving ? 'Đang lưu...' : 'Lưu phí' }}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      <!-- Config section -->
+      <div class="section">
+        <div class="section-title">Cấu hình điểm</div>
+        <n-grid :cols="3" :x-gap="12">
+          <n-gi>
+            <n-form-item label="Điểm Trade" :show-feedback="false">
+              <n-input-number v-model:value="cfg.pointTrade" :min="1" :max="20" style="width: 100%" @update:value="persistCfg" />
+            </n-form-item>
+          </n-gi>
+          <n-gi>
+            <n-form-item label="Điểm Hold" :show-feedback="false">
+              <n-input-number v-model:value="cfg.pointHold" :min="0" style="width: 100%" @update:value="persistCfg" />
+            </n-form-item>
+          </n-gi>
+          <n-gi>
+            <n-form-item label="Điểm Tổng" :show-feedback="false">
+              <div class="readonly accent">{{ totalPoint }}</div>
+            </n-form-item>
+          </n-gi>
+        </n-grid>
       </div>
-    </div>
-  </Teleport>
+
+      <!-- Volume calculator -->
+      <div class="section">
+        <div class="section-title">Volume calculator</div>
+
+        <n-alert :type="reached ? 'success' : 'error'" :bordered="true" style="margin-bottom: 12px">
+          <template v-if="reached">Đã đạt mốc {{ cfg.pointTrade }} điểm</template>
+          <template v-else>
+            Chưa đạt mốc {{ cfg.pointTrade }} điểm — còn thiếu <b>{{ fmtNumber(res.rawNeeded) }}</b> vol raw
+          </template>
+        </n-alert>
+
+        <n-grid cols="2 m:4" responsive="screen" :x-gap="12" :y-gap="12">
+          <n-gi>
+            <n-form-item :label="`Tổng vol hiện tại (x${MULT})`" :show-feedback="false">
+              <n-input-number v-model:value="cfg.currentVol" :status="reached ? 'success' : undefined" style="width: 100%" @update:value="persistCfg" />
+            </n-form-item>
+          </n-gi>
+          <n-gi>
+            <n-form-item label="Volume mỗi lệnh (raw)" :show-feedback="false">
+              <n-select v-model:value="cfg.perOrder" :options="perOrderOptions" @update:value="persistCfg" />
+            </n-form-item>
+          </n-gi>
+          <n-gi>
+            <div class="metric">
+              <div class="metric-label">Điểm hiện tại</div>
+              <div class="metric-val" :style="{ color: reached ? '#16a34a' : '#2563eb' }">{{ res.currentPoint }}</div>
+            </div>
+          </n-gi>
+          <n-gi>
+            <div class="metric">
+              <div class="metric-label">Mốc cần đạt (= 2^{{ cfg.pointTrade }})</div>
+              <div class="metric-val">{{ fmtNumber(res.targetVol) }}</div>
+            </div>
+          </n-gi>
+        </n-grid>
+
+        <n-grid cols="2 m:4" responsive="screen" :x-gap="12" :y-gap="12" style="margin-top: 12px">
+          <n-gi>
+            <div class="box" :class="{ ok: reached }">
+              <div class="metric-label">Vol raw cần trade</div>
+              <div class="box-val" :style="{ color: reached ? '#16a34a' : '#334155' }">{{ fmtNumber(res.rawNeeded) }}</div>
+            </div>
+          </n-gi>
+          <n-gi>
+            <div class="box" :class="{ ok: reached }">
+              <div class="metric-label">Vol x{{ MULT }} còn thiếu</div>
+              <div class="box-val" :style="{ color: reached ? '#16a34a' : '#dc2626' }">{{ fmtNumber(res.deltaX4) }}</div>
+            </div>
+          </n-gi>
+          <n-gi>
+            <div class="box" :class="{ ok: reached }">
+              <div class="metric-label">Số lệnh còn lại</div>
+              <div class="box-val" :style="{ color: reached ? '#16a34a' : '#2563eb' }">{{ res.ordersNeeded }}</div>
+            </div>
+          </n-gi>
+          <n-gi>
+            <div class="box" :class="{ ok: reached }">
+              <div class="metric-label">{{ reached ? 'Đã đạt' : `Sau khi trade ${res.ordersNeeded} lệnh` }}</div>
+              <div class="box-val" style="color: #16a34a">{{ reached ? '✓' : `+${res.pointsGain} điểm` }}</div>
+            </div>
+          </n-gi>
+        </n-grid>
+
+        <n-collapse style="margin-top: 12px">
+          <n-collapse-item title="Bảng quy đổi Volume → Điểm" name="conv">
+            <n-grid cols="3 m:5" responsive="screen" :x-gap="8" :y-gap="8">
+              <n-gi v-for="t in thresholds" :key="t.point">
+                <div class="conv-chip" :class="{ active: t.point === res.currentPoint }">
+                  <span style="color: #2563eb">{{ t.point }}đ</span> = <span class="muted">{{ fmtNumber(t.volume) }}</span>
+                </div>
+              </n-gi>
+            </n-grid>
+          </n-collapse-item>
+        </n-collapse>
+      </div>
+
+      <!-- Fill phí -->
+      <div class="section">
+        <div class="section-title">Fill phí vào hệ thống</div>
+        <n-grid cols="2 m:4" responsive="screen" :x-gap="12" :y-gap="12">
+          <n-gi>
+            <n-form-item label="Ngày" :show-feedback="false">
+              <n-date-picker v-model:formatted-value="fill.date" value-format="dd/MM/yyyy" format="dd/MM/yyyy" type="date" :clearable="false" style="width: 100%" />
+            </n-form-item>
+          </n-gi>
+          <n-gi>
+            <n-form-item label="Trước ($)" :show-feedback="false">
+              <n-input-number v-model:value="cfg.withdraw" :step="0.01" style="width: 100%" @update:value="persistCfg" />
+            </n-form-item>
+          </n-gi>
+          <n-gi>
+            <n-form-item label="Sau ($)" :show-feedback="false">
+              <n-input-number v-model:value="cfg.lastAfter" :step="0.01" placeholder="số dư còn" style="width: 100%" @update:value="persistCfg" />
+            </n-form-item>
+          </n-gi>
+          <n-gi>
+            <n-form-item label="Phí ($)" :show-feedback="false">
+              <div class="readonly fee">{{ fmtUSD(fee) }}</div>
+            </n-form-item>
+          </n-gi>
+        </n-grid>
+      </div>
+    </n-flex>
+
+    <template #footer>
+      <n-flex justify="space-between" align="center" :wrap="true" :size="8">
+        <n-text depth="3" style="font-size: 12px">
+          Phí = Trước − Sau. Điểm khi lưu = Điểm Tổng (<b style="color: #2563eb">{{ totalPoint }}</b>).
+        </n-text>
+        <n-flex :size="8">
+          <n-button :disabled="saving" @click="calc.hide()">Đóng</n-button>
+          <n-button type="primary" :loading="saving" :disabled="!canSave" @click="saveFee">
+            {{ saving ? 'Đang lưu...' : 'Lưu phí' }}
+          </n-button>
+        </n-flex>
+      </n-flex>
+    </template>
+  </n-modal>
 </template>
 
 <script setup>
 import { ref, reactive, computed, watch } from 'vue';
+import {
+  NModal, NSelect, NInputNumber, NAlert, NButton, NFlex, NGrid, NGi,
+  NFormItem, NDatePicker, NCollapse, NCollapseItem, NEmpty, NText,
+} from 'naive-ui';
 import { useTrackingStore } from '../stores/trackingStore';
 import { useCalculatorStore, CALC_DEFAULTS, CALC_FIELDS } from '../stores/calculatorStore';
 import { useToastStore } from '../stores/toastStore';
-import { fmtNumber, fmtUSD, todayStr, isoToDmy, parseDate } from '../utils/format';
+import { fmtNumber, fmtUSD, todayStr } from '../utils/format';
 import {
   ALPHA_VOLUME_MULTIPLIER,
   pointsFromVolume,
@@ -293,7 +186,11 @@ const store = useTrackingStore();
 const calc = useCalculatorStore();
 const toast = useToastStore();
 const MULT = ALPHA_VOLUME_MULTIPLIER;
-const perOrderOptions = [128, 256, 512, 1024, 2048];
+const perOrderOptions = [128, 256, 512, 1024, 2048].map((v) => ({ label: fmtNumber(v), value: v }));
+
+const accountOptions = computed(() =>
+  store.activeAccounts.map((a) => ({ label: a.displayName, value: a.id }))
+);
 
 const thresholds = Array.from({ length: 16 }, (_, i) => ({
   point: i + 5,
@@ -366,12 +263,6 @@ const fill = reactive({
 });
 const saving = ref(false);
 
-// Chuẩn hóa ngày user gõ về DD/MM/YYYY; gõ sai → quay về hôm nay.
-function normalizeFillDate() {
-  const d = parseDate(fill.date);
-  fill.date = d ? isoToDmy(d) : todayStr();
-}
-
 const fee = computed(() => {
   const before = Number(cfg.withdraw) || 0;
   const after = Number(cfg.lastAfter);
@@ -388,10 +279,8 @@ async function saveFee() {
   const acc = selectedAccount.value;
   saving.value = true;
   try {
-    // 1. Push calc config (staged trong cache) lên sheet Accounts
     persistCfg();
     await calc.pushConfig(selectedId.value);
-    // 2. Thêm fee → tự gọi loadAll, refresh accounts (server values mới nhất)
     await store.addFees([
       {
         date: fill.date,
@@ -410,3 +299,24 @@ async function saveFee() {
   }
 }
 </script>
+
+<style scoped>
+.muted { color: #94a3b8; }
+.dot-lg { width: 12px; height: 12px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.section { border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; }
+.section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; margin-bottom: 8px; }
+.readonly {
+  width: 100%; min-height: 34px; display: flex; align-items: center;
+  padding: 0 12px; border-radius: 6px; background: rgba(219, 226, 236, 0.4);
+}
+.readonly.accent { color: #2563eb; font-weight: 600; }
+.readonly.fee { color: #e11d48; justify-content: flex-end; }
+.metric { background: rgba(219, 226, 236, 0.4); border-radius: 8px; padding: 6px 12px; }
+.metric-label { font-size: 12px; color: #94a3b8; }
+.metric-val { font-size: 20px; font-weight: 700; }
+.box { border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 12px; }
+.box.ok { border-color: #86efac; background: #f0fdf4; }
+.box-val { font-size: 18px; font-weight: 600; }
+.conv-chip { border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px 8px; font-size: 12px; }
+.conv-chip.active { background: rgba(37, 99, 235, 0.12); border-color: #2563eb; }
+</style>

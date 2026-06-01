@@ -1,22 +1,16 @@
 import { defineStore } from 'pinia';
+import { message } from '../utils/naive';
 
-let _id = 0;
-
+// Giữ nguyên API cũ (success/error/info) nhưng forward sang Naive n-message,
+// nên không phải sửa chỗ gọi trong các view.
 export const useToastStore = defineStore('toast', {
-  state: () => ({ items: [] }),
   actions: {
-    push(message, type = 'info', duration = 3000) {
-      const id = ++_id;
-      this.items.push({ id, message, type });
-      setTimeout(() => {
-        this.items = this.items.filter((t) => t.id !== id);
-      }, duration);
+    push(msg, type = 'info') {
+      (message[type] || message.info)(msg);
     },
-    success(msg) { this.push(msg, 'success', 3000); },
-    error(msg) { this.push(msg, 'error', 5000); },
-    info(msg) { this.push(msg, 'info', 3000); },
-    dismiss(id) {
-      this.items = this.items.filter((t) => t.id !== id);
-    },
+    success(msg) { message.success(msg); },
+    error(msg) { message.error(msg, { duration: 5000 }); },
+    info(msg) { message.info(msg); },
+    dismiss() { /* Naive tự quản lý vòng đời message */ },
   },
 });

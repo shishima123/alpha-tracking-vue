@@ -1,391 +1,284 @@
 <template>
-  <div class="space-y-6">
+  <n-flex vertical :size="20">
     <!-- Form thêm dự án mới (thu gọn mặc định) -->
-    <div class="card">
-      <button
-        class="w-full flex items-center justify-between text-left"
-        @click="showForm = !showForm"
-      >
-        <h3 class="font-semibold">Thêm dự án Alpha</h3>
-        <span class="flex items-center gap-1 text-sm text-gray-500">
+    <n-card>
+      <div class="head-toggle" @click="showForm = !showForm">
+        <span class="card-title">Thêm dự án Alpha</span>
+        <n-flex align="center" :size="4" class="muted">
           {{ showForm ? 'Thu gọn' : 'Thêm dự án' }}
-          <span class="transition-transform" :class="showForm ? 'rotate-180' : ''">▾</span>
-        </span>
-      </button>
-
-      <div
-        class="grid transition-[grid-template-rows] duration-300 ease-in-out"
-        :class="showForm ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'"
-      >
-      <div class="overflow-hidden">
-      <div class="grid grid-cols-1 md:grid-cols-5 gap-3 pt-4">
-        <div>
-          <label class="label">Tên dự án</label>
-          <input v-model="form.name" class="input" placeholder="VD: BILL" />
-        </div>
-        <div>
-          <label class="label">Ngày</label>
-          <input v-model="formDateIso" type="date" class="input" />
-        </div>
-        <div>
-          <label class="label">Điểm yêu cầu</label>
-          <input v-model.number="form.claimPoints" type="number" class="input" />
-        </div>
-        <div>
-          <label class="label">Loại</label>
-          <select v-model="form.type" class="input">
-            <option v-for="t in projectTypes" :key="t" :value="t">{{ t }}</option>
-          </select>
-        </div>
-        <div>
-          <label class="label">Ghi chú</label>
-          <input v-model="form.note" class="input" placeholder="Không bắt buộc" />
-        </div>
+          <span class="chevron" :class="{ open: showForm }">▾</span>
+        </n-flex>
       </div>
 
-      <div class="mt-4">
-        <div class="label">Số tiền nhận được ($) từ từng tài khoản
-          <span class="font-normal normal-case text-gray-400">— tick "ước lượng" nếu chưa chính thức</span>
-        </div>
-        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 mt-2">
-          <div v-for="acc in store.activeAccounts" :key="acc.id">
-            <label class="text-xs flex items-center gap-1 text-gray-700 mb-0.5">
-              <span
-                class="inline-block w-2 h-2 rounded-full"
-                :style="{ background: acc.color }"
-              ></span>
-              {{ acc.displayName }}
-            </label>
-            <input
-              v-model.number="form.rewards[acc.id]"
-              type="number"
-              step="0.01"
-              class="input"
-              :class="form.estimated[acc.id] ? 'border-amber-400 bg-amber-50' : ''"
-              placeholder="0"
-            />
-            <label
-              class="mt-1 flex items-center gap-1 text-[11px] cursor-pointer select-none"
-              :class="form.estimated[acc.id] ? 'text-amber-600 font-medium' : 'text-gray-400'"
-            >
-              <input v-model="form.estimated[acc.id]" type="checkbox" class="accent-amber-500 w-3 h-3" />
-              ước lượng
-            </label>
+      <n-collapse-transition :show="showForm">
+        <div style="padding-top: 16px">
+          <n-grid cols="1 m:5" responsive="screen" :x-gap="12" :y-gap="8">
+            <n-gi>
+              <n-form-item label="Tên dự án" :show-feedback="false">
+                <n-input v-model:value="form.name" placeholder="VD: BILL" />
+              </n-form-item>
+            </n-gi>
+            <n-gi>
+              <n-form-item label="Ngày" :show-feedback="false">
+                <n-date-picker v-model:formatted-value="form.date" value-format="dd/MM/yyyy" format="dd/MM/yyyy" type="date" :clearable="false" style="width: 100%" />
+              </n-form-item>
+            </n-gi>
+            <n-gi>
+              <n-form-item label="Điểm yêu cầu" :show-feedback="false">
+                <n-input-number v-model:value="form.claimPoints" style="width: 100%" />
+              </n-form-item>
+            </n-gi>
+            <n-gi>
+              <n-form-item label="Loại" :show-feedback="false">
+                <n-select v-model:value="form.type" :options="typeOptions" />
+              </n-form-item>
+            </n-gi>
+            <n-gi>
+              <n-form-item label="Ghi chú" :show-feedback="false">
+                <n-input v-model:value="form.note" placeholder="Không bắt buộc" />
+              </n-form-item>
+            </n-gi>
+          </n-grid>
+
+          <div class="label" style="margin-top: 16px">
+            Số tiền nhận được ($) từ từng tài khoản
+            <span class="muted" style="font-weight: 400; text-transform: none">— tick "ước lượng" nếu chưa chính thức</span>
           </div>
+          <n-grid cols="2 m:4 l:6" responsive="screen" :x-gap="8" :y-gap="8" style="margin-top: 8px">
+            <n-gi v-for="acc in store.activeAccounts" :key="acc.id">
+              <div class="reward-label">
+                <span class="dot" :style="{ background: acc.color }"></span>{{ acc.displayName }}
+              </div>
+              <n-input-number
+                v-model:value="form.rewards[acc.id]"
+                :step="0.01"
+                :show-button="false"
+                :status="form.estimated[acc.id] ? 'warning' : undefined"
+                placeholder="0"
+                style="width: 100%"
+              />
+              <n-checkbox v-model:checked="form.estimated[acc.id]" size="small" style="margin-top: 4px; font-size: 11px">
+                ước lượng
+              </n-checkbox>
+            </n-gi>
+          </n-grid>
+
+          <n-flex justify="end" :size="8" style="margin-top: 16px">
+            <n-button @click="resetForm">Reset</n-button>
+            <n-button type="primary" :loading="saving" @click="submit">
+              {{ saving ? 'Đang lưu...' : 'Lưu dự án' }}
+            </n-button>
+          </n-flex>
         </div>
-      </div>
+      </n-collapse-transition>
+    </n-card>
 
-      <div class="flex justify-end gap-2 mt-4">
-        <button class="btn-secondary" @click="resetForm">Reset</button>
-        <button class="btn-primary" @click="submit" :disabled="saving">
-          <span v-if="saving" class="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-          {{ saving ? 'Đang lưu...' : 'Lưu dự án' }}
-        </button>
-      </div>
-      </div>
-      </div>
-    </div>
-
-    <!-- Danh sách dự án (card list) -->
-    <div class="card">
-      <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-        <h3 class="font-semibold">
+    <!-- Danh sách dự án -->
+    <n-card>
+      <n-flex justify="space-between" align="center" :wrap="true" :size="8" style="margin-bottom: 12px">
+        <span class="card-title">
           Danh sách dự án
-          <span class="text-gray-500 font-normal">
-            ({{ visibleProjects.length }}/{{ filteredProjects.length }})
-          </span>
-        </h3>
-        <div class="flex items-center gap-2 flex-wrap">
-          <div class="inline-flex rounded-lg border border-binance-light overflow-hidden">
-            <button
-              v-for="v in viewModes"
-              :key="v.key"
-              class="px-3 py-1.5 text-sm transition-colors"
-              :class="viewMode === v.key
-                ? 'bg-binance-yellow text-black font-medium'
-                : 'bg-transparent text-gray-500 hover:text-gray-700'"
-              @click="viewMode = v.key"
-            >
-              {{ v.label }}
-            </button>
-          </div>
-          <label
-            class="flex items-center gap-1.5 text-sm cursor-pointer select-none px-2.5 py-1.5 rounded-lg border transition-colors"
-            :class="onlyEstimated ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-slate-200 text-gray-500 hover:bg-slate-50'"
-          >
-            <input v-model="onlyEstimated" type="checkbox" class="accent-amber-500" />
+          <span class="muted" style="font-weight: 400">({{ visibleProjects.length }}/{{ filteredProjects.length }})</span>
+        </span>
+        <n-flex align="center" :size="8" :wrap="true">
+          <n-radio-group v-model:value="viewMode" size="small">
+            <n-radio-button v-for="v in viewModes" :key="v.key" :value="v.key">{{ v.label }}</n-radio-button>
+          </n-radio-group>
+          <n-checkbox v-model:checked="onlyEstimated">
             Chỉ coin có ước lượng
-            <span v-if="estimatedCount" class="text-[11px] font-semibold">({{ estimatedCount }})</span>
-          </label>
-          <div class="relative group/search w-60">
-            <input
-              v-model="search"
-              class="input w-full pr-8"
-              placeholder="Tìm theo tên dự án..."
-            />
-            <button
-              v-if="search"
-              type="button"
-              title="Xóa tìm kiếm"
-              class="absolute right-2 top-1/2 -translate-y-1/2 grid place-items-center w-5 h-5 rounded-full text-gray-400 opacity-0 group-hover/search:opacity-100 group-focus-within/search:opacity-100 hover:bg-slate-200 hover:text-gray-700 transition"
-              @click="search = ''"
-            >
-              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M18 6 6 18M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
+            <span v-if="estimatedCount" class="muted" style="font-size: 11px">({{ estimatedCount }})</span>
+          </n-checkbox>
+          <n-input v-model:value="search" clearable placeholder="Tìm theo tên dự án..." size="small" style="width: 220px" />
+        </n-flex>
+      </n-flex>
 
-      <div v-if="filteredProjects.length === 0" class="text-center py-8 text-gray-500">
-        {{ onlyEstimated ? 'Không có dự án nào có giá trị ước lượng' : 'Chưa có dự án nào' }}
-      </div>
+      <n-empty
+        v-if="filteredProjects.length === 0"
+        :description="onlyEstimated ? 'Không có dự án nào có giá trị ước lượng' : 'Chưa có dự án nào'"
+        style="padding: 32px 0"
+      />
 
-      <!-- ===== View: Danh sách (card list) ===== -->
-      <div v-else-if="viewMode === 'list'" class="overflow-x-auto">
-        <table class="w-full border-collapse">
-          <thead>
-            <tr class="table-thead">
-              <th class="px-3 py-2">Dự án</th>
-              <th class="px-3 py-2">Tài khoản nhận</th>
-              <th class="px-3 py-2 text-right w-32">Tổng</th>
-              <th class="px-3 py-2 w-24"></th>
+      <!-- ===== View: Danh sách ===== -->
+      <n-table v-else-if="viewMode === 'list'" :bordered="false" :single-line="false" size="small">
+        <thead>
+          <tr>
+            <th>Dự án</th>
+            <th>Tài khoản nhận</th>
+            <th class="ta-r" style="width: 128px">Tổng</th>
+            <th style="width: 96px"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <template v-for="p in visibleProjects" :key="p.id">
+            <!-- DISPLAY ROW -->
+            <tr v-if="editingId !== p.id" style="vertical-align: top">
+              <td>
+                <n-flex align="center" :size="8" :wrap="true">
+                  <span class="proj-name">{{ p.name }}</span>
+                  <n-tag size="small" :color="typeColor(p.type)" :bordered="false">{{ p.type }}</n-tag>
+                </n-flex>
+                <div class="muted" style="font-size: 12px; margin-top: 4px">
+                  {{ p.date }} · Yêu cầu <b style="color: #475569">{{ p.claimPoints }}đ</b>
+                  <span v-if="p.note" style="font-style: italic">· {{ p.note }}</span>
+                </div>
+                <n-tag v-if="projectHasEstimate(p)" type="warning" size="small" :bordered="false" round style="margin-top: 6px">
+                  ⚠ Có giá trị ước lượng
+                </n-tag>
+              </td>
+              <td>
+                <table v-if="hasAnyReward(p)" class="inner-table">
+                  <tbody>
+                    <tr v-for="acc in accountsWithReward(p)" :key="acc.id" class="inner-row">
+                      <td style="width: 1px"><span class="dot" :style="{ background: acc.color }"></span></td>
+                      <td class="strong" style="white-space: nowrap; padding-right: 16px">{{ acc.displayName }}</td>
+                      <td class="ta-r" style="white-space: nowrap">
+                        <span v-if="isEstimated(p, acc.id)" class="est-chip">
+                          ~{{ fmtUSD(p.rewards[acc.id]) }}<span style="font-size: 10px; text-transform: uppercase">ước lượng</span>
+                        </span>
+                        <span v-else class="strong" style="color: #334155">{{ fmtUSD(p.rewards[acc.id]) }}</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+                <span v-else class="muted" style="font-style: italic; font-size: 12px">Chưa ghi nhận reward</span>
+              </td>
+              <td class="ta-r">
+                <div style="font-size: 18px; font-weight: 700; color: #16a34a">{{ fmtUSD(projectTotal(p)) }}</div>
+                <div v-if="projectHasEstimate(p)" style="font-size: 10px; color: #d97706">gồm ước lượng</div>
+              </td>
+              <td class="ta-r">
+                <n-flex justify="end" :size="4" :wrap="false">
+                  <n-button size="tiny" text type="primary" @click="startEdit(p)">Sửa</n-button>
+                  <n-button size="tiny" text type="error" @click="del(p)">Xóa</n-button>
+                </n-flex>
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            <template v-for="p in visibleProjects" :key="p.id">
-              <!-- DISPLAY ROW -->
-              <tr
-                v-if="editingId !== p.id"
-                class="group border-b border-slate-200 align-top hover:bg-blue-50/50 hover:shadow-[inset_3px_0_0_0_#2563eb] transition-all duration-150"
-              >
-                <!-- Dự án -->
-                <td class="px-3 py-3">
-                  <div class="flex items-center gap-2 flex-wrap">
-                    <span class="font-bold text-slate-800 text-base group-hover:text-blue-700 transition-colors">{{ p.name }}</span>
-                    <span class="badge" :class="typeClass(p.type)">{{ p.type }}</span>
-                  </div>
-                  <div class="text-xs text-gray-500 mt-1">
-                    {{ p.date }} · Yêu cầu <b class="text-gray-700">{{ p.claimPoints }}đ</b>
-                    <span v-if="p.note" class="italic">· {{ p.note }}</span>
-                  </div>
-                  <div
-                    v-if="projectHasEstimate(p)"
-                    class="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5"
-                  >
-                    ⚠ Có giá trị ước lượng
-                  </div>
-                </td>
 
-                <!-- Table nhỏ: account nào được bao nhiêu -->
-                <td class="px-3 py-3">
-                  <table v-if="hasAnyReward(p)" class="w-full text-sm">
-                    <tbody>
-                      <tr
-                        v-for="acc in accountsWithReward(p)"
-                        :key="acc.id"
-                        class="border-b border-slate-100 last:border-0 hover:bg-blue-100 rounded transition-colors"
-                      >
-                        <td class="py-1 pr-2 w-1">
-                          <span class="inline-block w-2.5 h-2.5 rounded-full align-middle" :style="{ background: acc.color }"></span>
-                        </td>
-                        <td class="py-1 pr-4 text-slate-700 font-medium whitespace-nowrap">{{ acc.displayName }}</td>
-                        <td class="py-1 text-right whitespace-nowrap">
-                          <span
-                            v-if="isEstimated(p, acc.id)"
-                            class="inline-flex items-center gap-1 font-bold text-amber-600 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 tabular-nums"
-                          >
-                            ~{{ fmtUSD(p.rewards[acc.id]) }}
-                            <span class="text-[10px] font-medium uppercase tracking-wide">ước lượng</span>
-                          </span>
-                          <span v-else class="font-semibold text-slate-700 tabular-nums">
-                            {{ fmtUSD(p.rewards[acc.id]) }}
-                          </span>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                  <span v-else class="text-xs text-gray-500 italic">Chưa ghi nhận reward</span>
-                </td>
+            <!-- EDIT ROW -->
+            <tr v-else>
+              <td colspan="4">
+                <n-grid cols="1 m:5" responsive="screen" :x-gap="12" :y-gap="8">
+                  <n-gi>
+                    <n-form-item label="Tên dự án" :show-feedback="false"><n-input v-model:value="editForm.name" /></n-form-item>
+                  </n-gi>
+                  <n-gi>
+                    <n-form-item label="Ngày" :show-feedback="false">
+                      <n-date-picker v-model:formatted-value="editForm.date" value-format="dd/MM/yyyy" format="dd/MM/yyyy" type="date" :clearable="false" style="width: 100%" />
+                    </n-form-item>
+                  </n-gi>
+                  <n-gi>
+                    <n-form-item label="Điểm yêu cầu" :show-feedback="false"><n-input-number v-model:value="editForm.claimPoints" style="width: 100%" /></n-form-item>
+                  </n-gi>
+                  <n-gi>
+                    <n-form-item label="Loại" :show-feedback="false"><n-select v-model:value="editForm.type" :options="typeOptions" /></n-form-item>
+                  </n-gi>
+                  <n-gi>
+                    <n-form-item label="Ghi chú" :show-feedback="false"><n-input v-model:value="editForm.note" placeholder="Không bắt buộc" /></n-form-item>
+                  </n-gi>
+                </n-grid>
 
-                <!-- Tổng -->
-                <td class="px-3 py-3 text-right">
-                  <div class="text-lg font-bold text-green-600 tabular-nums">{{ fmtUSD(projectTotal(p)) }}</div>
-                  <div v-if="projectHasEstimate(p)" class="text-[10px] text-amber-600">gồm ước lượng</div>
-                </td>
+                <div class="label" style="margin-top: 12px">Số tiền nhận được ($)
+                  <span class="muted" style="font-weight: 400; text-transform: none">— tick "ước lượng" nếu chưa chính thức</span>
+                </div>
+                <n-grid cols="2 m:4 l:6" responsive="screen" :x-gap="8" :y-gap="8" style="margin-top: 4px">
+                  <n-gi v-for="acc in store.activeAccounts" :key="acc.id">
+                    <div class="reward-label"><span class="dot" :style="{ background: acc.color }"></span>{{ acc.displayName }}</div>
+                    <n-input-number
+                      v-model:value="editForm.rewards[acc.id]"
+                      :step="0.01"
+                      :show-button="false"
+                      :status="editForm.estimated[acc.id] ? 'warning' : undefined"
+                      placeholder="0"
+                      style="width: 100%"
+                    />
+                    <n-checkbox v-model:checked="editForm.estimated[acc.id]" size="small" style="margin-top: 4px; font-size: 11px">ước lượng</n-checkbox>
+                  </n-gi>
+                </n-grid>
 
-                <!-- Actions -->
-                <td class="px-3 py-3 text-right whitespace-nowrap">
-                  <button
-                    class="text-binance-yellow hover:text-white hover:bg-blue-600 text-xs font-medium px-2 py-1 rounded-md transition-colors"
-                    @click="startEdit(p)"
-                  >Sửa</button>
-                  <button
-                    class="text-red-600 hover:text-white hover:bg-red-600 text-xs font-medium px-2 py-1 rounded-md transition-colors ml-1"
-                    @click="del(p)"
-                  >Xóa</button>
-                </td>
-              </tr>
-
-              <!-- EDIT ROW -->
-              <tr v-else class="border-b border-slate-200 bg-blue-50/40">
-                <td colspan="4" class="px-3 py-3">
-                  <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
-                    <div>
-                      <label class="label">Tên dự án</label>
-                      <input v-model="editForm.name" class="input" />
-                    </div>
-                    <div>
-                      <label class="label">Ngày</label>
-                      <input v-model="editDateIso" type="date" class="input" />
-                    </div>
-                    <div>
-                      <label class="label">Điểm yêu cầu</label>
-                      <input v-model.number="editForm.claimPoints" type="number" class="input" />
-                    </div>
-                    <div>
-                      <label class="label">Loại</label>
-                      <select v-model="editForm.type" class="input">
-                        <option v-for="t in projectTypes" :key="t" :value="t">{{ t }}</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label class="label">Ghi chú</label>
-                      <input v-model="editForm.note" class="input" placeholder="Không bắt buộc" />
-                    </div>
+                <n-flex justify="space-between" align="center" style="margin-top: 12px">
+                  <div>
+                    <span class="muted">Tổng: </span>
+                    <span style="color: #16a34a; font-weight: 600">{{ fmtUSD(editTotal) }}</span>
                   </div>
-
-                  <div class="mt-3">
-                    <div class="label">Số tiền nhận được ($)
-                      <span class="font-normal normal-case text-gray-400">— tick "ước lượng" nếu chưa chính thức</span>
-                    </div>
-                    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 mt-1">
-                      <div v-for="acc in store.activeAccounts" :key="acc.id">
-                        <label class="text-xs flex items-center gap-1 text-gray-700 mb-0.5">
-                          <span class="inline-block w-2 h-2 rounded-full" :style="{ background: acc.color }"></span>
-                          {{ acc.displayName }}
-                        </label>
-                        <input
-                          v-model.number="editForm.rewards[acc.id]"
-                          type="number"
-                          step="0.01"
-                          class="input"
-                          :class="editForm.estimated[acc.id] ? 'border-amber-400 bg-amber-50' : ''"
-                          placeholder="0"
-                        />
-                        <label
-                          class="mt-1 flex items-center gap-1 text-[11px] cursor-pointer select-none"
-                          :class="editForm.estimated[acc.id] ? 'text-amber-600 font-medium' : 'text-gray-400'"
-                        >
-                          <input v-model="editForm.estimated[acc.id]" type="checkbox" class="accent-amber-500 w-3 h-3" />
-                          ước lượng
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="flex items-center justify-between mt-3">
-                    <div class="text-sm">
-                      <span class="text-gray-500">Tổng: </span>
-                      <span class="text-green-600 font-semibold">{{ fmtUSD(editTotal) }}</span>
-                    </div>
-                    <div class="flex gap-2">
-                      <button class="btn-secondary" :disabled="savingEdit" @click="cancelEdit">Hủy</button>
-                      <button class="btn-primary" :disabled="savingEdit" @click="saveEdit">
-                        <span v-if="savingEdit" class="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                        {{ savingEdit ? 'Đang lưu...' : 'Lưu' }}
-                      </button>
-                    </div>
-                  </div>
-                </td>
-              </tr>
-            </template>
-          </tbody>
-        </table>
-      </div>
+                  <n-flex :size="8">
+                    <n-button :disabled="savingEdit" @click="cancelEdit">Hủy</n-button>
+                    <n-button type="primary" :loading="savingEdit" @click="saveEdit">
+                      {{ savingEdit ? 'Đang lưu...' : 'Lưu' }}
+                    </n-button>
+                  </n-flex>
+                </n-flex>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </n-table>
 
       <!-- ===== View: Bảng (pivot) ===== -->
-      <div v-else class="space-y-2">
-        <div class="flex items-center gap-1.5 text-xs text-gray-500">
-          <span class="inline-block w-3 h-3 rounded-sm bg-amber-100 border border-amber-300"></span>
-          Giá trị ~ (nền vàng) = ước lượng · bấm tên dự án để sửa
-        </div>
-        <div class="overflow-auto max-h-[70vh] border border-slate-200 rounded-lg">
-          <table class="min-w-full border-separate border-spacing-0 text-sm tabular-nums">
+      <div v-else>
+        <n-flex align="center" :size="6" class="muted" style="font-size: 12px; margin-bottom: 8px">
+          <span class="legend legend--est"></span>Giá trị ~ (nền vàng) = ước lượng · bấm tên dự án để sửa
+        </n-flex>
+        <div class="matrix-wrap">
+          <table class="matrix">
             <thead>
               <tr>
-                <th class="sticky top-0 left-0 z-30 bg-slate-100 h-9 px-3 text-left font-semibold border-b border-r border-slate-300 min-w-[140px]">Dự án</th>
-                <th class="sticky top-0 z-20 bg-slate-100 h-9 px-3 text-left font-semibold border-b border-slate-300 whitespace-nowrap">Ngày</th>
-                <th class="sticky top-0 z-20 bg-slate-100 h-9 px-2 text-right font-semibold border-b border-slate-300 whitespace-nowrap">Claim</th>
-                <th class="sticky top-0 z-20 bg-slate-100 h-9 px-3 text-left font-semibold border-b border-r border-slate-300 whitespace-nowrap">Loại</th>
-                <th
-                  v-for="a in projectMatrixAccounts"
-                  :key="a.id"
-                  class="sticky top-0 z-20 bg-slate-100 h-9 px-2 text-right font-semibold border-b border-slate-300 whitespace-nowrap"
-                >
-                  <span class="inline-block w-2 h-2 rounded-full mr-1" :style="{ background: a.color }"></span>
-                  {{ a.displayName }}
+                <th class="sticky-col sticky-top corner" style="min-width: 140px">Dự án</th>
+                <th class="sticky-top">Ngày</th>
+                <th class="sticky-top ta-r">Claim</th>
+                <th class="sticky-top">Loại</th>
+                <th v-for="a in projectMatrixAccounts" :key="a.id" class="sticky-top ta-r">
+                  <span class="dot" :style="{ background: a.color }"></span>{{ a.displayName }}
                 </th>
-                <th class="sticky top-0 z-20 bg-slate-100 h-9 px-3 text-right font-semibold border-b border-l border-slate-300 whitespace-nowrap">Tổng</th>
+                <th class="sticky-top ta-r">Tổng</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="p in visibleProjects" :key="p.id" class="bg-white hover:bg-blue-50/60">
-                <td
-                  class="sticky left-0 z-10 bg-white px-3 py-1.5 font-semibold text-slate-800 border-b border-r border-slate-200 whitespace-nowrap cursor-pointer hover:text-blue-700"
-                  @click="editFromTable(p)"
-                >
-                  {{ p.name }}
-                </td>
-                <td class="px-3 py-1.5 text-slate-600 border-b border-slate-200 whitespace-nowrap">{{ p.date }}</td>
-                <td class="px-2 py-1.5 text-right text-slate-500 border-b border-slate-200">{{ p.claimPoints }}</td>
-                <td class="px-3 py-1.5 border-b border-r border-slate-200">
-                  <span class="badge text-[11px]" :class="typeClass(p.type)">{{ p.type }}</span>
-                </td>
-                <td
-                  v-for="a in projectMatrixAccounts"
-                  :key="p.id + '-' + a.id"
-                  class="px-2 py-1.5 text-right border-b border-slate-200"
-                >
+              <tr v-for="p in visibleProjects" :key="p.id" class="matrix-row">
+                <td class="sticky-col name-cell" @click="editFromTable(p)">{{ p.name }}</td>
+                <td>{{ p.date }}</td>
+                <td class="ta-r muted">{{ p.claimPoints }}</td>
+                <td><n-tag size="small" :color="typeColor(p.type)" :bordered="false">{{ p.type }}</n-tag></td>
+                <td v-for="a in projectMatrixAccounts" :key="p.id + '-' + a.id" class="ta-r">
                   <template v-if="hasReward(p, a.id)">
-                    <span
-                      v-if="isEstimated(p, a.id)"
-                      class="font-bold text-amber-600 bg-amber-50 border border-amber-200 rounded px-1 tabular-nums"
-                    >~{{ fmtUSD(p.rewards[a.id]) }}</span>
-                    <span v-else class="font-semibold text-slate-700">{{ fmtUSD(p.rewards[a.id]) }}</span>
+                    <span v-if="isEstimated(p, a.id)" class="est-cell">~{{ fmtUSD(p.rewards[a.id]) }}</span>
+                    <span v-else class="strong" style="color: #334155">{{ fmtUSD(p.rewards[a.id]) }}</span>
                   </template>
-                  <span v-else class="text-gray-300">–</span>
+                  <span v-else class="dash">–</span>
                 </td>
-                <td class="px-3 py-1.5 text-right font-bold text-green-600 border-b border-l border-slate-200 whitespace-nowrap">
-                  {{ fmtUSD(projectTotal(p)) }}
-                </td>
+                <td class="ta-r" style="font-weight: 700; color: #16a34a">{{ fmtUSD(projectTotal(p)) }}</td>
               </tr>
             </tbody>
           </table>
         </div>
       </div>
 
-      <div
+      <n-flex
         v-if="filteredProjects.length > visibleProjects.length || (showAll && filteredProjects.length > recentProjects.length)"
-        class="flex justify-center mt-4"
+        justify="center"
+        style="margin-top: 16px"
       >
-        <button class="btn-secondary text-xs" @click="showAll = !showAll">
+        <n-button size="small" tertiary @click="showAll = !showAll">
           {{ showAll
             ? `Thu gọn (chỉ ${RECENT_DAYS} ngày gần nhất — ${recentProjects.length} dự án)`
             : `Xem tất cả ${filteredProjects.length} dự án` }}
-        </button>
-      </div>
-    </div>
-  </div>
+        </n-button>
+      </n-flex>
+    </n-card>
+  </n-flex>
 </template>
 
 <script setup>
 import { reactive, ref, computed, watch } from 'vue';
 import { useStorage } from '@vueuse/core';
+import {
+  NFlex, NCard, NButton, NCollapseTransition, NGrid, NGi, NFormItem,
+  NInput, NInputNumber, NSelect, NDatePicker, NCheckbox, NRadioGroup, NRadioButton,
+  NTable, NTag, NEmpty,
+} from 'naive-ui';
 import { useTrackingStore } from '../stores/trackingStore';
 import { useToastStore } from '../stores/toastStore';
-import { fmtUSD, todayStr, isoToDmy, dmyToIso, parseDate } from '../utils/format';
+import { dialog } from '../utils/naive';
+import { fmtUSD, todayStr, parseDate } from '../utils/format';
 
 const RECENT_DAYS = 15;
 
@@ -404,6 +297,7 @@ const viewModes = [
 const viewMode = useStorage('alpha:projectsViewMode', 'list');
 
 const projectTypes = ['FCFS', 'TGE', 'Phase', 'Pre-Tge', 'Booster'];
+const typeOptions = projectTypes.map((t) => ({ label: t, value: t }));
 
 const form = reactive({
   name: '',
@@ -413,11 +307,6 @@ const form = reactive({
   note: '',
   rewards: {},
   estimated: {},
-});
-
-const formDateIso = computed({
-  get: () => dmyToIso(form.date),
-  set: (v) => { form.date = isoToDmy(v) || form.date; },
 });
 
 watch(
@@ -466,17 +355,14 @@ const recentProjects = computed(() => {
   });
 });
 
-// Khi search: bỏ giới hạn 15 ngày để tìm được dự án cũ. Inactive show-all toggle vẫn giữ.
+// Khi search: bỏ giới hạn 15 ngày để tìm được dự án cũ.
 const visibleProjects = computed(() => {
   if (showAll.value || search.value || onlyEstimated.value) return filteredProjects.value;
   return recentProjects.value;
 });
 
 function projectTotal(p) {
-  return Object.values(p.rewards || {}).reduce(
-    (s, v) => s + (Number(v) || 0),
-    0
-  );
+  return Object.values(p.rewards || {}).reduce((s, v) => s + (Number(v) || 0), 0);
 }
 
 function hasAnyReward(p) {
@@ -491,7 +377,6 @@ function hasReward(p, accId) {
   return Number.isFinite(n) && n !== 0;
 }
 
-// Cột tài khoản cho view bảng: account có reward ở bất kỳ dự án nào (đã lọc), theo sortOrder.
 const projectMatrixAccounts = computed(() => {
   const ids = new Set();
   filteredProjects.value.forEach((p) => {
@@ -504,7 +389,6 @@ const projectMatrixAccounts = computed(() => {
     .sort((a, b) => store.accountOrderIndex(a.id) - store.accountOrderIndex(b.id));
 });
 
-// Từ view bảng → chuyển sang view danh sách + mở sửa (showAll để chắc chắn dự án hiển thị).
 function editFromTable(p) {
   viewMode.value = 'list';
   showAll.value = true;
@@ -512,21 +396,21 @@ function editFromTable(p) {
 }
 
 function accountsWithReward(p) {
-  // Bao gồm cả inactive accounts để không "ẩn" reward cũ. Cho phép cả giá trị âm.
   return store.accounts.filter((a) => {
     const n = Number(p.rewards?.[a.id]);
     return Number.isFinite(n) && n !== 0;
   });
 }
 
-function typeClass(type) {
-  return {
-    TGE: 'bg-purple-100 text-purple-700',
-    FCFS: 'bg-blue-100 text-blue-700',
-    Phase: 'bg-green-100 text-green-700',
-    'Pre-Tge': 'bg-orange-100 text-orange-700',
-    Booster: 'bg-amber-100 text-amber-700',
-  }[type] || 'bg-gray-200 text-gray-700';
+function typeColor(type) {
+  const map = {
+    TGE: { color: '#f3e8ff', textColor: '#7e22ce' },
+    FCFS: { color: '#dbeafe', textColor: '#1d4ed8' },
+    Phase: { color: '#dcfce7', textColor: '#15803d' },
+    'Pre-Tge': { color: '#ffedd5', textColor: '#c2410c' },
+    Booster: { color: '#fef3c7', textColor: '#b45309' },
+  };
+  return map[type] || { color: '#e5e7eb', textColor: '#374151' };
 }
 
 async function submit() {
@@ -584,11 +468,6 @@ const editForm = reactive({
 });
 const savingEdit = ref(false);
 
-const editDateIso = computed({
-  get: () => dmyToIso(editForm.date),
-  set: (v) => { editForm.date = isoToDmy(v) || editForm.date; },
-});
-
 const editTotal = computed(() =>
   Object.values(editForm.rewards).reduce((s, v) => s + (Number(v) || 0), 0)
 );
@@ -645,14 +524,59 @@ async function saveEdit() {
   }
 }
 
-async function del(p) {
-  if (!confirm(`Xóa dự án "${p.name}"?`)) return;
-  try {
-    await store.deleteProject(p.id);
-    await store.loadSummary();
-    toast.success(`Đã xóa "${p.name}"`);
-  } catch (e) {
-    toast.error('Lỗi: ' + e.message);
-  }
+function del(p) {
+  dialog.warning({
+    title: 'Xóa dự án',
+    content: `Xóa dự án "${p.name}"?`,
+    positiveText: 'Xóa',
+    negativeText: 'Hủy',
+    onPositiveClick: async () => {
+      try {
+        await store.deleteProject(p.id);
+        await store.loadSummary();
+        toast.success(`Đã xóa "${p.name}"`);
+      } catch (e) {
+        toast.error('Lỗi: ' + e.message);
+      }
+    },
+  });
 }
 </script>
+
+<style scoped>
+.card-title { font-weight: 600; }
+.muted { color: #94a3b8; }
+.strong { font-weight: 600; }
+.ta-r { text-align: right; }
+.label { font-size: 12px; font-weight: 500; color: #64748b; }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; margin-right: 4px; vertical-align: middle; }
+.head-toggle { display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; }
+.chevron { transition: transform 0.2s; display: inline-block; }
+.chevron.open { transform: rotate(180deg); }
+.reward-label { font-size: 12px; color: #475569; margin-bottom: 2px; display: flex; align-items: center; }
+.proj-name { font-weight: 700; font-size: 15px; color: #1e293b; }
+
+.inner-table { width: 100%; font-size: 13px; }
+.inner-row td { padding: 4px 0; border-bottom: 1px solid #f1f5f9; }
+.inner-row:last-child td { border-bottom: 0; }
+.est-chip, .est-cell {
+  font-weight: 700; color: #d97706; background: #fffbeb;
+  border: 1px solid #fde68a; border-radius: 4px; padding: 1px 6px;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+
+/* Pivot matrix */
+.legend { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.legend--est { background: #fef3c7; border: 1px solid #fcd34d; }
+.matrix-wrap { overflow: auto; max-height: 70vh; border: 1px solid #e2e8f0; border-radius: 8px; }
+.matrix { border-collapse: separate; border-spacing: 0; font-size: 13px; font-variant-numeric: tabular-nums; min-width: 100%; }
+.matrix th, .matrix td { border-bottom: 1px solid #e2e8f0; padding: 6px 10px; white-space: nowrap; }
+.sticky-top { position: sticky; top: 0; z-index: 20; background: #f1f5f9; height: 36px; font-weight: 600; text-align: left; }
+.sticky-col { position: sticky; left: 0; z-index: 10; background: #fff; }
+.corner { z-index: 30; }
+.matrix-row:hover td { background: #eff6ff; }
+.matrix-row:hover .sticky-col { background: #eff6ff; }
+.name-cell { font-weight: 600; color: #1e293b; cursor: pointer; border-right: 1px solid #e2e8f0; }
+.name-cell:hover { color: #2563eb; }
+.dash { color: #cbd5e1; }
+</style>

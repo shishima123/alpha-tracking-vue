@@ -1,325 +1,227 @@
 <template>
-  <div class="space-y-6">
+  <n-flex vertical :size="20">
     <!-- Management panel: archive + clear old (thu gọn mặc định) -->
-    <div class="card">
-      <button
-        class="w-full flex items-center justify-between text-left"
-        @click="showManage = !showManage"
-      >
-        <h3 class="font-semibold">
+    <n-card>
+      <div class="head-toggle" @click="showManage = !showManage">
+        <span class="card-title">
           Quản lý lịch sử phí
-          <span class="text-base ml-1">{{ indicatorIcon }}</span>
-        </h3>
-        <span class="flex items-center gap-1 text-sm text-gray-500">
-          {{ showManage ? 'Thu gọn' : 'Mở' }}
-          <span class="transition-transform" :class="showManage ? 'rotate-180' : ''">▾</span>
+          <span style="margin-left: 4px">{{ indicatorIcon }}</span>
         </span>
-      </button>
-
-      <div
-        class="grid transition-[grid-template-rows] duration-300 ease-in-out"
-        :class="showManage ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'"
-      >
-      <div class="overflow-hidden">
-        <div class="flex items-center gap-2 flex-wrap pt-3 mb-3">
-          <button
-            class="btn-secondary"
-            :disabled="archiving || !canArchive"
-            @click="onArchive"
-            :title="canArchive ? '' : 'Không có tháng cũ chưa tổng hợp'"
-          >
-            <span v-if="archiving" class="inline-block w-3 h-3 border-2 border-binance-yellow border-t-transparent rounded-full animate-spin mr-1"></span>
-            Tổng hợp tháng cũ
-            <span v-if="pendingMonths.length" class="text-binance-yellow ml-1">({{ pendingMonths.length }})</span>
-          </button>
-          <button
-            class="btn-secondary text-red-600 hover:text-red-700"
-            :disabled="clearing || !canClear"
-            @click="onClearOld"
-            :title="canClear ? 'Xóa các row đã ra khỏi cửa sổ 15 ngày' : 'Không có row nào đã hết 15 ngày'"
-          >
-            <span v-if="clearing" class="inline-block w-3 h-3 border-2 border-red-600 border-t-transparent rounded-full animate-spin mr-1"></span>
-            Xóa lịch sử cũ
-            <span v-if="canClear" class="text-gray-500 ml-1">({{ pastDaily.deletable }})</span>
-          </button>
-        </div>
-
-        <div
-          class="px-3 py-2 rounded-lg border text-sm flex items-start gap-2"
-          :class="indicatorClass"
-        >
-          <span class="text-lg leading-none">{{ indicatorIcon }}</span>
-          <div class="flex-1">
-            <div class="font-medium">{{ indicatorTitle }}</div>
-            <div class="text-xs text-gray-500 mt-0.5">{{ indicatorDetail }}</div>
-          </div>
-        </div>
+        <n-flex align="center" :size="4" class="muted">
+          {{ showManage ? 'Thu gọn' : 'Mở' }}
+          <span class="chevron" :class="{ open: showManage }">▾</span>
+        </n-flex>
       </div>
-      </div>
-    </div>
 
-    <!-- Phí tháng hiện tại -->
-    <div class="card">
-      <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-        <h3 class="font-semibold">
+      <n-collapse-transition :show="showManage">
+        <div style="padding-top: 12px">
+          <n-flex :size="8" :wrap="true" style="margin-bottom: 12px">
+            <n-button :loading="archiving" :disabled="!canArchive" @click="onArchive">
+              Tổng hợp tháng cũ
+              <span v-if="pendingMonths.length" style="color: #2563eb; margin-left: 4px">({{ pendingMonths.length }})</span>
+            </n-button>
+            <n-button type="error" ghost :loading="clearing" :disabled="!canClear" @click="onClearOld">
+              Xóa lịch sử cũ
+              <span v-if="canClear" class="muted" style="margin-left: 4px">({{ pastDaily.deletable }})</span>
+            </n-button>
+          </n-flex>
+
+          <n-alert :type="indicatorType" :title="indicatorTitle" :bordered="true">
+            {{ indicatorDetail }}
+          </n-alert>
+        </div>
+      </n-collapse-transition>
+    </n-card>
+
+    <!-- Tất cả phí trade -->
+    <n-card>
+      <n-flex justify="space-between" align="center" :wrap="true" :size="8" style="margin-bottom: 12px">
+        <span class="card-title">
           Tất cả phí trade
-          <span class="text-gray-500 font-normal">
+          <span class="muted" style="font-weight: 400">
             ({{ filteredFees.length }} bản ghi · {{ groupedByDate.length }} ngày)
           </span>
-        </h3>
-        <div class="flex items-center gap-2 flex-wrap">
-          <div class="inline-flex rounded-lg border border-binance-light overflow-hidden">
-            <button
-              v-for="v in viewModes"
-              :key="v.key"
-              class="px-3 py-1 text-sm transition-colors"
-              :class="viewMode === v.key
-                ? 'bg-binance-yellow text-black font-medium'
-                : 'bg-transparent text-gray-500 hover:text-gray-700'"
-              @click="viewMode = v.key"
-            >
-              {{ v.label }}
-            </button>
-          </div>
-          <select v-model="filter.accountId" class="input w-40 py-1">
-            <option value="">Tất cả tài khoản</option>
-            <option v-for="a in store.accounts" :key="a.id" :value="a.id">
-              {{ a.displayName }}
-            </option>
-          </select>
-          <button class="btn-secondary" @click="store.loadAllFees()">↻</button>
-        </div>
-      </div>
+        </span>
+        <n-flex align="center" :size="8" :wrap="true">
+          <n-radio-group v-model:value="viewMode" size="small">
+            <n-radio-button v-for="v in viewModes" :key="v.key" :value="v.key">{{ v.label }}</n-radio-button>
+          </n-radio-group>
+          <n-select
+            v-model:value="filter.accountId"
+            :options="accountOptions"
+            size="small"
+            style="width: 180px"
+          />
+          <n-button size="small" quaternary circle @click="store.loadAllFees()">↻</n-button>
+        </n-flex>
+      </n-flex>
 
-      <div v-if="groupedByDate.length === 0" class="text-center py-8 text-gray-500">
-        Chưa có bản ghi nào — dùng modal 🧮 (góc dưới phải) để nhập phí.
-      </div>
+      <n-empty v-if="groupedByDate.length === 0" description="Chưa có bản ghi nào — dùng modal 🧮 (góc dưới phải) để nhập phí." style="padding: 32px 0" />
 
       <!-- ===== View: Theo ngày (grouped) ===== -->
-      <div v-else-if="viewMode === 'grouped'" class="overflow-x-auto">
-        <table class="w-full border-collapse">
-          <thead>
-            <tr class="table-thead">
-              <th class="px-3 py-2 w-44">Ngày</th>
-              <th class="px-3 py-2">Chi tiết tài khoản</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="group in groupedByDate"
-              :key="group.date"
-              class="group border-b border-slate-200 align-top hover:bg-blue-50/50 hover:shadow-[inset_3px_0_0_0_#2563eb] transition-all duration-150"
-            >
-              <!-- TD ngày -->
-              <td class="px-3 py-3">
-                <div class="flex items-center gap-2.5">
-                  <span class="grid place-items-center w-9 h-9 rounded-lg bg-blue-50 text-blue-600 text-sm font-bold shrink-0">
-                    {{ group.date.slice(0, 2) }}
-                  </span>
-                  <div class="leading-tight">
-                    <div class="font-bold text-slate-800 text-sm">{{ group.date }}</div>
-                    <div class="text-[11px] text-gray-500">{{ group.count }} tài khoản</div>
-                  </div>
+      <n-table v-else-if="viewMode === 'grouped'" :bordered="false" :single-line="false" size="small">
+        <thead>
+          <tr>
+            <th style="width: 180px">Ngày</th>
+            <th>Chi tiết tài khoản</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="group in groupedByDate" :key="group.date">
+            <td style="vertical-align: top">
+              <n-flex align="center" :size="10" :wrap="false">
+                <span class="day-badge">{{ group.date.slice(0, 2) }}</span>
+                <div>
+                  <div class="strong">{{ group.date }}</div>
+                  <div class="muted" style="font-size: 11px">{{ group.count }} tài khoản</div>
                 </div>
-                <div class="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-50 border border-rose-100">
-                  <span class="text-[11px] text-rose-400 font-medium">Tổng</span>
-                  <span class="text-sm font-bold text-rose-600 tabular-nums">{{ fmtUSD(group.totalFee) }}</span>
-                </div>
-              </td>
-
-              <!-- TD chứa table nhỏ liệt kê từng account -->
-              <td class="px-3 py-3">
-                <table class="w-full text-sm">
-                  <tbody>
-                    <tr
-                      v-for="f in group.entries"
-                      :key="f.id"
-                      class="cursor-pointer hover:bg-blue-100 rounded transition-colors border-b border-slate-100 last:border-0"
-                      :title="f.note ? `${accountName(f.accountId)} · ${f.note}` : accountName(f.accountId)"
-                      @click="openEdit(f.date, f.accountId)"
-                    >
-                      <td class="py-1.5 pr-2 w-1">
-                        <span class="inline-block w-2.5 h-2.5 rounded-full align-middle" :style="{ background: accountColor(f.accountId) }"></span>
-                      </td>
-                      <td class="py-1.5 pr-3 font-semibold text-slate-700 whitespace-nowrap">
-                        {{ accountName(f.accountId) }}
-                        <span v-if="f.note" class="text-[11px]">📝</span>
-                      </td>
-                      <td class="py-1.5 pr-4 text-right font-bold text-rose-600 tabular-nums whitespace-nowrap">
-                        {{ fmtUSD(f.fee) }}
-                      </td>
-                      <td class="py-1.5 text-right tabular-nums whitespace-nowrap">
-                        <span class="text-[11px] font-semibold text-slate-500 bg-slate-100 rounded px-1.5 py-0.5">{{ f.points }}đ</span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+              </n-flex>
+              <n-tag type="error" size="small" :bordered="false" style="margin-top: 8px">
+                Tổng {{ fmtUSD(group.totalFee) }}
+              </n-tag>
+            </td>
+            <td>
+              <table class="inner-table">
+                <tbody>
+                  <tr
+                    v-for="f in group.entries"
+                    :key="f.id"
+                    class="inner-row"
+                    :title="f.note ? `${accountName(f.accountId)} · ${f.note}` : accountName(f.accountId)"
+                    @click="openEdit(f.date, f.accountId)"
+                  >
+                    <td style="width: 1px"><span class="dot" :style="{ background: accountColor(f.accountId) }"></span></td>
+                    <td class="strong" style="white-space: nowrap; padding-right: 12px">
+                      {{ accountName(f.accountId) }}
+                      <span v-if="f.note">📝</span>
+                    </td>
+                    <td class="fee" style="text-align: right; font-weight: 700; white-space: nowrap; padding-right: 16px">{{ fmtUSD(f.fee) }}</td>
+                    <td style="text-align: right; white-space: nowrap">
+                      <span class="pts-chip">{{ f.points }}đ</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </td>
+          </tr>
+        </tbody>
+      </n-table>
 
       <!-- ===== View: Bảng lịch sử (pivot) ===== -->
-      <div v-else class="space-y-2">
-        <div class="flex items-center gap-4 text-xs text-gray-500 flex-wrap">
-          <span class="flex items-center gap-1.5">
-            <span class="inline-block w-3 h-3 rounded-sm bg-blue-100 border border-blue-300"></span>
-            15 ngày gần nhất (đang tính cho phần Điểm)
-          </span>
-          <span class="flex items-center gap-1.5">
-            <span class="inline-block w-3 h-3 rounded-sm bg-green-100 border border-green-300"></span>
-            Hôm nay
-          </span>
-        </div>
-        <div class="overflow-auto max-h-[70vh] border border-slate-200 rounded-lg">
-          <table class="min-w-full border-separate border-spacing-0 text-sm tabular-nums">
+      <div v-else>
+        <n-flex :size="16" :wrap="true" class="muted" style="font-size: 12px; margin-bottom: 8px">
+          <n-flex align="center" :size="6"><span class="legend legend--window"></span>15 ngày gần nhất (đang tính cho phần Điểm)</n-flex>
+          <n-flex align="center" :size="6"><span class="legend legend--today"></span>Hôm nay</n-flex>
+        </n-flex>
+        <div class="matrix-wrap">
+          <table class="matrix">
             <thead>
               <tr>
-                <th
-                  rowspan="2"
-                  class="sticky top-0 left-0 z-30 bg-slate-100 h-9 px-3 text-left font-semibold border-b border-r border-slate-300 w-28"
-                >
-                  Ngày
-                </th>
-                <th
-                  v-for="a in matrixAccounts"
-                  :key="a.id"
-                  colspan="2"
-                  class="sticky top-0 z-20 bg-slate-100 h-9 px-3 text-center font-semibold border-b border-r border-slate-300 whitespace-nowrap"
-                >
-                  <span class="inline-block w-2 h-2 rounded-full mr-1.5" :style="{ background: accountColor(a.id) }"></span>
+                <th rowspan="2" class="sticky-col sticky-top corner">Ngày</th>
+                <th v-for="a in matrixAccounts" :key="a.id" colspan="2" class="sticky-top acc-head">
+                  <span class="dot" :style="{ background: accountColor(a.id) }"></span>
                   {{ a.displayName }}
                 </th>
-                <th
-                  rowspan="2"
-                  class="sticky top-0 z-20 bg-slate-100 h-9 px-3 text-right font-semibold border-b border-slate-300 whitespace-nowrap"
-                >
-                  Tổng phí
-                </th>
+                <th rowspan="2" class="sticky-top total-head">Tổng phí</th>
               </tr>
               <tr>
                 <template v-for="a in matrixAccounts" :key="'sub-' + a.id">
-                  <th class="sticky top-9 z-20 bg-slate-50 px-2 py-1 text-right font-medium text-gray-500 border-b border-slate-300">Phí</th>
-                  <th class="sticky top-9 z-20 bg-slate-50 px-2 py-1 text-right font-medium text-rose-500 border-b border-r border-slate-300">Điểm</th>
+                  <th class="sticky-top2 sub-head">Phí</th>
+                  <th class="sticky-top2 sub-head sub-head--pts">Điểm</th>
                 </template>
               </tr>
             </thead>
             <tbody>
-              <tr
-                v-for="row in matrixRows"
-                :key="row.date"
-                :class="rowBg(row)"
-              >
-                <td
-                  class="sticky left-0 z-10 px-3 py-1.5 font-semibold text-slate-700 border-b border-r border-slate-200 whitespace-nowrap"
-                  :class="dateBg(row)"
-                >
-                  {{ row.date }}
-                </td>
+              <tr v-for="row in matrixRows" :key="row.date" :class="rowBg(row)">
+                <td class="sticky-col date-cell" :class="dateBg(row)">{{ row.date }}</td>
                 <template v-for="a in matrixAccounts" :key="row.date + '-' + a.id">
-                  <td
-                    class="px-2 py-1.5 text-right border-b border-slate-200 cursor-pointer hover:bg-blue-200/60 transition-colors"
-                    @click="openEdit(row.date, a.id)"
-                  >
-                    <span v-if="row.cells[a.id]" class="font-semibold text-rose-600">{{ fmtUSD(row.cells[a.id].fee) }}</span>
-                    <span v-else class="text-gray-300">–</span>
+                  <td class="num-cell" @click="openEdit(row.date, a.id)">
+                    <span v-if="row.cells[a.id]" class="fee" style="font-weight: 600">{{ fmtUSD(row.cells[a.id].fee) }}</span>
+                    <span v-else class="dash">–</span>
                   </td>
-                  <td
-                    class="px-2 py-1.5 text-right border-b border-r border-slate-200 cursor-pointer hover:bg-blue-200/60 transition-colors"
-                    @click="openEdit(row.date, a.id)"
-                  >
-                    <span v-if="row.cells[a.id]" class="font-medium text-slate-500">{{ row.cells[a.id].points }}</span>
-                    <span v-else class="text-gray-300">–</span>
+                  <td class="num-cell pts-col" @click="openEdit(row.date, a.id)">
+                    <span v-if="row.cells[a.id]" class="muted" style="font-weight: 500">{{ row.cells[a.id].points }}</span>
+                    <span v-else class="dash">–</span>
                   </td>
                 </template>
-                <td class="px-3 py-1.5 text-right font-bold text-rose-600 border-b border-slate-200 whitespace-nowrap">
-                  {{ fmtUSD(row.totalFee) }}
-                </td>
+                <td class="fee total-cell">{{ fmtUSD(row.totalFee) }}</td>
               </tr>
             </tbody>
           </table>
         </div>
       </div>
 
-      <p v-if="groupedByDate.length > 0" class="text-xs text-gray-500 mt-3">
+      <n-text v-if="groupedByDate.length > 0" depth="3" style="font-size: 12px; display: block; margin-top: 12px">
         Hiển thị toàn bộ daily còn trong sheet Fees. Sau khi bấm
-        <b class="text-gray-700">Xóa lịch sử cũ</b>, các tháng đã
-        <b class="text-gray-700">Tổng hợp</b> vào
-        <code class="text-gray-500">FeesMonthly</code> sẽ không còn dòng chi tiết ở đây.
-      </p>
-    </div>
+        <b>Xóa lịch sử cũ</b>, các tháng đã <b>Tổng hợp</b> vào
+        <n-text code>FeesMonthly</n-text> sẽ không còn dòng chi tiết ở đây.
+      </n-text>
+    </n-card>
 
     <!-- ===== Edit modal (matrix cell) ===== -->
-    <Teleport to="body">
-      <div
-        v-if="cellModal"
-        class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-        @click.self="closeCellModal"
-      >
-        <div class="bg-binance-gray border border-binance-light rounded-2xl shadow-xl w-full max-w-md">
-          <div class="px-5 py-3 border-b border-binance-light flex items-center justify-between">
-            <h3 class="font-semibold">
-              {{ cellModal.existing ? 'Sửa phí' : 'Thêm phí' }}
-            </h3>
-            <button class="text-gray-500 hover:text-gray-800 text-xl leading-none" @click="closeCellModal">✕</button>
-          </div>
-          <div class="p-5 space-y-3">
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="label">Ngày</label>
-                <div class="input bg-binance-dark/60 text-gray-700">{{ cellModal.date }}</div>
-              </div>
-              <div>
-                <label class="label">Tài khoản</label>
-                <div class="input bg-binance-dark/60 text-gray-700 flex items-center gap-2">
-                  <span class="inline-block w-2 h-2 rounded-full" :style="{ background: accountColor(cellModal.accountId) }"></span>
-                  {{ accountName(cellModal.accountId) }}
-                </div>
-              </div>
-              <div>
-                <label class="label">Phí ($)</label>
-                <input v-model.number="cellModal.fee" type="number" step="0.01" class="input text-right" autofocus />
-              </div>
-              <div>
-                <label class="label">Điểm</label>
-                <input v-model.number="cellModal.points" type="number" class="input text-right" />
-              </div>
-            </div>
-            <div>
-              <label class="label">Ghi chú</label>
-              <input v-model="cellModal.note" type="text" class="input" placeholder="Không bắt buộc" />
-            </div>
-          </div>
-          <div class="px-5 py-3 border-t border-binance-light flex items-center justify-between">
-            <button
-              v-if="cellModal.existing"
-              class="text-red-600 hover:text-red-700 text-sm"
-              :disabled="cellModal.saving"
-              @click="deleteCell"
-            >
-              Xóa bản ghi
-            </button>
-            <span v-else></span>
-            <div class="flex gap-2">
-              <button class="btn-secondary" :disabled="cellModal.saving" @click="closeCellModal">Hủy</button>
-              <button class="btn-primary" :disabled="cellModal.saving" @click="saveCell">
-                <span v-if="cellModal.saving" class="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-1"></span>
-                Lưu
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Teleport>
-  </div>
+    <n-modal
+      :show="!!cellModal"
+      preset="card"
+      :title="cellModal?.existing ? 'Sửa phí' : 'Thêm phí'"
+      style="max-width: 460px"
+      @update:show="(v) => { if (!v) closeCellModal(); }"
+    >
+      <template v-if="cellModal">
+        <n-grid :cols="2" :x-gap="12" :y-gap="12">
+          <n-gi>
+            <n-form-item label="Ngày" :show-feedback="false">
+              <n-input :value="cellModal.date" readonly />
+            </n-form-item>
+          </n-gi>
+          <n-gi>
+            <n-form-item label="Tài khoản" :show-feedback="false">
+              <n-flex align="center" :size="6" class="readonly-box">
+                <span class="dot" :style="{ background: accountColor(cellModal.accountId) }"></span>
+                {{ accountName(cellModal.accountId) }}
+              </n-flex>
+            </n-form-item>
+          </n-gi>
+          <n-gi>
+            <n-form-item label="Phí ($)" :show-feedback="false">
+              <n-input-number v-model:value="cellModal.fee" :step="0.01" style="width: 100%" />
+            </n-form-item>
+          </n-gi>
+          <n-gi>
+            <n-form-item label="Điểm" :show-feedback="false">
+              <n-input-number v-model:value="cellModal.points" style="width: 100%" />
+            </n-form-item>
+          </n-gi>
+        </n-grid>
+        <n-form-item label="Ghi chú" :show-feedback="false" style="margin-top: 12px">
+          <n-input v-model:value="cellModal.note" placeholder="Không bắt buộc" />
+        </n-form-item>
+      </template>
+      <template #footer v-if="cellModal">
+        <n-flex justify="space-between" align="center">
+          <n-button v-if="cellModal.existing" text type="error" :disabled="cellModal.saving" @click="deleteCell">
+            Xóa bản ghi
+          </n-button>
+          <span v-else></span>
+          <n-flex :size="8">
+            <n-button :disabled="cellModal.saving" @click="closeCellModal">Hủy</n-button>
+            <n-button type="primary" :loading="cellModal.saving" @click="saveCell">Lưu</n-button>
+          </n-flex>
+        </n-flex>
+      </template>
+    </n-modal>
+  </n-flex>
 </template>
 
 <script setup>
 import { reactive, computed, ref, onMounted } from 'vue';
 import { useStorage } from '@vueuse/core';
+import {
+  NFlex, NCard, NButton, NCollapseTransition, NAlert, NRadioGroup, NRadioButton,
+  NSelect, NTable, NTag, NEmpty, NModal, NGrid, NGi, NFormItem, NInput, NInputNumber, NText,
+} from 'naive-ui';
 import { useTrackingStore } from '../stores/trackingStore';
 import { useToastStore } from '../stores/toastStore';
+import { dialog } from '../utils/naive';
 import { fmtUSD, parseDate, todayStr } from '../utils/format';
 
 const store = useTrackingStore();
@@ -332,6 +234,11 @@ const viewModes = [
   { key: 'grouped', label: 'Theo ngày' },
 ];
 const viewMode = useStorage('alpha:feesViewMode', 'grouped');
+
+const accountOptions = computed(() => [
+  { label: 'Tất cả tài khoản', value: '' },
+  ...store.accounts.map((a) => ({ label: a.displayName, value: a.id })),
+]);
 
 const archiving = ref(false);
 const clearing = ref(false);
@@ -380,7 +287,6 @@ const groupedByDate = computed(() => {
 });
 
 // ===== Pivot table view =====
-// Tài khoản hiển thị làm cột (chỉ những account có dữ liệu), theo thứ tự sortOrder.
 const matrixAccounts = computed(() => {
   const ids = new Set();
   filteredFees.value.forEach((f) => ids.add(f.accountId));
@@ -389,8 +295,7 @@ const matrixAccounts = computed(() => {
     .sort((a, b) => store.accountOrderIndex(a.id) - store.accountOrderIndex(b.id));
 });
 
-// Một dòng = một ngày (mới nhất trên cùng). inWindow = tradeDate + 15 >= today,
-// khớp logic computePoints ở Code.gs (cửa sổ 15 ngày dùng tính điểm).
+// inWindow = tradeDate + 15 >= today, khớp logic computePoints ở Code.gs.
 function inPointWindow(date) {
   const d = parseDate(date);
   if (!d) return false;
@@ -417,29 +322,28 @@ const matrixRows = computed(() => {
   });
 });
 
-// Màu nền: hôm nay (xanh lá) ưu tiên hơn cửa sổ 15 ngày (xanh dương).
-// Cột ngày freeze cần nền đặc (không trong suốt) để che nội dung cuộn bên dưới.
 function rowBg(row) {
-  if (row.isToday) return 'bg-green-50';
-  if (row.inWindow) return 'bg-blue-50';
-  return 'bg-white';
+  if (row.isToday) return 'row-today';
+  if (row.inWindow) return 'row-window';
+  return '';
 }
 function dateBg(row) {
-  if (row.isToday) return 'bg-green-100';
-  if (row.inWindow) return 'bg-blue-100';
-  return 'bg-white';
+  if (row.isToday) return 'date-today';
+  if (row.inWindow) return 'date-window';
+  return '';
 }
 
 // ===== Past-daily indicator =====
 const pastDaily = computed(() => store.pastDaily || { total: 0, deletable: 0, active: 0, safeToDelete: false, pendingArchiveMonths: [] });
-const hasPastDaily = computed(() => pastDaily.value.total > 0);
 const canClear = computed(() => pastDaily.value.deletable > 0);
 const pendingMonths = computed(() => pastDaily.value.pendingArchiveMonths || []);
 const canArchive = computed(() => pendingMonths.value.length > 0);
 
-const indicatorIcon = computed(() => {
-  if (canClear.value) return '✓';
-  return 'ℹ';
+const indicatorIcon = computed(() => (canClear.value ? '✓' : 'ℹ'));
+const indicatorType = computed(() => {
+  if (canClear.value) return 'success';
+  if (pastDaily.value.active > 0) return 'warning';
+  return 'info';
 });
 const indicatorTitle = computed(() => {
   if (canClear.value) return `Có thể xóa ${pastDaily.value.deletable} bản ghi đã hết 15 ngày`;
@@ -460,17 +364,12 @@ const indicatorDetail = computed(() => {
   }
   return 'Sheet Fees chỉ chứa tháng hiện tại.';
 });
-const indicatorClass = computed(() => {
-  if (canClear.value) return 'bg-green-50 border-green-300 text-green-700';
-  if (pastDaily.value.active > 0) return 'bg-amber-50 border-amber-300 text-amber-700';
-  return 'bg-slate-100 border-binance-light text-gray-600';
-});
 
 // ===== Helpers =====
 function accountName(id) { return store.accountById(id)?.displayName || id; }
 function accountColor(id) { return store.accountById(id)?.color || '#3b82f6'; }
 
-// ===== Cell/chip edit (modal) — dùng chung cho cả matrix và grouped view =====
+// ===== Cell/chip edit (modal) =====
 const cellModal = ref(null);
 
 function openEdit(date, accountId) {
@@ -494,7 +393,6 @@ async function saveCell() {
   if (!cellModal.value) return;
   cellModal.value.saving = true;
   try {
-    // store.addFees → server bulkCreateFees → upsert theo (date, accountId)
     await store.addFees([{
       date: cellModal.value.date,
       accountId: cellModal.value.accountId,
@@ -510,18 +408,26 @@ async function saveCell() {
   }
 }
 
-async function deleteCell() {
+function deleteCell() {
   if (!cellModal.value?.existing) return;
-  if (!confirm(`Xóa bản ghi ${cellModal.value.date} - ${accountName(cellModal.value.accountId)}?`)) return;
-  cellModal.value.saving = true;
-  try {
-    await store.deleteFee(cellModal.value.existing.id);
-    toast.success('Đã xóa');
-    cellModal.value = null;
-  } catch (e) {
-    toast.error('Lỗi: ' + e.message);
-    cellModal.value.saving = false;
-  }
+  const m = cellModal.value;
+  dialog.warning({
+    title: 'Xóa bản ghi',
+    content: `Xóa bản ghi ${m.date} - ${accountName(m.accountId)}?`,
+    positiveText: 'Xóa',
+    negativeText: 'Hủy',
+    onPositiveClick: async () => {
+      m.saving = true;
+      try {
+        await store.deleteFee(m.existing.id);
+        toast.success('Đã xóa');
+        cellModal.value = null;
+      } catch (e) {
+        toast.error('Lỗi: ' + e.message);
+        m.saving = false;
+      }
+    },
+  });
 }
 
 // ===== Management actions =====
@@ -537,19 +443,76 @@ async function onArchive() {
   }
 }
 
-async function onClearOld() {
-  if (!confirm(`Xóa ${pastDaily.value.deletable} bản ghi đã hết cửa sổ 15 ngày (không còn tính điểm)? Các row còn trong cửa sổ và tháng hiện tại được giữ lại.`)) return;
+function onClearOld() {
+  let content = `Xóa ${pastDaily.value.deletable} bản ghi đã hết cửa sổ 15 ngày (không còn tính điểm)? Các row còn trong cửa sổ và tháng hiện tại được giữ lại.`;
   if (pendingMonths.value.length > 0) {
-    if (!confirm(`Còn ${pendingMonths.value.length} tháng chưa archive — sau khi clear sẽ mất khỏi Dashboard. Tiếp tục?`)) return;
+    content += ` Lưu ý: còn ${pendingMonths.value.length} tháng chưa archive — sau khi clear sẽ mất khỏi Dashboard.`;
   }
-  clearing.value = true;
-  try {
-    const res = await store.clearOldDaily();
-    toast.success(`Đã xóa ${res?.removed ?? 0} bản ghi cũ`);
-  } catch (e) {
-    toast.error('Lỗi clear: ' + e.message);
-  } finally {
-    clearing.value = false;
-  }
+  dialog.warning({
+    title: 'Xóa lịch sử cũ',
+    content,
+    positiveText: 'Xóa',
+    negativeText: 'Hủy',
+    onPositiveClick: async () => {
+      clearing.value = true;
+      try {
+        const res = await store.clearOldDaily();
+        toast.success(`Đã xóa ${res?.removed ?? 0} bản ghi cũ`);
+      } catch (e) {
+        toast.error('Lỗi clear: ' + e.message);
+      } finally {
+        clearing.value = false;
+      }
+    },
+  });
 }
 </script>
+
+<style scoped>
+.card-title { font-weight: 600; }
+.muted { color: #94a3b8; }
+.strong { font-weight: 600; }
+.fee { color: #e11d48; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; vertical-align: middle; }
+.head-toggle { display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; }
+.chevron { transition: transform 0.2s; display: inline-block; }
+.chevron.open { transform: rotate(180deg); }
+
+.day-badge {
+  display: grid; place-items: center; width: 36px; height: 36px; border-radius: 8px;
+  background: #eff6ff; color: #2563eb; font-weight: 700; font-size: 13px; flex-shrink: 0;
+}
+.inner-table { width: 100%; font-size: 13px; }
+.inner-row { cursor: pointer; }
+.inner-row:hover { background: #eff6ff; }
+.inner-row td { padding: 6px 0; border-bottom: 1px solid #f1f5f9; }
+.pts-chip { font-size: 11px; font-weight: 600; color: #64748b; background: #f1f5f9; border-radius: 4px; padding: 2px 6px; }
+
+/* Pivot matrix */
+.legend { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.legend--window { background: #dbeafe; border: 1px solid #93c5fd; }
+.legend--today { background: #dcfce7; border: 1px solid #86efac; }
+.matrix-wrap { overflow: auto; max-height: 70vh; border: 1px solid #e2e8f0; border-radius: 8px; }
+.matrix { border-collapse: separate; border-spacing: 0; font-size: 13px; font-variant-numeric: tabular-nums; min-width: 100%; }
+.matrix th, .matrix td { border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; padding: 6px 10px; white-space: nowrap; }
+.sticky-top { position: sticky; top: 0; z-index: 20; background: #f1f5f9; height: 36px; font-weight: 600; }
+.sticky-top2 { position: sticky; top: 36px; z-index: 20; background: #f8fafc; font-weight: 500; }
+.sticky-col { position: sticky; left: 0; z-index: 10; }
+.corner { z-index: 30; text-align: left; }
+.acc-head { text-align: center; }
+.total-head { text-align: right; }
+.sub-head { text-align: right; color: #64748b; }
+.sub-head--pts { color: #f43f5e; }
+.date-cell { font-weight: 600; color: #334155; }
+.num-cell { text-align: right; cursor: pointer; }
+.num-cell:hover { background: rgba(37, 99, 235, 0.12); }
+.pts-col { color: #64748b; }
+.dash { color: #cbd5e1; }
+.total-cell { text-align: right; font-weight: 700; }
+.row-today { background: #f0fdf4; }
+.row-window { background: #eff6ff; }
+.date-today { background: #dcfce7; }
+.date-window { background: #dbeafe; }
+.matrix tbody tr:not(.row-today):not(.row-window) .date-cell { background: #fff; }
+.readonly-box { background: #f1f5f9; border-radius: 6px; padding: 6px 10px; min-height: 34px; }
+</style>
