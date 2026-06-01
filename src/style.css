@@ -25,50 +25,67 @@ body,
 }
 
 @layer components {
+  /* Các class dưới đây được style để khớp look của Naive UI (light theme,
+     primary #2563eb, border-radius 8px). Chỉ Fees.vue + Alpha.vue còn dùng. */
   .card {
-    @apply rounded-xl p-4;
-    background: #f7f9fc;
-    border: 1px solid rgba(203, 213, 225, 0.8);
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px -16px rgba(15, 23, 42, 0.12);
+    @apply rounded-lg p-4;
+    background: #ffffff;
+    border: 1px solid #efeff5; /* n-card border (rgb 239,239,245) */
+    box-shadow: none;
   }
   .btn {
-    @apply inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition;
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-1.5
+           text-sm font-medium transition-colors;
   }
   .btn-primary {
-    @apply btn bg-binance-yellow text-white hover:bg-blue-700;
+    @apply btn text-white;
+    background: #2563eb;
   }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
   .btn-secondary {
-    @apply btn text-gray-700;
-    background: #f7f9fc;
-    border: 1px solid rgba(203, 213, 225, 0.9);
-  }
-  .btn-secondary:hover {
-    background: #e9eef5;
-  }
-  .btn-danger {
-    @apply btn bg-red-600 text-white hover:bg-red-500;
-  }
-  .input {
-    @apply w-full rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none transition;
+    @apply btn;
     background: #ffffff;
-    border: 1px solid rgba(203, 213, 225, 0.9);
+    color: #333639;
+    border: 1px solid #e0e0e6; /* n-button default border */
   }
+  .btn-secondary:hover { color: #2563eb; border-color: #2563eb; }
+  .btn-danger {
+    @apply btn text-white;
+    background: #d03050; /* n error color */
+  }
+  .btn-danger:hover { background: #de576d; }
+  .input {
+    @apply w-full rounded-lg px-3 py-1.5 text-sm focus:outline-none transition-colors;
+    color: #333639;
+    background: #ffffff;
+    border: 1px solid #e0e0e6; /* n-input border */
+  }
+  .input:hover { border-color: #2563eb; }
   .input:focus {
-    border-color: rgba(37, 99, 235, 0.6);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2); /* n-input focus ring */
   }
   .label {
-    @apply block text-xs font-medium text-gray-500 mb-1;
+    @apply block text-xs font-medium mb-1;
+    color: #6b7280;
   }
+  /* n-table thead: nền #fafafc, chữ thường (không uppercase), weight 500 */
   .table-thead {
-    @apply text-left text-xs font-semibold text-gray-500 uppercase tracking-wider
-           border-b border-binance-light;
+    @apply text-left text-sm font-medium;
+    color: #1f2225;
+  }
+  .table-thead > th {
+    background: #fafafc;
+    border-bottom: 1px solid #efeff5;
   }
   .table-td {
-    @apply px-3 py-2 text-sm text-gray-700 border-b border-binance-light/70;
+    @apply px-3 py-2 text-sm;
+    color: #333639;
+    border-bottom: 1px solid #efeff5;
   }
   .badge {
-    @apply inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full;
+    @apply inline-flex items-center text-xs font-medium px-2 py-0.5 rounded;
   }
 }
 

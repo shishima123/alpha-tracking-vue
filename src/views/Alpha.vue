@@ -96,14 +96,14 @@
           </span>
         </h3>
         <div class="flex items-center gap-2 flex-wrap">
-          <div class="inline-flex rounded-lg border border-binance-light overflow-hidden">
+          <div class="inline-flex rounded-lg border border-[#e0e0e6] overflow-hidden">
             <button
               v-for="v in viewModes"
               :key="v.key"
               class="px-3 py-1.5 text-sm transition-colors"
               :class="viewMode === v.key
-                ? 'bg-binance-yellow text-black font-medium'
-                : 'bg-transparent text-gray-500 hover:text-gray-700'"
+                ? 'bg-[#2563eb] text-white font-medium'
+                : 'bg-white text-gray-500 hover:text-[#2563eb] hover:bg-[#fafafc]'"
               @click="viewMode = v.key"
             >
               {{ v.label }}
@@ -111,7 +111,7 @@
           </div>
           <label
             class="flex items-center gap-1.5 text-sm cursor-pointer select-none px-2.5 py-1.5 rounded-lg border transition-colors"
-            :class="onlyEstimated ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-slate-200 text-gray-500 hover:bg-slate-50'"
+            :class="onlyEstimated ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-[#e0e0e6] text-gray-500 hover:bg-[#fafafc]'"
           >
             <input v-model="onlyEstimated" type="checkbox" class="accent-amber-500" />
             Chỉ coin có ước lượng
@@ -158,7 +158,7 @@
               <!-- DISPLAY ROW -->
               <tr
                 v-if="editingId !== p.id"
-                class="group border-b border-slate-200 align-top hover:bg-blue-50/50 hover:shadow-[inset_3px_0_0_0_#2563eb] transition-all duration-150"
+                class="group border-b border-[#efeff5] align-top hover:bg-blue-50/50 hover:shadow-[inset_3px_0_0_0_#2563eb] transition-all duration-150"
               >
                 <!-- Dự án -->
                 <td class="px-3 py-3">
@@ -185,7 +185,7 @@
                       <tr
                         v-for="acc in accountsWithReward(p)"
                         :key="acc.id"
-                        class="border-b border-slate-100 last:border-0 hover:bg-blue-100 rounded transition-colors"
+                        class="border-b border-[#f3f3f5] last:border-0 hover:bg-blue-100 rounded transition-colors"
                       >
                         <td class="py-1 pr-2 w-1">
                           <span class="inline-block w-2.5 h-2.5 rounded-full align-middle" :style="{ background: acc.color }"></span>
@@ -218,18 +218,18 @@
                 <!-- Actions -->
                 <td class="px-3 py-3 text-right whitespace-nowrap">
                   <button
-                    class="text-binance-yellow hover:text-white hover:bg-blue-600 text-xs font-medium px-2 py-1 rounded-md transition-colors"
+                    class="text-[#2563eb] hover:bg-[#eff4ff] text-xs font-medium px-2 py-1 rounded-md transition-colors"
                     @click="startEdit(p)"
                   >Sửa</button>
                   <button
-                    class="text-red-600 hover:text-white hover:bg-red-600 text-xs font-medium px-2 py-1 rounded-md transition-colors ml-1"
+                    class="text-[#d03050] hover:bg-[#fdeef0] text-xs font-medium px-2 py-1 rounded-md transition-colors ml-1"
                     @click="del(p)"
                   >Xóa</button>
                 </td>
               </tr>
 
               <!-- EDIT ROW -->
-              <tr v-else class="border-b border-slate-200 bg-blue-50/40">
+              <tr v-else class="border-b border-[#efeff5] bg-[#f6f9ff]">
                 <td colspan="4" class="px-3 py-3">
                   <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
                     <div>
@@ -311,42 +311,42 @@
           <span class="inline-block w-3 h-3 rounded-sm bg-amber-100 border border-amber-300"></span>
           Giá trị ~ (nền vàng) = ước lượng · bấm tên dự án để sửa
         </div>
-        <div class="overflow-auto max-h-[70vh] border border-slate-200 rounded-lg">
+        <div class="overflow-auto max-h-[70vh] border border-[#efeff5] rounded-lg">
           <table class="min-w-full border-separate border-spacing-0 text-sm tabular-nums">
             <thead>
               <tr>
-                <th class="sticky top-0 left-0 z-30 bg-slate-100 h-9 px-3 text-left font-semibold border-b border-r border-slate-300 min-w-[140px]">Dự án</th>
-                <th class="sticky top-0 z-20 bg-slate-100 h-9 px-3 text-left font-semibold border-b border-slate-300 whitespace-nowrap">Ngày</th>
-                <th class="sticky top-0 z-20 bg-slate-100 h-9 px-2 text-right font-semibold border-b border-slate-300 whitespace-nowrap">Claim</th>
-                <th class="sticky top-0 z-20 bg-slate-100 h-9 px-3 text-left font-semibold border-b border-r border-slate-300 whitespace-nowrap">Loại</th>
+                <th class="sticky top-0 left-0 z-30 bg-[#fafafc] h-9 px-3 text-left font-semibold border-b border-r border-[#e6e6eb] min-w-[140px]">Dự án</th>
+                <th class="sticky top-0 z-20 bg-[#fafafc] h-9 px-3 text-left font-semibold border-b border-[#e6e6eb] whitespace-nowrap">Ngày</th>
+                <th class="sticky top-0 z-20 bg-[#fafafc] h-9 px-2 text-right font-semibold border-b border-[#e6e6eb] whitespace-nowrap">Claim</th>
+                <th class="sticky top-0 z-20 bg-[#fafafc] h-9 px-3 text-left font-semibold border-b border-r border-[#e6e6eb] whitespace-nowrap">Loại</th>
                 <th
                   v-for="a in projectMatrixAccounts"
                   :key="a.id"
-                  class="sticky top-0 z-20 bg-slate-100 h-9 px-2 text-right font-semibold border-b border-slate-300 whitespace-nowrap"
+                  class="sticky top-0 z-20 bg-[#fafafc] h-9 px-2 text-right font-semibold border-b border-[#e6e6eb] whitespace-nowrap"
                 >
                   <span class="inline-block w-2 h-2 rounded-full mr-1" :style="{ background: a.color }"></span>
                   {{ a.displayName }}
                 </th>
-                <th class="sticky top-0 z-20 bg-slate-100 h-9 px-3 text-right font-semibold border-b border-l border-slate-300 whitespace-nowrap">Tổng</th>
+                <th class="sticky top-0 z-20 bg-[#fafafc] h-9 px-3 text-right font-semibold border-b border-l border-[#e6e6eb] whitespace-nowrap">Tổng</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="p in visibleProjects" :key="p.id" class="bg-white hover:bg-blue-50/60">
+              <tr v-for="p in visibleProjects" :key="p.id" class="bg-white hover:bg-[#fafafc]">
                 <td
-                  class="sticky left-0 z-10 bg-white px-3 py-1.5 font-semibold text-slate-800 border-b border-r border-slate-200 whitespace-nowrap cursor-pointer hover:text-blue-700"
+                  class="sticky left-0 z-10 bg-white px-3 py-1.5 font-semibold text-slate-800 border-b border-r border-[#efeff5] whitespace-nowrap cursor-pointer hover:text-blue-700"
                   @click="editFromTable(p)"
                 >
                   {{ p.name }}
                 </td>
-                <td class="px-3 py-1.5 text-slate-600 border-b border-slate-200 whitespace-nowrap">{{ p.date }}</td>
-                <td class="px-2 py-1.5 text-right text-slate-500 border-b border-slate-200">{{ p.claimPoints }}</td>
-                <td class="px-3 py-1.5 border-b border-r border-slate-200">
+                <td class="px-3 py-1.5 text-slate-600 border-b border-[#efeff5] whitespace-nowrap">{{ p.date }}</td>
+                <td class="px-2 py-1.5 text-right text-slate-500 border-b border-[#efeff5]">{{ p.claimPoints }}</td>
+                <td class="px-3 py-1.5 border-b border-r border-[#efeff5]">
                   <span class="badge text-[11px]" :class="typeClass(p.type)">{{ p.type }}</span>
                 </td>
                 <td
                   v-for="a in projectMatrixAccounts"
                   :key="p.id + '-' + a.id"
-                  class="px-2 py-1.5 text-right border-b border-slate-200"
+                  class="px-2 py-1.5 text-right border-b border-[#efeff5]"
                 >
                   <template v-if="hasReward(p, a.id)">
                     <span
@@ -357,7 +357,7 @@
                   </template>
                   <span v-else class="text-gray-300">–</span>
                 </td>
-                <td class="px-3 py-1.5 text-right font-bold text-green-600 border-b border-l border-slate-200 whitespace-nowrap">
+                <td class="px-3 py-1.5 text-right font-bold text-green-600 border-b border-l border-[#efeff5] whitespace-nowrap">
                   {{ fmtUSD(projectTotal(p)) }}
                 </td>
               </tr>

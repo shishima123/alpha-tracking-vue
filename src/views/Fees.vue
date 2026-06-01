@@ -68,14 +68,14 @@
           </span>
         </h3>
         <div class="flex items-center gap-2 flex-wrap">
-          <div class="inline-flex rounded-lg border border-binance-light overflow-hidden">
+          <div class="inline-flex rounded-lg border border-[#e0e0e6] overflow-hidden">
             <button
               v-for="v in viewModes"
               :key="v.key"
               class="px-3 py-1 text-sm transition-colors"
               :class="viewMode === v.key
-                ? 'bg-binance-yellow text-black font-medium'
-                : 'bg-transparent text-gray-500 hover:text-gray-700'"
+                ? 'bg-[#2563eb] text-white font-medium'
+                : 'bg-white text-gray-500 hover:text-[#2563eb] hover:bg-[#fafafc]'"
               @click="viewMode = v.key"
             >
               {{ v.label }}
@@ -108,7 +108,7 @@
             <tr
               v-for="group in groupedByDate"
               :key="group.date"
-              class="group border-b border-slate-200 align-top hover:bg-blue-50/50 hover:shadow-[inset_3px_0_0_0_#2563eb] transition-all duration-150"
+              class="group border-b border-[#efeff5] align-top hover:bg-blue-50/50 hover:shadow-[inset_3px_0_0_0_#2563eb] transition-all duration-150"
             >
               <!-- TD ngày -->
               <td class="px-3 py-3">
@@ -134,7 +134,7 @@
                     <tr
                       v-for="f in group.entries"
                       :key="f.id"
-                      class="cursor-pointer hover:bg-blue-100 rounded transition-colors border-b border-slate-100 last:border-0"
+                      class="cursor-pointer hover:bg-blue-100 rounded transition-colors border-b border-[#f3f3f5] last:border-0"
                       :title="f.note ? `${accountName(f.accountId)} · ${f.note}` : accountName(f.accountId)"
                       @click="openEdit(f.date, f.accountId)"
                     >
@@ -149,7 +149,7 @@
                         {{ fmtUSD(f.fee) }}
                       </td>
                       <td class="py-1.5 text-right tabular-nums whitespace-nowrap">
-                        <span class="text-[11px] font-semibold text-slate-500 bg-slate-100 rounded px-1.5 py-0.5">{{ f.points }}đ</span>
+                        <span class="text-[11px] font-semibold text-slate-500 bg-[#f1f1f3] rounded px-1.5 py-0.5">{{ f.points }}đ</span>
                       </td>
                     </tr>
                   </tbody>
@@ -172,13 +172,13 @@
             Hôm nay
           </span>
         </div>
-        <div class="overflow-auto max-h-[70vh] border border-slate-200 rounded-lg">
+        <div class="overflow-auto max-h-[70vh] border border-[#efeff5] rounded-lg">
           <table class="min-w-full border-separate border-spacing-0 text-sm tabular-nums">
             <thead>
               <tr>
                 <th
                   rowspan="2"
-                  class="sticky top-0 left-0 z-30 bg-slate-100 h-9 px-3 text-left font-semibold border-b border-r border-slate-300 w-28"
+                  class="sticky top-0 left-0 z-30 bg-[#fafafc] h-9 px-3 text-left font-semibold border-b border-r border-[#e6e6eb] w-28"
                 >
                   Ngày
                 </th>
@@ -186,22 +186,22 @@
                   v-for="a in matrixAccounts"
                   :key="a.id"
                   colspan="2"
-                  class="sticky top-0 z-20 bg-slate-100 h-9 px-3 text-center font-semibold border-b border-r border-slate-300 whitespace-nowrap"
+                  class="sticky top-0 z-20 bg-[#fafafc] h-9 px-3 text-center font-semibold border-b border-r border-[#e6e6eb] whitespace-nowrap"
                 >
                   <span class="inline-block w-2 h-2 rounded-full mr-1.5" :style="{ background: accountColor(a.id) }"></span>
                   {{ a.displayName }}
                 </th>
                 <th
                   rowspan="2"
-                  class="sticky top-0 z-20 bg-slate-100 h-9 px-3 text-right font-semibold border-b border-slate-300 whitespace-nowrap"
+                  class="sticky top-0 z-20 bg-[#fafafc] h-9 px-3 text-right font-semibold border-b border-[#e6e6eb] whitespace-nowrap"
                 >
                   Tổng phí
                 </th>
               </tr>
               <tr>
                 <template v-for="a in matrixAccounts" :key="'sub-' + a.id">
-                  <th class="sticky top-9 z-20 bg-slate-50 px-2 py-1 text-right font-medium text-gray-500 border-b border-slate-300">Phí</th>
-                  <th class="sticky top-9 z-20 bg-slate-50 px-2 py-1 text-right font-medium text-rose-500 border-b border-r border-slate-300">Điểm</th>
+                  <th class="sticky top-9 z-20 bg-[#fafafc] px-2 py-1 text-right font-medium text-gray-500 border-b border-[#e6e6eb]">Phí</th>
+                  <th class="sticky top-9 z-20 bg-[#fafafc] px-2 py-1 text-right font-medium text-rose-500 border-b border-r border-[#e6e6eb]">Điểm</th>
                 </template>
               </tr>
             </thead>
@@ -212,28 +212,28 @@
                 :class="rowBg(row)"
               >
                 <td
-                  class="sticky left-0 z-10 px-3 py-1.5 font-semibold text-slate-700 border-b border-r border-slate-200 whitespace-nowrap"
+                  class="sticky left-0 z-10 px-3 py-1.5 font-semibold text-slate-700 border-b border-r border-[#efeff5] whitespace-nowrap"
                   :class="dateBg(row)"
                 >
                   {{ row.date }}
                 </td>
                 <template v-for="a in matrixAccounts" :key="row.date + '-' + a.id">
                   <td
-                    class="px-2 py-1.5 text-right border-b border-slate-200 cursor-pointer hover:bg-blue-200/60 transition-colors"
+                    class="px-2 py-1.5 text-right border-b border-[#efeff5] cursor-pointer hover:bg-[#eef4ff] transition-colors"
                     @click="openEdit(row.date, a.id)"
                   >
                     <span v-if="row.cells[a.id]" class="font-semibold text-rose-600">{{ fmtUSD(row.cells[a.id].fee) }}</span>
                     <span v-else class="text-gray-300">–</span>
                   </td>
                   <td
-                    class="px-2 py-1.5 text-right border-b border-r border-slate-200 cursor-pointer hover:bg-blue-200/60 transition-colors"
+                    class="px-2 py-1.5 text-right border-b border-r border-[#efeff5] cursor-pointer hover:bg-[#eef4ff] transition-colors"
                     @click="openEdit(row.date, a.id)"
                   >
                     <span v-if="row.cells[a.id]" class="font-medium text-slate-500">{{ row.cells[a.id].points }}</span>
                     <span v-else class="text-gray-300">–</span>
                   </td>
                 </template>
-                <td class="px-3 py-1.5 text-right font-bold text-rose-600 border-b border-slate-200 whitespace-nowrap">
+                <td class="px-3 py-1.5 text-right font-bold text-rose-600 border-b border-[#efeff5] whitespace-nowrap">
                   {{ fmtUSD(row.totalFee) }}
                 </td>
               </tr>
@@ -257,8 +257,8 @@
         class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
         @click.self="closeCellModal"
       >
-        <div class="bg-binance-gray border border-binance-light rounded-2xl shadow-xl w-full max-w-md">
-          <div class="px-5 py-3 border-b border-binance-light flex items-center justify-between">
+        <div class="bg-white border border-[#efeff5] rounded-lg shadow-xl w-full max-w-md">
+          <div class="px-5 py-3 border-b border-[#efeff5] flex items-center justify-between">
             <h3 class="font-semibold">
               {{ cellModal.existing ? 'Sửa phí' : 'Thêm phí' }}
             </h3>
@@ -268,11 +268,11 @@
             <div class="grid grid-cols-2 gap-3">
               <div>
                 <label class="label">Ngày</label>
-                <div class="input bg-binance-dark/60 text-gray-700">{{ cellModal.date }}</div>
+                <div class="input bg-[#fafafc] text-gray-700">{{ cellModal.date }}</div>
               </div>
               <div>
                 <label class="label">Tài khoản</label>
-                <div class="input bg-binance-dark/60 text-gray-700 flex items-center gap-2">
+                <div class="input bg-[#fafafc] text-gray-700 flex items-center gap-2">
                   <span class="inline-block w-2 h-2 rounded-full" :style="{ background: accountColor(cellModal.accountId) }"></span>
                   {{ accountName(cellModal.accountId) }}
                 </div>
@@ -291,7 +291,7 @@
               <input v-model="cellModal.note" type="text" class="input" placeholder="Không bắt buộc" />
             </div>
           </div>
-          <div class="px-5 py-3 border-t border-binance-light flex items-center justify-between">
+          <div class="px-5 py-3 border-t border-[#efeff5] flex items-center justify-between">
             <button
               v-if="cellModal.existing"
               class="text-red-600 hover:text-red-700 text-sm"
@@ -463,7 +463,7 @@ const indicatorDetail = computed(() => {
 const indicatorClass = computed(() => {
   if (canClear.value) return 'bg-green-50 border-green-300 text-green-700';
   if (pastDaily.value.active > 0) return 'bg-amber-50 border-amber-300 text-amber-700';
-  return 'bg-slate-100 border-binance-light text-gray-600';
+  return 'bg-[#f5f5f7] border-[#e6e6eb] text-gray-600';
 });
 
 // ===== Helpers =====
