@@ -368,7 +368,7 @@ import {
 } from 'naive-ui';
 import { useTrackingStore } from '../stores/trackingStore';
 import { useToastStore } from '../stores/toastStore';
-import { dialog } from '../utils/naive';
+import { dialog, confirmAction } from '../utils/naive';
 import { fmtUSD, todayStr, parseDate } from '../utils/format';
 
 const RECENT_DAYS = 15;
@@ -516,6 +516,12 @@ async function submit() {
     toast.error('Cần nhập tên và ngày');
     return;
   }
+  if (!(await confirmAction({
+    title: 'Lưu dự án',
+    content: `Lưu dự án "${form.name}"?`,
+    positiveText: 'Lưu',
+    type: 'info',
+  }))) return;
   const rewards = {};
   const estimated = {};
   for (const [k, v] of Object.entries(form.rewards)) {
@@ -592,6 +598,12 @@ function cancelEdit() {
 
 async function saveEdit() {
   if (!editingId.value) return;
+  if (!(await confirmAction({
+    title: 'Cập nhật dự án',
+    content: `Lưu thay đổi cho "${editForm.name}"?`,
+    positiveText: 'Lưu',
+    type: 'info',
+  }))) return;
   const rewards = {};
   const estimated = {};
   for (const [k, v] of Object.entries(editForm.rewards)) {

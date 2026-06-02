@@ -22,3 +22,24 @@ const { message, dialog, loadingBar } = createDiscreteApi(
 );
 
 export { message, dialog, loadingBar };
+
+// Confirm dùng chung cho mọi hành động ghi DB (lưu / cập nhật / xóa / tổng hợp).
+// Trả về Promise<boolean> để gọi gọn: `if (!(await confirmAction({...}))) return;`
+// type: 'warning' (mặc định, cho xóa) | 'info' (lưu/cập nhật) | 'error'.
+export function confirmAction({ title, content, positiveText = 'Xác nhận', type = 'warning' }) {
+  return new Promise((resolve) => {
+    let done = false;
+    const settle = (v) => { if (!done) { done = true; resolve(v); } };
+    dialog[type]({
+      title,
+      content,
+      positiveText,
+      negativeText: 'Hủy',
+      onPositiveClick: () => settle(true),
+      onNegativeClick: () => settle(false),
+      onClose: () => settle(false),
+      onMaskClick: () => settle(false),
+      onEsc: () => settle(false),
+    });
+  });
+}

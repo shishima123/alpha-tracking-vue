@@ -184,7 +184,7 @@ import {
 } from 'naive-ui';
 import { useTrackingStore } from '../stores/trackingStore';
 import { useToastStore } from '../stores/toastStore';
-import { dialog } from '../utils/naive';
+import { dialog, confirmAction } from '../utils/naive';
 
 const store = useTrackingStore();
 const toast = useToastStore();
@@ -222,6 +222,12 @@ async function submit() {
     toast.error('Tên là bắt buộc');
     return;
   }
+  if (!(await confirmAction({
+    title: 'Tạo tài khoản',
+    content: `Tạo tài khoản "${form.displayName.trim() || name}"?`,
+    positiveText: 'Tạo',
+    type: 'info',
+  }))) return;
   saving.value = true;
   try {
     await store.createAccount({
@@ -273,6 +279,12 @@ function cancelEdit() {
 
 async function saveEdit() {
   if (!editingId.value) return;
+  if (!(await confirmAction({
+    title: 'Cập nhật tài khoản',
+    content: `Lưu thay đổi cho "${editForm.displayName}"?`,
+    positiveText: 'Lưu',
+    type: 'info',
+  }))) return;
   savingEdit.value = true;
   try {
     await store.updateAccount(editingId.value, {

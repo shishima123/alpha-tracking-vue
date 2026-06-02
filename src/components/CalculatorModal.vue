@@ -168,7 +168,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch } from 'vue';
+import { ref, reactive, computed, watch, h } from 'vue';
 import {
   NModal, NSelect, NInputNumber, NAlert, NButton, NFlex, NGrid, NGi,
   NFormItem, NDatePicker, NCollapse, NCollapseItem, NEmpty, NText,
@@ -176,6 +176,7 @@ import {
 import { useTrackingStore } from '../stores/trackingStore';
 import { useCalculatorStore, CALC_DEFAULTS, CALC_FIELDS } from '../stores/calculatorStore';
 import { useToastStore } from '../stores/toastStore';
+import { confirmAction } from '../utils/naive';
 import { fmtNumber, fmtUSD, todayStr } from '../utils/format';
 import {
   ALPHA_VOLUME_MULTIPLIER,
@@ -277,6 +278,22 @@ const canSave = computed(
 async function saveFee() {
   if (!canSave.value) return;
   const acc = selectedAccount.value;
+  if (!(await confirmAction({
+    title: 'Lưu phí',
+    content: () => h('div', { style: 'line-height:1.8' }, [
+      'Lưu phí ',
+      h('b', { style: 'color:#e11d48' }, fmtUSD(fee.value)),
+      ' (',
+      h('b', { style: 'color:#2563eb' }, `+${totalPoint.value}đ`),
+      ') cho ',
+      h('b', { style: 'color:#0f172a' }, acc?.displayName),
+      ' ngày ',
+      h('b', { style: 'color:#0f172a' }, fill.date),
+      '?',
+    ]),
+    positiveText: 'Lưu',
+    type: 'info',
+  }))) return;
   saving.value = true;
   try {
     persistCfg();

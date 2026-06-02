@@ -274,7 +274,7 @@
 </template>
 
 <script setup>
-import { reactive, computed, ref, onMounted } from 'vue';
+import { reactive, computed, ref, onMounted, h } from 'vue';
 import { useStorage } from '@vueuse/core';
 import {
   NButton, NSelect, NRadioGroup, NRadioButton, NAlert, NEmpty,
@@ -282,7 +282,7 @@ import {
 } from 'naive-ui';
 import { useTrackingStore } from '../stores/trackingStore';
 import { useToastStore } from '../stores/toastStore';
-import { dialog } from '../utils/naive';
+import { dialog, confirmAction } from '../utils/naive';
 import { fmtUSD, parseDate, todayStr } from '../utils/format';
 
 const store = useTrackingStore();
@@ -456,6 +456,23 @@ function closeCellModal() {
 
 async function saveCell() {
   if (!cellModal.value) return;
+  if (!(await confirmAction({
+    title: cellModal.value.existing ? 'Cập nhật phí' : 'Thêm phí',
+    content: () => h('div', { style: 'line-height:1.8' }, [
+      'Lưu phí ',
+      h('b', { style: 'color:#e11d48' }, fmtUSD(Number(cellModal.value.fee) || 0)),
+      ' (',
+      h('b', { style: 'color:#2563eb' }, `+${Number(cellModal.value.points) || 0}đ`),
+      ') cho ',
+      h('b', { style: 'color:#0f172a' }, accountName(cellModal.value.accountId)),
+      ' ngày ',
+      h('b', { style: 'color:#0f172a' }, cellModal.value.date),
+      '?',
+    ]),
+    positiveText: 'Lưu',
+    type: 'info',
+  }))) return;
+  if (!cellModal.value) return;
   cellModal.value.saving = true;
   try {
     // store.addFees → server bulkCreateFees → upsert theo (date, accountId)
@@ -498,6 +515,12 @@ function deleteCell() {
 
 // ===== Management actions =====
 async function onArchive() {
+  if (!(await confirmAction({
+    title: 'Tổng hợp tháng cũ',
+    content: `Tổng hợp ${pendingMonths.value.length} tháng cũ vào FeesMonthly? Dòng chi tiết vẫn được giữ.`,
+    positiveText: 'Tổng hợp',
+    type: 'info',
+  }))) return;
   archiving.value = true;
   try {
     const res = await store.archivePastMonths();
