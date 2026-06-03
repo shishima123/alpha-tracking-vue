@@ -2,8 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+/* `only light` (thay vì `light`) buộc trình duyệt KHÔNG áp dụng chế độ
+   tối tự động / force-dark của OS (Chrome Android Auto Dark, Samsung Internet…). */
 :root {
-  color-scheme: light;
+  color-scheme: only light;
 }
 
 html,
