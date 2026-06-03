@@ -15,7 +15,7 @@
       </n-flex>
     </template>
 
-    <n-empty v-if="!store.activeAccounts.length" description="Chưa có tài khoản nào. Tạo tài khoản ở tab Tài khoản trước." style="padding: 24px 0" />
+    <n-empty v-if="!selectableAccounts.length" description="Chưa có tài khoản khả dụng. Tạo tài khoản (active, không ẩn điểm) ở tab Tài khoản trước." style="padding: 24px 0" />
 
     <n-flex v-else vertical :size="16">
       <!-- Account selector -->
@@ -58,96 +58,60 @@
           </template>
         </n-alert>
 
-        <n-grid cols="2 m:4" responsive="screen" :x-gap="12" :y-gap="12">
-          <n-gi>
-            <n-form-item :label="`Tổng vol hiện tại (x${MULT})`" :show-feedback="false">
-              <n-input-number v-model:value="cfg.currentVol" :status="reached ? 'success' : undefined" style="width: 100%" @update:value="persistCfg" />
-            </n-form-item>
-          </n-gi>
-          <n-gi>
-            <n-form-item label="Volume mỗi lệnh (raw)" :show-feedback="false">
-              <n-select v-model:value="cfg.perOrder" :options="perOrderOptions" @update:value="persistCfg" />
-            </n-form-item>
-          </n-gi>
-          <n-gi>
-            <div class="metric">
-              <div class="metric-label">Điểm hiện tại</div>
-              <div class="metric-val" :style="{ color: reached ? '#16a34a' : '#2563eb' }">{{ res.currentPoint }}</div>
-            </div>
-          </n-gi>
-          <n-gi>
-            <div class="metric">
-              <div class="metric-label">Mốc cần đạt (= 2^{{ cfg.pointTrade }})</div>
-              <div class="metric-val">{{ fmtNumber(res.targetVol) }}</div>
-            </div>
-          </n-gi>
-        </n-grid>
+        <div class="vol-inputs">
+          <n-form-item :label="`Tổng vol hiện tại (x${MULT})`" :show-feedback="false">
+            <n-input-number v-model:value="cfg.currentVol" :status="reached ? 'success' : undefined" :show-button="false" style="width: 100%" @update:value="persistCfg" />
+          </n-form-item>
+          <n-form-item label="Volume mỗi lệnh (raw)" :show-feedback="false">
+            <n-select v-model:value="cfg.perOrder" :options="perOrderOptions" @update:value="persistCfg" />
+          </n-form-item>
+        </div>
 
-        <n-grid cols="2 m:4" responsive="screen" :x-gap="12" :y-gap="12" style="margin-top: 12px">
-          <n-gi>
-            <div class="box" :class="{ ok: reached }">
-              <div class="metric-label">Vol raw cần trade</div>
-              <div class="box-val" :style="{ color: reached ? '#16a34a' : '#334155' }">{{ fmtNumber(res.rawNeeded) }}</div>
-            </div>
-          </n-gi>
-          <n-gi>
-            <div class="box" :class="{ ok: reached }">
-              <div class="metric-label">Vol x{{ MULT }} còn thiếu</div>
-              <div class="box-val" :style="{ color: reached ? '#16a34a' : '#dc2626' }">{{ fmtNumber(res.deltaX4) }}</div>
-            </div>
-          </n-gi>
-          <n-gi>
-            <div class="box" :class="{ ok: reached }">
-              <div class="metric-label">Số lệnh còn lại</div>
-              <div class="box-val" :style="{ color: reached ? '#16a34a' : '#2563eb' }">{{ res.ordersNeeded }}</div>
-            </div>
-          </n-gi>
-          <n-gi>
-            <div class="box" :class="{ ok: reached }">
-              <div class="metric-label">{{ reached ? 'Đã đạt' : `Sau khi trade ${res.ordersNeeded} lệnh` }}</div>
-              <div class="box-val" style="color: #16a34a">{{ reached ? '✓' : `+${res.pointsGain} điểm` }}</div>
-            </div>
-          </n-gi>
-        </n-grid>
-
-        <n-collapse style="margin-top: 12px">
-          <n-collapse-item title="Bảng quy đổi Volume → Điểm" name="conv">
-            <n-grid cols="3 m:5" responsive="screen" :x-gap="8" :y-gap="8">
-              <n-gi v-for="t in thresholds" :key="t.point">
-                <div class="conv-chip" :class="{ active: t.point === res.currentPoint }">
-                  <span style="color: #2563eb">{{ t.point }}đ</span> = <span class="muted">{{ fmtNumber(t.volume) }}</span>
-                </div>
-              </n-gi>
-            </n-grid>
-          </n-collapse-item>
-        </n-collapse>
+        <div class="stats-grid">
+          <div class="stat">
+            <div class="stat-label">Điểm hiện tại</div>
+            <div class="stat-val" :style="{ color: reached ? '#16a34a' : '#2563eb' }">{{ res.currentPoint }}</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Mốc cần đạt (2^{{ cfg.pointTrade }})</div>
+            <div class="stat-val">{{ fmtNumber(res.targetVol) }}</div>
+          </div>
+          <div class="stat" :class="{ ok: reached }">
+            <div class="stat-label">Vol raw cần trade</div>
+            <div class="stat-val" :style="{ color: reached ? '#16a34a' : '#334155' }">{{ fmtNumber(res.rawNeeded) }}</div>
+          </div>
+          <div class="stat" :class="{ ok: reached }">
+            <div class="stat-label">Vol x{{ MULT }} còn thiếu</div>
+            <div class="stat-val" :style="{ color: reached ? '#16a34a' : '#dc2626' }">{{ fmtNumber(res.deltaX4) }}</div>
+          </div>
+          <div class="stat" :class="{ ok: reached }">
+            <div class="stat-label">Số lệnh còn lại</div>
+            <div class="stat-val" :style="{ color: reached ? '#16a34a' : '#2563eb' }">{{ res.ordersNeeded }}</div>
+          </div>
+          <div class="stat" :class="{ ok: reached }">
+            <div class="stat-label">{{ reached ? 'Đã đạt' : `Sau ${res.ordersNeeded} lệnh` }}</div>
+            <div class="stat-val" style="color: #16a34a">{{ reached ? '✓' : `+${res.pointsGain}đ` }}</div>
+          </div>
+        </div>
       </div>
 
       <!-- Fill phí -->
       <div class="section">
         <div class="section-title">Fill phí vào hệ thống</div>
-        <n-grid cols="2 m:4" responsive="screen" :x-gap="12" :y-gap="12">
-          <n-gi>
-            <n-form-item label="Ngày" :show-feedback="false">
-              <n-date-picker v-model:formatted-value="fill.date" value-format="dd/MM/yyyy" format="dd/MM/yyyy" type="date" :clearable="false" style="width: 100%" />
-            </n-form-item>
-          </n-gi>
-          <n-gi>
-            <n-form-item label="Trước ($)" :show-feedback="false">
-              <n-input-number v-model:value="cfg.withdraw" :step="0.01" style="width: 100%" @update:value="persistCfg" />
-            </n-form-item>
-          </n-gi>
-          <n-gi>
-            <n-form-item label="Sau ($)" :show-feedback="false">
-              <n-input-number v-model:value="cfg.lastAfter" :step="0.01" placeholder="số dư còn" style="width: 100%" @update:value="persistCfg" />
-            </n-form-item>
-          </n-gi>
-          <n-gi>
-            <n-form-item label="Phí ($)" :show-feedback="false">
-              <div class="readonly fee">{{ fmtUSD(fee) }}</div>
-            </n-form-item>
-          </n-gi>
-        </n-grid>
+        <div class="fill-grid">
+          <n-form-item label="Ngày" :show-feedback="false">
+            <n-date-picker v-model:formatted-value="fill.date" value-format="dd/MM/yyyy" format="dd/MM/yyyy" type="date" :clearable="false" style="width: 100%" />
+          </n-form-item>
+          <n-form-item label="Trước ($)" :show-feedback="false">
+            <n-input-number v-model:value="cfg.withdraw" :step="0.01" :show-button="false" style="width: 100%" @update:value="persistCfg" />
+          </n-form-item>
+          <n-form-item label="Sau ($)" :show-feedback="false">
+            <n-input-number v-model:value="cfg.lastAfter" :step="0.01" :show-button="false" placeholder="số dư còn" style="width: 100%" @update:value="persistCfg" />
+          </n-form-item>
+          <n-form-item label="Phí ($)" :show-feedback="false">
+            <div class="readonly fee">{{ fmtUSD(fee) }}</div>
+          </n-form-item>
+        </div>
       </div>
     </n-flex>
 
@@ -171,7 +135,7 @@
 import { ref, reactive, computed, watch, h } from 'vue';
 import {
   NModal, NSelect, NInputNumber, NAlert, NButton, NFlex, NGrid, NGi,
-  NFormItem, NDatePicker, NCollapse, NCollapseItem, NEmpty, NText,
+  NFormItem, NDatePicker, NEmpty, NText,
 } from 'naive-ui';
 import { useTrackingStore } from '../stores/trackingStore';
 import { useCalculatorStore, CALC_DEFAULTS, CALC_FIELDS } from '../stores/calculatorStore';
@@ -189,23 +153,27 @@ const toast = useToastStore();
 const MULT = ALPHA_VOLUME_MULTIPLIER;
 const perOrderOptions = [128, 256, 512, 1024, 2048].map((v) => ({ label: fmtNumber(v), value: v }));
 
-const accountOptions = computed(() =>
-  store.activeAccounts.map((a) => ({ label: a.displayName, value: a.id }))
+// Chỉ tài khoản active VÀ không bật "ẩn điểm" mới hiện ở máy tính.
+const selectableAccounts = computed(() =>
+  store.activeAccounts.filter((a) => !a.hideInPoints)
 );
 
-const thresholds = Array.from({ length: 16 }, (_, i) => ({
-  point: i + 5,
-  volume: Math.pow(2, i + 5),
-}));
+const accountOptions = computed(() =>
+  selectableAccounts.value.map((a) => ({ label: a.displayName, value: a.id }))
+);
 
 const selectedId = computed({
-  get: () => calc.selectedAccountId || store.activeAccounts[0]?.id || null,
+  get: () => {
+    const list = selectableAccounts.value;
+    if (calc.selectedAccountId && list.some((a) => a.id === calc.selectedAccountId)) {
+      return calc.selectedAccountId;
+    }
+    return list[0]?.id || null;
+  },
   set: (v) => calc.selectAccount(v),
 });
 
-const selectedAccount = computed(() =>
-  store.activeAccounts.find((a) => a.id === selectedId.value)
-);
+const selectedAccount = computed(() => store.accountById(selectedId.value));
 
 const cfg = reactive({ ...CALC_DEFAULTS });
 
@@ -328,12 +296,37 @@ async function saveFee() {
 }
 .readonly.accent { color: #2563eb; font-weight: 600; }
 .readonly.fee { color: #e11d48; justify-content: flex-end; }
-.metric { background: rgba(219, 226, 236, 0.4); border-radius: 8px; padding: 6px 12px; }
-.metric-label { font-size: 12px; color: #94a3b8; }
-.metric-val { font-size: 20px; font-weight: 700; }
-.box { border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 12px; }
-.box.ok { border-color: #86efac; background: #f0fdf4; }
-.box-val { font-size: 18px; font-weight: 600; }
-.conv-chip { border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px 8px; font-size: 12px; }
-.conv-chip.active { background: rgba(37, 99, 235, 0.12); border-color: #2563eb; }
+.stat {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 5px 10px;
+  background: rgba(219, 226, 236, 0.25);
+}
+.stat.ok { border-color: #86efac; background: #f0fdf4; }
+.stat-label { font-size: 11px; color: #94a3b8; line-height: 1.3; }
+.stat-val { font-size: 17px; font-weight: 700; line-height: 1.35; white-space: nowrap; }
+
+/* 2 input vol luôn nằm cùng 1 hàng. */
+.vol-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+/* 6 card chỉ số: 3 cột/hàng, xuống 2 cột khi < 480px. */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+/* Fill phí: 4 input trên 1 hàng, chia 2-2 khi < 480px. */
+.fill-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+@media (max-width: 480px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .fill-grid { grid-template-columns: repeat(2, 1fr); }
+}
 </style>

@@ -82,9 +82,10 @@
     </div>
 
     <!-- ===== View: Đầy đủ ===== -->
-    <n-grid v-else cols="1 m:2 l:3" responsive="screen" :x-gap="16" :y-gap="16">
-      <n-gi v-for="acc in pointsAccounts" :key="acc.id">
+    <div v-else class="acc-grid">
         <n-card
+          v-for="acc in pointsAccounts"
+          :key="acc.id"
           class="acc-card"
           :class="{ dimmed: dimmed(acc.id), glow: glow(acc.id) }"
         >
@@ -155,8 +156,7 @@
             </div>
           </div>
         </n-card>
-      </n-gi>
-    </n-grid>
+    </div>
     </n-card>
   </n-flex>
 </template>
@@ -235,6 +235,15 @@ function dimmed(id) {
 .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 /* Card lớn nền xám nhạt để card tài khoản (trắng) nổi rõ. */
 .points-panel { background: #eef1f6; }
+/* Card tài khoản tự sắp xếp theo bề rộng: 2-3+ card/hàng tùy màn, full-width < 480px. */
+.acc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+@media (max-width: 480px) {
+  .acc-grid { grid-template-columns: 1fr; }
+}
 .acc-card { transition: all 0.25s; }
 .acc-card.dimmed { opacity: 0.3; filter: grayscale(1); }
 .acc-card.glow { box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.6), 0 8px 24px -8px rgba(34, 197, 94, 0.35); }
