@@ -166,13 +166,13 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { useStorage } from '@vueuse/core';
 import { NFlex, NGrid, NGi, NCard, NTabs, NTabPane, NTable, NButton, NInputNumber, NText, NCollapseTransition } from 'naive-ui';
 import { useTrackingStore } from '../stores/trackingStore';
 import StatCard from '../components/StatCard.vue';
 import ProfitChart from '../components/ProfitChart.vue';
-import { fmtUSD, fmtVND } from '../utils/format';
+import { fmtUSD, fmtVND, todayStr } from '../utils/format';
 
 const DEFAULT_MONTHS = 3;
 
@@ -200,6 +200,21 @@ const expanded = reactive({});
 function toggleMonth(key) {
   expanded[key] = !expanded[key];
 }
+
+// Tháng hiện tại ("MM/YYYY") → mặc định luôn mở khi dữ liệu vừa nạp.
+const currentMonthKey = todayStr().slice(3); // "DD/MM/YYYY" → "MM/YYYY"
+let didDefaultExpand = false;
+watch(
+  monthly,
+  (list) => {
+    if (didDefaultExpand || !list.length) return;
+    if (list.some((m) => m.month === currentMonthKey)) {
+      expanded[currentMonthKey] = true;
+      didDefaultExpand = true;
+    }
+  },
+  { immediate: true }
+);
 
 // Tổng hợp toàn bộ tháng → một dòng / tài khoản
 const accountTotals = computed(() => {

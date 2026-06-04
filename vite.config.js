@@ -9,10 +9,13 @@ export default defineConfig({
   plugins: [
     vue(),
     VitePWA({
-      // SW tự cập nhật khi có bản build mới (không cần nhắc user reload).
+      // 'autoUpdate': có bản build mới thì SW tự chiếm quyền + reload trang sang bản mới
+      // (không nhắc user). Xem src/utils/pwa.js.
       registerType: 'autoUpdate',
-      // Tự chèn đoạn đăng ký SW vào bundle — không phải sửa main.js.
-      injectRegister: 'auto',
+      // null: app tự đăng ký SW qua virtual:pwa-register trong main.js. Cần dùng đường
+      // này (thay vì 'auto' chèn script tối giản) để logic tự-reload của workbox-window
+      // chạy đúng — đó là lý do bản cũ F5 vẫn ra bản cũ.
+      injectRegister: null,
       includeAssets: ['icon.svg', 'icon-maskable.svg'],
       manifest: {
         name: 'Binance Alpha Tracking',
