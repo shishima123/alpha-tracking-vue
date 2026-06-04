@@ -15,6 +15,14 @@ export function fmtVND(n) {
   return new Intl.NumberFormat('vi-VN').format(n) + ' đ';
 }
 
+// Làm tròn 2 chữ số thập phân, khử lỗi dấu phẩy động của JS
+// (vd 1050 - 1048.18 = 1.8199999999999363 → 1.82).
+export function round2(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return 0;
+  return Math.round((x + Number.EPSILON) * 100) / 100;
+}
+
 export function fmtNumber(n) {
   if (n === null || n === undefined || isNaN(n)) return '-';
   if (hideMoney.value) return MASK;

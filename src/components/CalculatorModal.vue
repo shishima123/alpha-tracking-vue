@@ -141,7 +141,7 @@ import { useTrackingStore } from '../stores/trackingStore';
 import { useCalculatorStore, CALC_DEFAULTS, CALC_FIELDS } from '../stores/calculatorStore';
 import { useToastStore } from '../stores/toastStore';
 import { confirmAction } from '../utils/naive';
-import { fmtNumber, fmtUSD, todayStr } from '../utils/format';
+import { fmtNumber, fmtUSD, todayStr, round2 } from '../utils/format';
 import {
   ALPHA_VOLUME_MULTIPLIER,
   pointsFromVolume,
@@ -236,7 +236,7 @@ const fee = computed(() => {
   const before = Number(cfg.withdraw) || 0;
   const after = Number(cfg.lastAfter);
   if (!Number.isFinite(after)) return 0;
-  return Math.max(0, before - after);
+  return round2(Math.max(0, before - after));
 });
 
 const canSave = computed(

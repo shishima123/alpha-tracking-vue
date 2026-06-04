@@ -242,7 +242,7 @@
           </n-gi>
           <n-gi>
             <n-form-item label="Phí ($)" :show-feedback="false">
-              <n-input-number v-model:value="cellModal.fee" :step="0.01" style="width: 100%" />
+              <n-input-number v-model:value="cellModal.fee" :step="0.01" :precision="2" style="width: 100%" />
             </n-form-item>
           </n-gi>
           <n-gi>
@@ -281,7 +281,7 @@ import {
 import { useTrackingStore } from '../stores/trackingStore';
 import { useToastStore } from '../stores/toastStore';
 import { dialog, confirmAction } from '../utils/naive';
-import { fmtUSD, parseDate, todayStr } from '../utils/format';
+import { fmtUSD, parseDate, todayStr, round2 } from '../utils/format';
 
 const store = useTrackingStore();
 const toast = useToastStore();
@@ -441,7 +441,7 @@ function openEdit(date, accountId) {
     date,
     accountId,
     existing,
-    fee: existing ? existing.fee : 0,
+    fee: existing ? round2(existing.fee) : 0,
     points: existing ? existing.points : (store.accountById(accountId)?.pointTrade ?? 15) + (store.accountById(accountId)?.pointHold ?? 0),
     note: existing ? (existing.note || '') : '',
     saving: false,
@@ -477,7 +477,7 @@ async function saveCell() {
     await store.addFees([{
       date: cellModal.value.date,
       accountId: cellModal.value.accountId,
-      fee: Number(cellModal.value.fee) || 0,
+      fee: round2(cellModal.value.fee),
       points: Number(cellModal.value.points) || 0,
       note: cellModal.value.note || '',
     }]);
