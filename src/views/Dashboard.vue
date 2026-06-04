@@ -1,38 +1,48 @@
 <template>
   <n-flex vertical :size="20">
-    <!-- Exchange rate -->
-    <n-flex justify="end" align="center" :size="8">
-      <span class="muted">Tỉ giá:</span>
-      <n-input-number
-        :value="store.vndRate"
-        :show-button="false"
-        style="width: 140px"
-        @update:value="onVndRate"
-      >
-        <template #suffix>VND/USD</template>
-      </n-input-number>
+    <!-- Tỉ giá + toggle tổng quan (cùng 1 hàng) -->
+    <n-flex justify="end" align="center" :size="12" :wrap="true">
+      <n-flex align="center" :size="8">
+        <span class="muted">Tỉ giá:</span>
+        <n-input-number
+          :value="store.vndRate"
+          :show-button="false"
+          style="width: 140px"
+          @update:value="onVndRate"
+        >
+          <template #suffix>VND/USD</template>
+        </n-input-number>
+      </n-flex>
+      <button class="overview-toggle" @click="showOverview = !showOverview">
+        {{ showOverview ? 'Ẩn tổng quan' : 'Hiện tổng quan' }}
+        <span class="chevron" :class="{ open: showOverview }">▾</span>
+      </button>
     </n-flex>
 
-    <!-- Stat overview -->
-    <n-grid cols="2 m:4" responsive="screen" :x-gap="12" :y-gap="12">
-      <n-gi>
-        <StatCard label="Tổng thu nhập" :value="'$' + fmtUSD(total.revenue)"
-          :sub="fmtVND(total.revenue * store.vndRate)" color="#2563eb" />
-      </n-gi>
-      <n-gi>
-        <StatCard label="Tổng phí" :value="'$' + fmtUSD(total.fee)"
-          :sub="fmtVND(total.fee * store.vndRate)" color="#dc2626" />
-      </n-gi>
-      <n-gi>
-        <StatCard label="Lợi nhuận" :value="'$' + fmtUSD(total.profit)"
-          :sub="fmtVND(total.profitVND)" color="#16a34a" />
-      </n-gi>
-      <n-gi>
-        <StatCard label="Dự án đã claim" :value="total.projects" :sub="store.projects.length + ' tổng'" />
-      </n-gi>
-    </n-grid>
+    <n-collapse-transition :show="showOverview">
+      <n-flex vertical :size="20">
+        <!-- Stat overview -->
+        <n-grid cols="2 m:4" responsive="screen" :x-gap="12" :y-gap="12">
+          <n-gi>
+            <StatCard label="Tổng thu nhập" :value="'$' + fmtUSD(total.revenue)"
+              :sub="fmtVND(total.revenue * store.vndRate)" color="#2563eb" />
+          </n-gi>
+          <n-gi>
+            <StatCard label="Tổng phí" :value="'$' + fmtUSD(total.fee)"
+              :sub="fmtVND(total.fee * store.vndRate)" color="#dc2626" />
+          </n-gi>
+          <n-gi>
+            <StatCard label="Lợi nhuận" :value="'$' + fmtUSD(total.profit)"
+              :sub="fmtVND(total.profitVND)" color="#16a34a" />
+          </n-gi>
+          <n-gi>
+            <StatCard label="Dự án đã claim" :value="total.projects" :sub="store.projects.length + ' tổng'" />
+          </n-gi>
+        </n-grid>
 
-    <ProfitChart :monthly="monthly" />
+        <ProfitChart :monthly="monthly" />
+      </n-flex>
+    </n-collapse-transition>
 
     <!-- Tabbed summary -->
     <n-card class="summary-card">
@@ -158,7 +168,7 @@
 <script setup>
 import { computed, reactive, ref } from 'vue';
 import { useStorage } from '@vueuse/core';
-import { NFlex, NGrid, NGi, NCard, NTabs, NTabPane, NTable, NButton, NInputNumber, NText } from 'naive-ui';
+import { NFlex, NGrid, NGi, NCard, NTabs, NTabPane, NTable, NButton, NInputNumber, NText, NCollapseTransition } from 'naive-ui';
 import { useTrackingStore } from '../stores/trackingStore';
 import StatCard from '../components/StatCard.vue';
 import ProfitChart from '../components/ProfitChart.vue';
@@ -169,6 +179,8 @@ const DEFAULT_MONTHS = 3;
 const store = useTrackingStore();
 
 const activeTab = useStorage('alpha:dashboardTab', 'account');
+// Trạng thái thu gọn phần tổng quan (lưu localStorage).
+const showOverview = useStorage('alpha:dashboardOverview', true);
 
 function onVndRate(v) {
   store.vndRate = Number(v) || 0;
@@ -228,6 +240,27 @@ function accountColor(id) {
 <style scoped>
 .muted { color: #94a3b8; }
 .strong { font-weight: 600; }
+.card-title { font-weight: 600; }
+
+/* Nút nhỏ thu gọn phần tổng quan, nằm góc phải. */
+.overview-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  user-select: none;
+  background: #fff;
+  border: 1px solid #efeff5;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+  transition: border-color 0.15s, color 0.15s;
+}
+.overview-toggle:hover { border-color: #2563eb; color: #2563eb; }
+.chevron { transition: transform 0.2s; display: inline-block; }
+.chevron.open { transform: rotate(180deg); }
 .ta-r { text-align: right; }
 .ta-c { text-align: center; }
 .rev { color: #2563eb; }

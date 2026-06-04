@@ -53,6 +53,7 @@
               :key="acc.id"
               colspan="2"
               class="mini-num"
+              :class="accHl(acc.id)"
               :style="{ color: data(acc.id).airdrop.eligible ? '#16a34a' : '#2563eb' }"
             >
               {{ pt(data(acc.id).currentPoints) }}
@@ -225,6 +226,11 @@ function glow(id) {
 function dimmed(id) {
   return highlightMode.value && !data(id).airdrop.eligible;
 }
+// Class nền cho từng cột tài khoản ở view tối giản khi bật Highlight.
+function accHl(id) {
+  if (!highlightMode.value) return null;
+  return data(id).airdrop.eligible ? 'hl-ok' : 'hl-dim';
+}
 </script>
 
 <style scoped>
@@ -296,6 +302,9 @@ function dimmed(id) {
 .mini-num.muted { color: #94a3b8; font-weight: 600; }
 .mini-days { text-align: right; color: #94a3b8; padding-right: 2px; }
 .mini-date { color: #2563eb; font-weight: 600; padding-left: 4px; }
+/* Highlight ô "Điểm còn lại" theo trạng thái đủ/thiếu điểm. */
+.mini-table td.hl-ok { background-color: rgba(34, 197, 94, 0.14); }
+.mini-table td.hl-dim { background-color: rgba(148, 163, 184, 0.1); opacity: 0.5; }
 /* Freeze cột nhãn khi cuộn ngang */
 .mini-table th:first-child,
 .mini-table td:first-child {

@@ -1,24 +1,24 @@
 <template>
   <div class="space-y-6">
     <!-- Form thêm dự án mới (thu gọn mặc định) -->
-    <div class="card">
-      <button
-        class="w-full flex items-center justify-between text-left"
-        @click="showForm = !showForm"
-      >
-        <h3 class="font-semibold">Thêm dự án Alpha</h3>
-        <span class="flex items-center gap-1 text-sm text-gray-500">
+    <div>
+      <div class="flex justify-end mb-2">
+        <button
+          class="inline-flex items-center gap-1 text-xs font-medium text-gray-500 bg-white border border-[#efeff5] rounded-full px-3 py-1 hover:border-blue-600 hover:text-blue-600 transition-colors"
+          @click="showForm = !showForm"
+        >
           {{ showForm ? 'Thu gọn' : 'Thêm dự án' }}
-          <span class="transition-transform" :class="showForm ? 'rotate-180' : ''">▾</span>
-        </span>
-      </button>
+          <span class="transition-transform inline-block" :class="showForm ? 'rotate-180' : ''">▾</span>
+        </button>
+      </div>
 
       <div
         class="grid transition-[grid-template-rows] duration-300 ease-in-out"
         :class="showForm ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'"
       >
       <div class="overflow-hidden">
-      <div class="grid grid-cols-1 md:grid-cols-5 gap-3 pt-4">
+      <div class="card">
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
         <div>
           <label class="label">Tên dự án</label>
           <n-input v-model:value="form.name" placeholder="VD: BILL" />
@@ -85,6 +85,7 @@
         <n-button type="primary" :loading="saving" @click="submit">
           {{ saving ? 'Đang lưu...' : 'Lưu dự án' }}
         </n-button>
+      </div>
       </div>
       </div>
       </div>

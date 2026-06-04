@@ -1,17 +1,15 @@
 <template>
   <n-flex vertical :size="20">
     <!-- Form thêm account mới (thu gọn mặc định) -->
-    <n-card>
-      <div class="head-toggle" @click="showForm = !showForm">
-        <span class="card-title">Thêm tài khoản mới</span>
-        <n-flex align="center" :size="4" class="muted">
-          {{ showForm ? 'Thu gọn' : 'Thêm tài khoản' }}
-          <span class="chevron" :class="{ open: showForm }">▾</span>
-        </n-flex>
-      </div>
-
-      <n-collapse-transition :show="showForm">
-        <div style="padding-top: 16px">
+    <n-flex justify="end">
+      <button class="head-toggle" @click="showForm = !showForm">
+        {{ showForm ? 'Thu gọn' : 'Thêm tài khoản' }}
+        <span class="chevron" :class="{ open: showForm }">▾</span>
+      </button>
+    </n-flex>
+    <n-collapse-transition :show="showForm">
+      <n-card>
+        <div>
           <n-grid cols="2 m:3 l:7" responsive="screen" :x-gap="12" :y-gap="8">
             <n-gi>
               <n-form-item label="Tên (name)" :show-feedback="false">
@@ -67,8 +65,8 @@
             Vol mỗi lệnh, Vol hiện tại, Trước, Sau — chỉnh trực tiếp trong Máy tính (nút góc trên phải).
           </n-text>
         </div>
-      </n-collapse-transition>
-    </n-card>
+      </n-card>
+    </n-collapse-transition>
 
     <!-- Danh sách + edit inline -->
     <n-card>
@@ -348,12 +346,21 @@ tbody tr:hover > td { background-color: #f3f4f5; }
 .empty { text-align: center; padding: 24px; color: #94a3b8; }
 .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 .head-toggle {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 4px;
   cursor: pointer;
   user-select: none;
+  background: #fff;
+  border: 1px solid #efeff5;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+  transition: border-color 0.15s, color 0.15s;
 }
+.head-toggle:hover { border-color: #2563eb; color: #2563eb; }
 .chevron { transition: transform 0.2s; display: inline-block; }
 .chevron.open { transform: rotate(180deg); }
 </style>

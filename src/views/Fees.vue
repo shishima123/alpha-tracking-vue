@@ -1,27 +1,24 @@
 <template>
   <div class="space-y-6">
     <!-- Management panel: archive + clear old (thu gọn mặc định) -->
-    <div class="card">
-      <button
-        class="w-full flex items-center justify-between text-left"
-        @click="showManage = !showManage"
-      >
-        <h3 class="font-semibold">
-          Quản lý lịch sử phí
-          <span class="text-base ml-1">{{ indicatorIcon }}</span>
-        </h3>
-        <span class="flex items-center gap-1 text-sm text-gray-500">
-          {{ showManage ? 'Thu gọn' : 'Mở' }}
-          <span class="transition-transform" :class="showManage ? 'rotate-180' : ''">▾</span>
-        </span>
-      </button>
+    <div>
+      <div class="flex justify-end mb-2">
+        <button
+          class="inline-flex items-center gap-1 text-xs font-medium text-gray-500 bg-white border border-[#efeff5] rounded-full px-3 py-1 hover:border-blue-600 hover:text-blue-600 transition-colors"
+          @click="showManage = !showManage"
+        >
+          Quản lý lịch sử {{ indicatorIcon }}
+          <span class="transition-transform inline-block" :class="showManage ? 'rotate-180' : ''">▾</span>
+        </button>
+      </div>
 
       <div
         class="grid transition-[grid-template-rows] duration-300 ease-in-out"
         :class="showManage ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'"
       >
       <div class="overflow-hidden">
-        <div class="flex items-center gap-2 flex-wrap pt-3 mb-3">
+        <div class="card">
+        <div class="flex items-center gap-2 flex-wrap mb-3">
           <n-button :loading="archiving" :disabled="!canArchive" @click="onArchive">
             Tổng hợp tháng cũ
             <span v-if="pendingMonths.length" style="color: #2563eb; margin-left: 4px">({{ pendingMonths.length }})</span>
@@ -35,6 +32,7 @@
         <n-alert :type="indicatorType" :title="indicatorTitle" :bordered="true">
           {{ indicatorDetail }}
         </n-alert>
+        </div>
       </div>
       </div>
     </div>
