@@ -28,7 +28,9 @@ const HEADERS = {
     'pointTrade', 'pointHold', 'currentVol', 'perOrder', 'withdraw', 'lastAfter',
     'createdAt', 'sortOrder', 'hideInPoints',
   ],
-  Fees: ['id', 'date', 'accountId', 'fee', 'points', 'note', 'createdAt'],
+  // 'highlight' luôn ở CUỐI: ensureHeaders chỉ append cột thiếu vào cuối, thêm vào
+  // giữa sẽ lệch cột dữ liệu cũ.
+  Fees: ['id', 'date', 'accountId', 'fee', 'points', 'note', 'createdAt', 'highlight'],
   AlphaProjects: ['id', 'name', 'date', 'claimPoints', 'type', 'rewards', 'note', 'createdAt', 'estimated'],
   FeesMonthly: ['id', 'month', 'accountId', 'totalFee', 'totalPoints', 'count', 'updatedAt'],
 };
@@ -374,6 +376,7 @@ function listFees(payload) {
       points: Number(r.points) || 0,
       note: r.note || '',
       createdAt: r.createdAt || '',
+      highlight: r.highlight === true || r.highlight === 'TRUE' || r.highlight === 'true',
     };
   });
   if (payload.accountId) fees = fees.filter(function (f) { return f.accountId === payload.accountId; });
@@ -398,6 +401,7 @@ function createFee(payload) {
       fee: Number(payload.fee) || 0,
       points: Number(payload.points) || 0,
       note: payload.note != null ? payload.note : (list[idx].note || ''),
+      highlight: payload.highlight != null ? !!payload.highlight : !!list[idx].highlight,
     });
     writeAll(SHEETS.FEES, list);
     invalidateFeesMonthly([monthKey(payload.date)]);
@@ -412,6 +416,7 @@ function createFee(payload) {
     points: Number(payload.points) || 0,
     note: payload.note || '',
     createdAt: new Date().toISOString(),
+    highlight: !!payload.highlight,
   };
   appendItem(SHEETS.FEES, item);
   invalidateFeesMonthly([monthKey(item.date)]);
@@ -447,6 +452,7 @@ function bulkCreateFees(payload) {
         fee: Number(e.fee) || 0,
         points: Number(e.points) || 0,
         note: e.note != null ? e.note : (cur.note || ''),
+        highlight: e.highlight != null ? !!e.highlight : !!cur.highlight,
       });
       updated++;
     } else {
@@ -458,6 +464,7 @@ function bulkCreateFees(payload) {
         points: Number(e.points) || 0,
         note: e.note || '',
         createdAt: new Date().toISOString(),
+        highlight: !!e.highlight,
       };
       indexByKey[key] = list.length;
       list.push(item);

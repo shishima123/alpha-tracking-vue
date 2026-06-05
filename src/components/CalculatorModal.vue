@@ -112,6 +112,10 @@
             <div class="readonly fee">{{ fmtUSD(fee) }}</div>
           </n-form-item>
         </div>
+        <label class="mark-row">
+          <n-switch v-model:value="fill.highlight" size="small" />
+          <span>★ Đánh dấu ngày này (ngày đi đủ điều kiện nhận kèo)</span>
+        </label>
       </div>
     </n-flex>
 
@@ -135,7 +139,7 @@
 import { ref, reactive, computed, watch, h } from 'vue';
 import {
   NModal, NSelect, NInputNumber, NAlert, NButton, NFlex, NGrid, NGi,
-  NFormItem, NDatePicker, NEmpty, NText,
+  NFormItem, NDatePicker, NEmpty, NText, NSwitch,
 } from 'naive-ui';
 import { useTrackingStore } from '../stores/trackingStore';
 import { useCalculatorStore, CALC_DEFAULTS, CALC_FIELDS } from '../stores/calculatorStore';
@@ -229,6 +233,7 @@ const reached = computed(() => res.value.deltaX4 === 0);
 // Ngày là session-only (mỗi ngày thay đổi); before/after persist trong cfg.
 const fill = reactive({
   date: todayStr(),
+  highlight: false,
 });
 const saving = ref(false);
 
@@ -272,11 +277,13 @@ async function saveFee() {
         accountId: selectedId.value,
         fee: fee.value,
         points: totalPoint.value,
+        highlight: fill.highlight,
       },
     ]);
     toast.success(
       `Đã lưu phí ${fmtUSD(fee.value)} (+${totalPoint.value}đ) cho ${acc?.displayName}`
     );
+    fill.highlight = false; // reset để không vô tình đánh dấu lệnh kế tiếp
   } catch (e) {
     toast.error('Lỗi lưu phí: ' + e.message);
   } finally {
@@ -296,6 +303,7 @@ async function saveFee() {
 }
 .readonly.accent { color: #2563eb; font-weight: 600; }
 .readonly.fee { color: #e11d48; justify-content: flex-end; }
+.mark-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 13px; color: #475569; cursor: pointer; }
 .stat {
   border: 1px solid #e2e8f0;
   border-radius: 8px;

@@ -60,6 +60,41 @@
         </div>
       </div>
 
+      <!-- Highlight: bật/tắt + ngưỡng, và cảnh báo account sắp hết ngày đủ điều kiện -->
+      <div class="mb-3 space-y-2">
+        <div class="flex items-center gap-x-4 gap-y-1.5 flex-wrap text-sm">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <n-switch v-model:value="showHighlight" size="small" />
+            <span>Highlight ngày đã đánh dấu</span>
+          </label>
+          <template v-if="showHighlight">
+            <div class="flex items-center gap-1.5 text-gray-500">
+              <span>Cần</span>
+              <n-input-number v-model:value="requiredDays" :min="1" :show-button="false" size="small" style="width: 56px" />
+              <span>ngày / 15 ngày</span>
+            </div>
+            <div class="flex items-center gap-1.5 text-gray-500">
+              <span>Báo trước</span>
+              <n-input-number v-model:value="warnDays" :min="0" :show-button="false" size="small" style="width: 56px" />
+              <span>ngày</span>
+            </div>
+          </template>
+        </div>
+        <n-alert
+          v-if="showHighlight && highlightWarnings.length"
+          type="warning"
+          :bordered="true"
+          title="Sắp hết điều kiện — cần đi thêm"
+        >
+          <ul class="list-disc pl-4 space-y-0.5">
+            <li v-for="w in highlightWarnings" :key="w.id">{{ w.text }}</li>
+          </ul>
+        </n-alert>
+        <n-alert v-else-if="showHighlight && trackedAccounts.length" type="success" :bordered="true">
+          ✓ Tất cả tài khoản đang đủ điều kiện ({{ requiredDays }} ngày đánh dấu còn hiệu lực trong cửa sổ 15 ngày).
+        </n-alert>
+      </div>
+
       <n-empty v-if="groupedByDate.length === 0" description="Chưa có bản ghi nào — bấm nút Máy tính (góc trên phải) để nhập phí." style="padding: 32px 0" />
 
       <!-- ===== View: Theo ngày (grouped) ===== -->
@@ -116,7 +151,10 @@
                         {{ fmtUSD(f.fee) }}
                       </td>
                       <td class="py-1.5 text-right tabular-nums whitespace-nowrap">
-                        <span class="text-[11px] font-semibold text-slate-500 bg-[#f1f1f3] rounded px-1.5 py-0.5">{{ f.points }}đ</span>
+                        <span
+                          class="text-[11px] rounded px-1.5 py-0.5"
+                          :class="[pointTextClass(f), showHighlight && f.highlight ? 'bg-amber-50' : 'bg-[#f1f1f3]']"
+                        ><span v-if="showHighlight && f.highlight" class="text-amber-500 mr-1">★</span>{{ f.points }}đ</span>
                       </td>
                     </tr>
                   </tbody>
@@ -196,7 +234,10 @@
                     class="px-2 py-1.5 text-right border-b border-r border-[#efeff5] cursor-pointer"
                     @click="openEdit(row.date, a.id)"
                   >
-                    <span v-if="row.cells[a.id]" class="font-medium text-slate-500">{{ row.cells[a.id].points }}</span>
+                    <span
+                      v-if="row.cells[a.id]"
+                      :class="pointTextClass(row.cells[a.id])"
+                    ><span v-if="showHighlight && row.cells[a.id].highlight" class="text-amber-500 mr-1">★</span>{{ row.cells[a.id].points }}</span>
                     <span v-else class="text-gray-300">–</span>
                   </td>
                 </template>
@@ -250,6 +291,14 @@
               <n-input-number v-model:value="cellModal.points" style="width: 100%" />
             </n-form-item>
           </n-gi>
+          <n-gi :span="2">
+            <n-form-item label="Đánh dấu ngày này (ngày đi đủ điều kiện nhận kèo)" :show-feedback="false">
+              <n-switch v-model:value="cellModal.highlight">
+                <template #checked>★ Đã đánh dấu</template>
+                <template #unchecked>Không đánh dấu</template>
+              </n-switch>
+            </n-form-item>
+          </n-gi>
         </n-grid>
         <n-form-item label="Ghi chú" :show-feedback="false" style="margin-top: 12px">
           <n-input v-model:value="cellModal.note" placeholder="Không bắt buộc" />
@@ -276,7 +325,7 @@ import { reactive, computed, ref, onMounted, h } from 'vue';
 import { useStorage } from '@vueuse/core';
 import {
   NButton, NSelect, NRadioGroup, NRadioButton, NAlert, NEmpty,
-  NModal, NGrid, NGi, NFormItem, NInput, NInputNumber,
+  NModal, NGrid, NGi, NFormItem, NInput, NInputNumber, NSwitch,
 } from 'naive-ui';
 import { useTrackingStore } from '../stores/trackingStore';
 import { useToastStore } from '../stores/toastStore';
@@ -432,6 +481,84 @@ const indicatorDetail = computed(() => {
 function accountName(id) { return store.accountById(id)?.displayName || id; }
 function accountColor(id) { return store.accountById(id)?.color || '#3b82f6'; }
 
+// ===== Highlight: đánh dấu tay ngày "đi đủ" + cảnh báo sắp rời cửa sổ 15 ngày =====
+// Tài khoản cần >= requiredDays ngày đã đánh dấu (còn trong cửa sổ 15 ngày) mới đủ
+// điều kiện nhận kèo. warnDays = báo trước mấy ngày khi ngày đánh dấu sắp hết hạn.
+const showHighlight = useStorage('alpha:feesHighlight', true);
+const requiredDays = useStorage('alpha:feesRequiredDays', 1);
+const warnDays = useStorage('alpha:feesWarnDays', 3);
+
+// Số ngày còn lại trong cửa sổ 15 ngày của 1 ngày trade (>=0 = còn hiệu lực;
+// 0 = hôm nay là ngày cuối; <0 = đã rời cửa sổ). Khớp logic inPointWindow.
+function pointDaysLeft(date) {
+  const d = parseDate(date);
+  if (!d) return null;
+  d.setHours(0, 0, 0, 0);
+  const reset = new Date(d);
+  reset.setDate(reset.getDate() + 15);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.floor((reset.getTime() - today.getTime()) / 86400000);
+}
+
+// Account nào cần để ý: gom ngày đã đánh dấu còn trong cửa sổ, sắp theo ngày hết hạn gần nhất.
+const trackedAccounts = computed(() => store.activeAccounts.filter((a) => !a.hideInPoints));
+
+const highlightStatus = computed(() => {
+  const req = Math.max(1, Number(requiredDays.value) || 1);
+  const warn = Math.max(0, Number(warnDays.value) || 0);
+  const byAcc = {};
+  for (const f of store.allFees || []) {
+    if (!f.highlight) continue;
+    const left = pointDaysLeft(f.date);
+    if (left == null || left < 0) continue; // đã rời cửa sổ → không tính
+    (byAcc[f.accountId] ||= []).push({ date: f.date, daysLeft: left });
+  }
+  const result = {};
+  for (const a of trackedAccounts.value) {
+    const marked = (byAcc[a.id] || []).sort((x, y) => x.daysLeft - y.daysLeft);
+    const count = marked.length;
+    const qualified = count >= req;
+    // Ngày đủ điều kiện sẽ "tụt" khi ngày đánh dấu thứ (count-req+1) gần nhất hết hạn.
+    const daysUntilDrop = qualified ? marked[count - req].daysLeft : null;
+    result[a.id] = {
+      count,
+      qualified,
+      deficit: Math.max(0, req - count),
+      daysUntilDrop,
+      warning: !qualified || (daysUntilDrop != null && daysUntilDrop <= warn),
+    };
+  }
+  return result;
+});
+
+const highlightWarnings = computed(() => {
+  const req = Math.max(1, Number(requiredDays.value) || 1);
+  const out = [];
+  for (const a of trackedAccounts.value) {
+    const s = highlightStatus.value[a.id];
+    if (!s || !s.warning) continue;
+    let text;
+    if (s.deficit > 0) {
+      text = s.count === 0
+        ? `${a.displayName}: chưa đánh dấu ngày nào (cần ${req})`
+        : `${a.displayName}: mới ${s.count}/${req} ngày — cần đánh dấu thêm`;
+    } else {
+      text = `${a.displayName}: còn ${s.daysUntilDrop}d nữa tụt dưới ${req} ngày → nên đi thêm 1 ngày`;
+    }
+    out.push({ id: a.id, text });
+  }
+  return out;
+});
+
+// Class màu chữ cho ô điểm: ngày đã đánh dấu → cam (đậm), sắp hết hạn → đỏ; còn lại xám.
+function pointTextClass(cell) {
+  if (!showHighlight.value || !cell.highlight) return 'text-slate-500';
+  const left = pointDaysLeft(cell.date);
+  if (left != null && left <= (Number(warnDays.value) || 0)) return 'text-rose-600 font-extrabold';
+  return 'text-violet-600 font-extrabold';
+}
+
 // ===== Cell/chip edit (modal) — dùng chung cho cả matrix và grouped view =====
 const cellModal = ref(null);
 
@@ -444,6 +571,7 @@ function openEdit(date, accountId) {
     fee: existing ? round2(existing.fee) : 0,
     points: existing ? existing.points : (store.accountById(accountId)?.pointTrade ?? 15) + (store.accountById(accountId)?.pointHold ?? 0),
     note: existing ? (existing.note || '') : '',
+    highlight: existing ? !!existing.highlight : false,
     saving: false,
   };
 }
@@ -480,6 +608,7 @@ async function saveCell() {
       fee: round2(cellModal.value.fee),
       points: Number(cellModal.value.points) || 0,
       note: cellModal.value.note || '',
+      highlight: !!cellModal.value.highlight,
     }]);
     toast.success(`Đã lưu ${cellModal.value.date} · ${accountName(cellModal.value.accountId)}`);
     cellModal.value = null;
