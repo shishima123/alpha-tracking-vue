@@ -6,12 +6,13 @@
         <div style="max-width: 720px">
           <div class="card-title">Theo dõi điểm Alpha</div>
           <n-text depth="3" style="font-size: 12px; display: block; margin-top: 4px">
-            Tổng = sum điểm phí trong 15 ngày gần nhất (không tính hôm nay).
+            Tổng = sum điểm phí trong 15 ngày gần nhất
+            ({{ futureMode ? 'tính cả hôm nay — xem trước ngày mai' : 'không tính hôm nay' }}).
             Trừ <b>claimPoints</b> mỗi kèo alpha đã nhận trong cùng cửa sổ.
             Khi kèo hết hạn → điểm hồi lại.
           </n-text>
         </div>
-        <n-flex align="center" :size="16" :wrap="true">
+        <n-flex align="center" :size="16" :wrap="true" style="flex: 1 1 auto">
           <n-flex align="center" :size="6">
             <n-switch v-model:value="highlightMode" size="small" />
             <span>Highlight</span>
@@ -20,6 +21,15 @@
             <span class="muted">Điểm yêu cầu để nhận:</span>
             <n-input-number v-model:value="required" :min="1" :show-button="false" style="width: 96px" />
           </n-flex>
+          <n-tooltip>
+            <template #trigger>
+              <n-flex align="center" :size="6" style="margin-left: auto">
+                <n-switch v-model:value="futureMode" size="small" />
+                <span>Tương lai</span>
+              </n-flex>
+            </template>
+            Xem trước điểm của ngày mai (cộng phí hôm nay, bỏ ngày cũ nhất hết hạn).
+          </n-tooltip>
         </n-flex>
       </n-flex>
     </n-card>
@@ -163,9 +173,9 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useStorage } from '@vueuse/core';
-import { NFlex, NCard, NGrid, NGi, NTag, NSwitch, NInputNumber, NText, NDivider, NRadioGroup, NRadioButton } from 'naive-ui';
+import { NFlex, NCard, NGrid, NGi, NTag, NSwitch, NInputNumber, NText, NDivider, NRadioGroup, NRadioButton, NTooltip } from 'naive-ui';
 import { useTrackingStore } from '../stores/trackingStore';
 import { computeAlphaPoints } from '../utils/points';
 import { hideMoney, MASK } from '../utils/privacy';
@@ -176,6 +186,8 @@ const store = useTrackingStore();
 const required = useStorage('alpha:pointsRequired', 15);
 const highlightMode = useStorage('alpha:pointsHighlight', false);
 const viewMode = useStorage('alpha:pointsViewMode', 'full');
+// "Tương lai" là chế độ xem trước nhất thời → ref thường (không lưu), reset OFF mỗi lần mở.
+const futureMode = ref(false);
 
 // allFees không nằm trong bootstrap → load riêng khi mở tab Điểm.
 onMounted(() => {
@@ -194,7 +206,7 @@ const pointsAccounts = computed(() =>
 // Dùng allFees (toàn bộ daily) chứ không phải store.fees (chỉ tháng hiện tại):
 // cửa sổ 15 ngày có thể trải sang tháng trước, đặc biệt đầu tháng mới.
 const pointsData = computed(() =>
-  computeAlphaPoints(store.allFees || [], store.projects || [], required.value)
+  computeAlphaPoints(store.allFees || [], store.projects || [], required.value, futureMode.value)
 );
 
 const emptyAccount = computed(() => ({

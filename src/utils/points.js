@@ -39,10 +39,15 @@ export function nextThreshold(volume) {
  *      resetDate = claim.date + 16  (= claim active D+1..D+15 → reset day D+16)
  *      daysLeft  = 16 − daysAgo, range [1, 15]
  *    Sắp xếp ascending theo daysLeft.
+ *
+ *  `future = true` → xem trước điểm của NGÀY MAI: dời mốc "hôm nay" lên +1 ngày. Cửa sổ
+ *  trượt theo nên tự gồm hôm nay (daysAgo 1) và bỏ ngày today-15 (daysAgo 16); daysLeft
+ *  và ngày reset cũng tính theo góc nhìn ngày mai. Tiện để xem trước thay vì đợi tới mai.
  */
-export function computeAlphaPoints(fees, projects, requiredPoints = 15) {
+export function computeAlphaPoints(fees, projects, requiredPoints = 15, future = false) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  if (future) today.setDate(today.getDate() + 1);
   const required = Number(requiredPoints) || 15;
   const DAY = 86400000;
 
