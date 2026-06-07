@@ -19,7 +19,7 @@
           </n-flex>
           <n-flex align="center" :size="6">
             <span class="muted">Điểm yêu cầu để nhận:</span>
-            <n-input-number v-model:value="required" :min="1" :show-button="false" style="width: 96px" />
+            <n-input-number v-model:value="requiredModel" :min="1" :show-button="false" style="width: 96px" />
           </n-flex>
           <n-tooltip>
             <template #trigger>
@@ -178,12 +178,14 @@ import { useStorage } from '@vueuse/core';
 import { NFlex, NCard, NGrid, NGi, NTag, NSwitch, NInputNumber, NText, NDivider, NRadioGroup, NRadioButton, NTooltip } from 'naive-ui';
 import { useTrackingStore } from '../stores/trackingStore';
 import { computeAlphaPoints } from '../utils/points';
+import { usePersistedNumber } from '../utils/persistedNumber';
 import { hideMoney, MASK } from '../utils/privacy';
 
 const store = useTrackingStore();
 
 // "Điểm yêu cầu" + "Highlight" tự đồng bộ localStorage qua useStorage.
-const required = useStorage('alpha:pointsRequired', 15);
+// requiredModel = ô nhập (xoá rỗng được khi sửa); required = giá trị đã lưu.
+const { stored: required, model: requiredModel } = usePersistedNumber('alpha:pointsRequired', 15, { min: 1 });
 const highlightMode = useStorage('alpha:pointsHighlight', false);
 const viewMode = useStorage('alpha:pointsViewMode', 'full');
 // "Tương lai" là chế độ xem trước nhất thời → ref thường (không lưu), reset OFF mỗi lần mở.

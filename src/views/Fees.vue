@@ -70,12 +70,12 @@
           <template v-if="showHighlight">
             <div class="flex items-center gap-1.5 text-gray-500">
               <span>Cần</span>
-              <n-input-number v-model:value="requiredDays" :min="1" :show-button="false" size="small" style="width: 56px" />
+              <n-input-number v-model:value="requiredDaysModel" :min="1" :show-button="false" size="small" style="width: 56px" />
               <span>ngày / 15 ngày</span>
             </div>
             <div class="flex items-center gap-1.5 text-gray-500">
               <span>Báo trước</span>
-              <n-input-number v-model:value="warnDays" :min="0" :show-button="false" size="small" style="width: 56px" />
+              <n-input-number v-model:value="warnDaysModel" :min="0" :show-button="false" size="small" style="width: 56px" />
               <span>ngày</span>
             </div>
           </template>
@@ -330,6 +330,7 @@ import {
 import { useTrackingStore } from '../stores/trackingStore';
 import { useToastStore } from '../stores/toastStore';
 import { dialog, confirmAction } from '../utils/naive';
+import { usePersistedNumber } from '../utils/persistedNumber';
 import { fmtUSD, parseDate, todayStr, round2 } from '../utils/format';
 
 const store = useTrackingStore();
@@ -485,8 +486,9 @@ function accountColor(id) { return store.accountById(id)?.color || '#3b82f6'; }
 // Tài khoản cần >= requiredDays ngày đã đánh dấu (còn trong cửa sổ 15 ngày) mới đủ
 // điều kiện nhận kèo. warnDays = báo trước mấy ngày khi ngày đánh dấu sắp hết hạn.
 const showHighlight = useStorage('alpha:feesHighlight', true);
-const requiredDays = useStorage('alpha:feesRequiredDays', 1);
-const warnDays = useStorage('alpha:feesWarnDays', 3);
+// *Model = ô nhập (xoá rỗng được khi sửa); *Days = giá trị đã lưu dùng để tính.
+const { stored: requiredDays, model: requiredDaysModel } = usePersistedNumber('alpha:feesRequiredDays', 1, { min: 1 });
+const { stored: warnDays, model: warnDaysModel } = usePersistedNumber('alpha:feesWarnDays', 3, { min: 0 });
 
 // Số ngày còn lại trong cửa sổ 15 ngày của 1 ngày trade (>=0 = còn hiệu lực;
 // 0 = hôm nay là ngày cuối; <0 = đã rời cửa sổ). Khớp logic inPointWindow.
