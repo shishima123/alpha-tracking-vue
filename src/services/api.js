@@ -202,7 +202,6 @@ export const accountsApi = {
 };
 
 export const feesApi = {
-  list: (params = {}) => call('fees', 'list', params),
   create: (data) => call('fees', 'create', data),
   bulk: (entries) => call('fees', 'bulk', { entries }),
   update: (id, data) => call('fees', 'update', { id, ...data }),

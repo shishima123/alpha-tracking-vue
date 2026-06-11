@@ -56,7 +56,7 @@
             size="small"
             style="width: 180px"
           />
-          <n-button size="small" quaternary circle @click="store.loadAllFees()">↻</n-button>
+          <n-button size="small" quaternary circle @click="store.loadAll({ force: true })">↻</n-button>
         </div>
       </div>
 
@@ -333,7 +333,7 @@
 </template>
 
 <script setup>
-import { reactive, computed, ref, onMounted, h } from 'vue';
+import { reactive, computed, ref, h } from 'vue';
 import { useStorage } from '@vueuse/core';
 import {
   NButton, NSelect, NRadioGroup, NRadioButton, NAlert, NEmpty,
@@ -369,13 +369,6 @@ const filteredFees = computed(() => {
   let list = [...store.allFees];
   if (filter.accountId) list = list.filter((f) => f.accountId === filter.accountId);
   return list;
-});
-
-// Tab này hiển thị toàn bộ daily rows còn trong sheet Fees (mọi tháng).
-// allFees đã có trong bootstrap; chỉ load riêng nếu bootstrap chưa kịp về
-// (fallback, bình thường không chạy).
-onMounted(() => {
-  if (store.allFees.length === 0) store.loadAllFees();
 });
 
 const cellMap = computed(() => {

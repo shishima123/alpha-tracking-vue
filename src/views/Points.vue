@@ -173,7 +173,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useStorage } from '@vueuse/core';
 import { NFlex, NCard, NGrid, NGi, NTag, NSwitch, NInputNumber, NText, NDivider, NRadioGroup, NRadioButton, NTooltip } from 'naive-ui';
 import { useTrackingStore } from '../stores/trackingStore';
@@ -190,12 +190,6 @@ const highlightMode = useStorage('alpha:pointsHighlight', false);
 const viewMode = useStorage('alpha:pointsViewMode', 'full');
 // "Tương lai" là chế độ xem trước nhất thời → ref thường (không lưu), reset OFF mỗi lần mở.
 const futureMode = ref(false);
-
-// allFees đã có trong bootstrap; chỉ load riêng nếu vào thẳng tab này
-// trước khi bootstrap kịp về (fallback, bình thường không chạy).
-onMounted(() => {
-  if (store.allFees.length === 0) store.loadAllFees();
-});
 
 // Khi bật chế độ ẩn, che luôn số điểm (giữ ngày & tên dự án vì không nhạy cảm).
 function pt(n) {

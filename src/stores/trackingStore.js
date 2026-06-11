@@ -52,13 +52,7 @@ export const useTrackingStore = defineStore('tracking', {
       this.accounts = this.accounts.filter((a) => a.id !== id);
     },
 
-    async loadFees(params) {
-      this.fees = await feesApi.list(params);
-    },
-    // Toàn bộ daily rows còn trong sheet Fees (mọi tháng chưa bị clear)
-    async loadAllFees(params) {
-      this.allFees = await feesApi.list(params);
-    },
+    // fees + allFees đều đến từ bootstrap (loadAll) — không có loader riêng.
     // Bootstrap đã trả về allFees → sau mutation chỉ cần 1 call loadAll()
     // (Apps Script serialize request, gọi thêm fees:list là xếp hàng chờ đôi).
     async addFees(entries) {
