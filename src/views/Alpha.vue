@@ -543,7 +543,6 @@ async function submit() {
       rewards,
       estimated,
     });
-    await store.loadSummary();
     toast.success(`Đã lưu dự án "${form.name}"`);
     resetForm();
   } catch (e) {
@@ -625,7 +624,6 @@ async function saveEdit() {
       rewards,
       estimated,
     });
-    await store.loadSummary();
     toast.success(`Đã cập nhật "${editForm.name}"`);
     editingId.value = null;
   } catch (e) {
@@ -644,7 +642,6 @@ function del(p) {
     onPositiveClick: async () => {
       try {
         await store.deleteProject(p.id);
-        await store.loadSummary();
         toast.success(`Đã xóa "${p.name}"`);
       } catch (e) {
         toast.error('Lỗi: ' + e.message);

@@ -217,15 +217,6 @@ export const alphaApi = {
   remove: (id) => call('alpha', 'delete', { id }),
 };
 
-export const summaryApi = {
-  get: (params = {}) => call('summary', 'get', params),
-};
-
-export const pointsApi = {
-  get: (requiredPoints = 15) => call('points', 'get', { requiredPoints }),
-  fromVolume: (volume) => call('points', 'fromVolume', { volume }),
-};
-
 export const bootstrapApi = {
   get: (params = {}) => call('bootstrap', 'get', params),
 };

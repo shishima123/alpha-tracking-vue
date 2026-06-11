@@ -67,7 +67,7 @@ A single Pinia store [src/stores/trackingStore.js](src/stores/trackingStore.js) 
 
 ### Performance / response caching (two layers)
 
-- **Server (CacheService):** `getBootstrap` caches its full JSON result in `ScriptCache` (TTL 6h) — a cache hit touches zero Sheets APIs. Invalidation is version-based: `handleRequest` bumps `dataVersion` after any mutating action (see `MUTATING_ACTIONS` in Code.gs — `create/update/delete/bulk/archive/clearOld`); the version is part of the cache key, so stale entries are simply orphaned. The key also includes today's date (`points`/`pastDaily` depend on "today") plus `vndRate`/`requiredPoints`. **When adding a new mutating action name, add it to `MUTATING_ACTIONS`.** Caveat: hand-editing the Sheet doesn't bump the version — the app's "Tải lại" button sends `nocache: true` to force a fresh read.
+- **Server (CacheService):** `getBootstrap` caches its full JSON result in `ScriptCache` (TTL 6h) — a cache hit touches zero Sheets APIs. Invalidation is version-based: `handleRequest` bumps `dataVersion` after any mutating action (see `MUTATING_ACTIONS` in Code.gs — `create/update/delete/bulk/archive/clearOld`); the version is part of the cache key, so stale entries are simply orphaned. The key also includes today's date (`points`/`pastDaily` depend on "today") plus `requiredPoints`. `vndRate` is deliberately NOT in the key — the server returns USD figures only (`profitVND` in the response is at `DEFAULT_VND_RATE` and unused by the client); VND conversion happens client-side (`profit * store.vndRate`), so changing the rate input triggers no request. **When adding a new mutating action name, add it to `MUTATING_ACTIONS`.** Caveat: hand-editing the Sheet doesn't bump the version — the app's "Tải lại" button sends `nocache: true` to force a fresh read.
 - **Client (stale-while-revalidate):** on the first `loadAll()` per session, the store hydrates instantly from the last bootstrap snapshot in `localStorage` (key `alpha:bootstrap`), then fetches fresh data in the background. Logout calls `clearLocalCache()` to remove the snapshot.
 - **Keep read paths cheap:** `readRows` uses `getSheetForRead`, which skips `ensureHeaders` and the `FeesMonthly` `setNumberFormat` pin — those run only on the write path (`getSheet`). Don't add `SpreadsheetApp` write calls to read endpoints; every write forces an expensive flush.
 
@@ -105,7 +105,7 @@ When a Sheet cell comes back as a `Date` object (Sheets auto-coerces date-shaped
 
 - **15-day point reset.** Every fee row carries `points`; an account's "current points" sums only entries whose `tradeDate + 15 days >= today` ([Code.gs `getPoints`](apps-script/Code.gs#L460)).
 - **Volume → points.** `points = floor(log2(volume))` capped at 20 (`pointsFromVolume` in Code.gs).
-- **Monthly profit.** `getSummary` buckets by `MM/YYYY`, sums fees and per-account rewards, then `profit = revenue - fee` (USD) and `profitVND = profit * vndRate`. Default VND rate is 26500.
+- **Monthly profit.** `getSummary` buckets by `MM/YYYY`, sums fees and per-account rewards, then `profit = revenue - fee` (USD). VND display is computed client-side as `profit * store.vndRate` (default 26500); the `profitVND` field the server still returns uses `DEFAULT_VND_RATE` and is ignored by the frontend.
 
 ## Deploying changes to the Apps Script
 

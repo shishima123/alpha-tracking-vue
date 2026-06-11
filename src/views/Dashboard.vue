@@ -33,7 +33,7 @@
           </n-gi>
           <n-gi>
             <StatCard label="Lợi nhuận" :value="'$' + fmtUSD(total.profit)"
-              :sub="fmtVND(total.profitVND)" color="#16a34a" />
+              :sub="fmtVND(total.profit * store.vndRate)" color="#16a34a" />
           </n-gi>
           <n-gi>
             <StatCard label="Dự án đã claim" :value="total.projects" :sub="store.projects.length + ' tổng'" />
@@ -73,7 +73,7 @@
                   <td class="ta-r rev">{{ fmtUSD(m.totalRevenue) }}</td>
                   <td class="ta-r fee">-{{ fmtUSD(m.totalFee) }}</td>
                   <td class="ta-r strong" :class="m.profit >= 0 ? 'pos' : 'neg'">{{ fmtUSD(m.profit) }}</td>
-                  <td class="ta-r muted">{{ fmtVND(m.profitVND) }}</td>
+                  <td class="ta-r muted">{{ fmtVND(m.profit * store.vndRate) }}</td>
                   <td class="ta-r">{{ m.projects }}</td>
                 </tr>
                 <tr v-if="expanded[m.month]">
@@ -182,13 +182,14 @@ const activeTab = useStorage('alpha:dashboardTab', 'account');
 // Trạng thái thu gọn phần tổng quan (lưu localStorage).
 const showOverview = useStorage('alpha:dashboardOverview', true);
 
+// Tỉ giá chỉ là phép nhân hiển thị — đổi rate không cần gọi server,
+// mọi số VND trên trang đều là computed từ profit USD × store.vndRate.
 function onVndRate(v) {
   store.vndRate = Number(v) || 0;
-  store.loadSummary();
 }
 
 const monthly = computed(() => store.summary?.monthly || []);
-const total = computed(() => store.summary?.total || { revenue: 0, fee: 0, profit: 0, profitVND: 0, projects: 0 });
+const total = computed(() => store.summary?.total || { revenue: 0, fee: 0, profit: 0, projects: 0 });
 
 const monthlyDesc = computed(() => [...monthly.value].reverse());
 const showAllMonths = ref(false);

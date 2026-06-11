@@ -1027,9 +1027,11 @@ function computeSummaryFast(currentFees, feesMonthly, projects, vndRateInput) {
 function getBootstrap(payload) {
   payload = payload || {};
   const cache = CacheService.getScriptCache();
+  // Key KHÔNG chứa vndRate: server chỉ trả số USD, quy đổi VND là việc của
+  // client → mọi tỉ giá dùng chung 1 cache entry.
   const cacheKey = [
     'bootstrap', getDataVersion(), formatDmy(new Date()),
-    payload.vndRate || '', payload.requiredPoints || '',
+    payload.requiredPoints || '',
   ].join('|');
   if (!payload.nocache) {
     const hit = cache.get(cacheKey);
@@ -1059,11 +1061,14 @@ function getBootstrap(payload) {
   const summaryPastFees = pastFees.filter(function (f) {
     return !archivedMonths[monthKey(f.date)];
   });
+  // vndRate cố ý KHÔNG lấy từ payload (cache key không chứa nó): profitVND
+  // trong response tính theo DEFAULT_VND_RATE, client tự nhân profit × tỉ giá
+  // riêng khi hiển thị.
   const summary = computeSummaryFast(
     currentFees.concat(summaryPastFees),
     feesMonthly,
     projects,
-    payload.vndRate
+    null
   );
 
   const result = {

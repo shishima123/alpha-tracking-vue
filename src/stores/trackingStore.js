@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { accountsApi, feesApi, alphaApi, summaryApi, pointsApi, bootstrapApi } from '../services/api';
+import { accountsApi, feesApi, alphaApi, bootstrapApi } from '../services/api';
 import { useCalculatorStore } from './calculatorStore';
 
 // Bản bootstrap cuối được cache vào localStorage → lần mở app sau hydrate UI
@@ -78,28 +78,20 @@ export const useTrackingStore = defineStore('tracking', {
       return res;
     },
 
-    async loadProjects() {
-      this.projects = await alphaApi.list();
-    },
+    // Project mutations ảnh hưởng cả summary → refresh bằng 1 call loadAll()
+    // (giống fee mutations), thay vì loadProjects + loadSummary nối tiếp.
     async createProject(data) {
       const p = await alphaApi.create(data);
-      this.projects.unshift(p);
+      await this.loadAll();
       return p;
     },
     async updateProject(id, data) {
       await alphaApi.update(id, data);
-      await this.loadProjects();
+      await this.loadAll();
     },
     async deleteProject(id) {
       await alphaApi.remove(id);
-      this.projects = this.projects.filter((p) => p.id !== id);
-    },
-
-    async loadSummary(params) {
-      this.summary = await summaryApi.get({ ...params, vndRate: this.vndRate });
-    },
-    async loadPoints(req = 15) {
-      this.points = await pointsApi.get(req);
+      await this.loadAll();
     },
 
     applyBootstrap(data) {
@@ -139,10 +131,9 @@ export const useTrackingStore = defineStore('tracking', {
       this.loading = true;
       this.error = null;
       try {
-        const data = await bootstrapApi.get({
-          vndRate: this.vndRate,
-          ...(opts.force ? { nocache: true } : {}),
-        });
+        // Không gửi vndRate: server chỉ trả số USD, quy đổi VND là việc của
+        // client (computed × store.vndRate) → cache server dùng chung 1 key.
+        const data = await bootstrapApi.get(opts.force ? { nocache: true } : {});
         this.applyBootstrap(data);
         try { localStorage.setItem(BOOTSTRAP_CACHE_KEY, JSON.stringify(data)); } catch (_) { /* quota → bỏ qua */ }
       } catch (e) {
