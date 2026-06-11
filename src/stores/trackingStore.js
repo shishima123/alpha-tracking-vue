@@ -2,6 +2,10 @@ import { defineStore } from 'pinia';
 import { accountsApi, feesApi, alphaApi, summaryApi, pointsApi, bootstrapApi } from '../services/api';
 import { useCalculatorStore } from './calculatorStore';
 
+// Bản bootstrap cuối được cache vào localStorage → lần mở app sau hydrate UI
+// ngay (<100ms) rồi mới refresh nền từ server (stale-while-revalidate).
+const BOOTSTRAP_CACHE_KEY = 'alpha:bootstrap';
+
 export const useTrackingStore = defineStore('tracking', {
   state: () => ({
     accounts: [],
@@ -16,6 +20,7 @@ export const useTrackingStore = defineStore('tracking', {
     loading: false,
     error: null,
     vndRate: 26500,
+    hydrated: false,       // đã hydrate từ localStorage cache trong session này chưa
   }),
   getters: {
     activeAccounts: (s) => s.accounts.filter((a) => a.active),
@@ -54,26 +59,28 @@ export const useTrackingStore = defineStore('tracking', {
     async loadAllFees(params) {
       this.allFees = await feesApi.list(params);
     },
+    // Bootstrap đã trả về allFees → sau mutation chỉ cần 1 call loadAll()
+    // (Apps Script serialize request, gọi thêm fees:list là xếp hàng chờ đôi).
     async addFees(entries) {
       await feesApi.bulk(entries);
-      await Promise.all([this.loadAll(), this.loadAllFees()]);
+      await this.loadAll();
     },
     async updateFee(id, data) {
       await feesApi.update(id, data);
-      await Promise.all([this.loadAll(), this.loadAllFees()]);
+      await this.loadAll();
     },
     async deleteFee(id) {
       await feesApi.remove(id);
-      await Promise.all([this.loadAll(), this.loadAllFees()]);
+      await this.loadAll();
     },
     async archivePastMonths() {
       const res = await feesApi.archive();
-      await Promise.all([this.loadAll(), this.loadAllFees()]);
+      await this.loadAll();
       return res;
     },
     async clearOldDaily() {
       const res = await feesApi.clearOld();
-      await Promise.all([this.loadAll(), this.loadAllFees()]);
+      await this.loadAll();
       return res;
     },
 
@@ -101,21 +108,49 @@ export const useTrackingStore = defineStore('tracking', {
       this.points = await pointsApi.get(req);
     },
 
-    async loadAll() {
+    applyBootstrap(data) {
+      this.accounts = data.accounts;
+      this.fees = data.fees;
+      this.allFees = data.allFees || [];
+      this.feesMonthly = data.feesMonthly || [];
+      this.currentMonth = data.currentMonth || '';
+      this.pastDaily = data.pastDaily || null;
+      this.projects = data.projects;
+      this.summary = data.summary;
+      this.points = data.points;
+      // Mirror calc fields on each account → localStorage cache
+      useCalculatorStore().syncFromAccounts(this.accounts);
+    },
+
+    // Xóa bản cache local (gọi khi logout — dữ liệu tài chính không nên nằm
+    // lại localStorage sau khi đăng xuất).
+    clearLocalCache() {
+      try { localStorage.removeItem(BOOTSTRAP_CACHE_KEY); } catch (_) { /* ignore */ }
+    },
+
+    /**
+     * Stale-while-revalidate: lần gọi đầu trong session hydrate ngay từ bản
+     * localStorage (UI hiện tức thì) rồi vẫn fetch server để cập nhật.
+     * @param {{force?: boolean}} opts force=true → server bỏ qua CacheService,
+     *   đọc lại Sheets (dùng cho nút "Tải lại" khi user sửa Sheet bằng tay).
+     */
+    async loadAll(opts = {}) {
+      if (!this.hydrated) {
+        this.hydrated = true;
+        try {
+          const cached = JSON.parse(localStorage.getItem(BOOTSTRAP_CACHE_KEY) || 'null');
+          if (cached) this.applyBootstrap(cached);
+        } catch (_) { /* cache hỏng → bỏ qua */ }
+      }
       this.loading = true;
       this.error = null;
       try {
-        const data = await bootstrapApi.get({ vndRate: this.vndRate });
-        this.accounts = data.accounts;
-        this.fees = data.fees;
-        this.feesMonthly = data.feesMonthly || [];
-        this.currentMonth = data.currentMonth || '';
-        this.pastDaily = data.pastDaily || null;
-        this.projects = data.projects;
-        this.summary = data.summary;
-        this.points = data.points;
-        // Mirror calc fields on each account → localStorage cache
-        useCalculatorStore().syncFromAccounts(this.accounts);
+        const data = await bootstrapApi.get({
+          vndRate: this.vndRate,
+          ...(opts.force ? { nocache: true } : {}),
+        });
+        this.applyBootstrap(data);
+        try { localStorage.setItem(BOOTSTRAP_CACHE_KEY, JSON.stringify(data)); } catch (_) { /* quota → bỏ qua */ }
       } catch (e) {
         this.error = e.message;
       } finally {

@@ -191,7 +191,8 @@ const viewMode = useStorage('alpha:pointsViewMode', 'full');
 // "Tương lai" là chế độ xem trước nhất thời → ref thường (không lưu), reset OFF mỗi lần mở.
 const futureMode = ref(false);
 
-// allFees không nằm trong bootstrap → load riêng khi mở tab Điểm.
+// allFees đã có trong bootstrap; chỉ load riêng nếu vào thẳng tab này
+// trước khi bootstrap kịp về (fallback, bình thường không chạy).
 onMounted(() => {
   if (store.allFees.length === 0) store.loadAllFees();
 });

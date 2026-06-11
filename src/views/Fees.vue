@@ -371,8 +371,9 @@ const filteredFees = computed(() => {
   return list;
 });
 
-// Tab này hiển thị toàn bộ daily rows còn trong sheet Fees (mọi tháng),
-// nên cần load riêng — bootstrap (store.fees) chỉ trả về tháng hiện tại.
+// Tab này hiển thị toàn bộ daily rows còn trong sheet Fees (mọi tháng).
+// allFees đã có trong bootstrap; chỉ load riêng nếu bootstrap chưa kịp về
+// (fallback, bình thường không chạy).
 onMounted(() => {
   if (store.allFees.length === 0) store.loadAllFees();
 });

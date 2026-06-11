@@ -83,6 +83,8 @@ function handleRequest(e, method) {
     const payload = inner.payload || {};
 
     const result = dispatch(resource, action, payload, params);
+    // Mọi action ghi dữ liệu → bump dataVersion để vô hiệu cache bootstrap.
+    if (MUTATING_ACTIONS[action]) bumpDataVersion();
     return jsonResponse({ ok: true, data: result });
   } catch (err) {
     return jsonResponse({ ok: false, error: err.message || String(err) });
@@ -132,6 +134,39 @@ function jsonResponse(obj) {
   return ContentService
     .createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+// =========================================================================
+// RESPONSE CACHE (CacheService)
+// =========================================================================
+// Bootstrap được cache nguyên JSON trong ScriptCache → request lặp lại không
+// đụng Sheets (0 round-trip, chỉ còn verify HMAC + trả JSON).
+//
+// Vô hiệu hóa qua dataVersion: mọi mutation bump version → key cache cũ thành
+// mồ côi, tự hết hạn theo TTL. Key còn gồm ngày hôm nay vì points/pastDaily
+// phụ thuộc "today" — qua nửa đêm cache tự miss.
+//
+// Lưu ý: sửa Sheet bằng TAY (không qua app) sẽ không bump version → cache cũ
+// tối đa 6h. Nút "Tải lại" trên app gửi nocache=true để ép đọc lại Sheets.
+const CACHE_TTL_SEC = 21600; // 6h — max của CacheService
+const DATA_VERSION_KEY = 'dataVersion';
+const MUTATING_ACTIONS = {
+  create: true, update: true, delete: true, bulk: true,
+  archive: true, clearOld: true,
+};
+
+function getDataVersion() {
+  const cache = CacheService.getScriptCache();
+  let v = cache.get(DATA_VERSION_KEY);
+  if (!v) {
+    v = String(Date.now());
+    cache.put(DATA_VERSION_KEY, v, CACHE_TTL_SEC);
+  }
+  return v;
+}
+
+function bumpDataVersion() {
+  CacheService.getScriptCache().put(DATA_VERSION_KEY, String(Date.now()), CACHE_TTL_SEC);
 }
 
 // =========================================================================
@@ -190,33 +225,49 @@ function dispatch(resource, action, payload, params) {
 // ~50-200ms mỗi call. Trong 1 lần handleRequest, sheet refs không đổi → memoize.
 let _ssCache = null;
 const _sheetCache = {};
+const _sheetEnsured = {};
 
 function activeSpreadsheet() {
   if (!_ssCache) _ssCache = SpreadsheetApp.getActiveSpreadsheet();
   return _ssCache;
 }
 
-function getSheet(name) {
+/**
+ * Đường ĐỌC: chỉ getSheetByName, không tạo sheet, không ensureHeaders, không
+ * setNumberFormat — mỗi thứ đó là 1 round-trip (riêng setNumberFormat là lệnh
+ * GHI, rất đắt). Sheet chưa tồn tại → null, readRows trả []; sheet sẽ được
+ * tạo ở lần ghi đầu tiên qua getSheet().
+ */
+function getSheetForRead(name) {
   if (_sheetCache[name]) return _sheetCache[name];
-  const ss = activeSpreadsheet();
-  let sh = ss.getSheetByName(name);
+  const sh = activeSpreadsheet().getSheetByName(name);
+  if (sh) _sheetCache[name] = sh;
+  return sh;
+}
+
+/** Đường GHI: tạo sheet nếu thiếu + migrate header + pin format (1 lần/invocation). */
+function getSheet(name) {
+  let sh = getSheetForRead(name);
   if (!sh) {
-    sh = ss.insertSheet(name);
+    sh = activeSpreadsheet().insertSheet(name);
     const headers = HEADERS[name];
     if (headers) {
       sh.getRange(1, 1, 1, headers.length).setValues([headers]);
       sh.setFrozenRows(1);
     }
-  } else {
+    _sheetCache[name] = sh;
+  } else if (!_sheetEnsured[name]) {
     ensureHeaders(sh, name);
   }
-  // FeesMonthly.month dạng "MM/YYYY" — Sheets sẽ auto-coerce thành Date object
-  // (April 1, 2026) khi setValues vào ô format mặc định. Pin column B = plain text
-  // để các write sau giữ nguyên string.
-  if (name === SHEETS.FEES_MONTHLY) {
-    sh.getRange('B:B').setNumberFormat('@');
+  if (!_sheetEnsured[name]) {
+    // FeesMonthly.month dạng "MM/YYYY" — Sheets sẽ auto-coerce thành Date object
+    // (April 1, 2026) khi setValues vào ô format mặc định. Pin column B = plain text
+    // để các write sau giữ nguyên string.
+    if (name === SHEETS.FEES_MONTHLY) {
+      sh.getRange('B:B').setNumberFormat('@');
+    }
+    _sheetEnsured[name] = true;
   }
-  _sheetCache[name] = sh;
   return sh;
 }
 
@@ -235,7 +286,8 @@ function ensureHeaders(sh, name) {
 }
 
 function readRows(name) {
-  const sh = getSheet(name);
+  const sh = getSheetForRead(name);
+  if (!sh) return []; // sheet chưa tồn tại — sẽ được tạo ở lần ghi đầu
   // getDataRange = 1 round-trip lấy cả values + dims; tốt hơn getLastRow+getLastCol+getRange
   const values = sh.getDataRange().getValues();
   if (values.length < 2) return [];
@@ -974,6 +1026,18 @@ function computeSummaryFast(currentFees, feesMonthly, projects, vndRateInput) {
 // =========================================================================
 function getBootstrap(payload) {
   payload = payload || {};
+  const cache = CacheService.getScriptCache();
+  const cacheKey = [
+    'bootstrap', getDataVersion(), formatDmy(new Date()),
+    payload.vndRate || '', payload.requiredPoints || '',
+  ].join('|');
+  if (!payload.nocache) {
+    const hit = cache.get(cacheKey);
+    if (hit) {
+      try { return JSON.parse(hit); } catch (_) { /* cache hỏng → tính lại */ }
+    }
+  }
+
   const accounts = listAccounts();
   const allFees = listFees({});
   const projects = listProjects();
@@ -1002,9 +1066,13 @@ function getBootstrap(payload) {
     payload.vndRate
   );
 
-  return {
+  const result = {
     accounts: accounts,
     fees: currentFees,
+    // allFees: toàn bộ daily rows (mọi tháng còn trong sheet) — đã đọc sẵn ở
+    // trên, trả luôn để frontend khỏi gọi fees:list riêng (Apps Script
+    // serialize request nên call thứ 2 phải xếp hàng chờ).
+    allFees: allFees,
     feesMonthly: feesMonthly,
     projects: projects,
     summary: summary,
@@ -1012,6 +1080,8 @@ function getBootstrap(payload) {
     currentMonth: currentKey,
     pastDaily: computePastDailyStatus(pastFees, archivedMonths),
   };
+  try { cache.put(cacheKey, JSON.stringify(result), CACHE_TTL_SEC); } catch (_) { /* >100KB → bỏ cache */ }
+  return result;
 }
 
 /**

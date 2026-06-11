@@ -21,7 +21,7 @@ The README references a `frontend/` subfolder; that layout is stale — the Vue 
 Vue 3 SPA (static)  ──fetch POST──>  Google Apps Script Web App  ──>  Google Sheet
 ```
 
-There is **no Node backend**. The "API" is a single [apps-script/Code.gs](apps-script/Code.gs) file deployed as a Google Apps Script Web App, which reads/writes a Google Sheet under the deployer's account. Three sheets are auto-created on first call: `Accounts`, `Fees`, `AlphaProjects`.
+There is **no Node backend**. The "API" is a single [apps-script/Code.gs](apps-script/Code.gs) file deployed as a Google Apps Script Web App, which reads/writes a Google Sheet under the deployer's account. Sheets (`Accounts`, `Fees`, `AlphaProjects`, `FeesMonthly`) are auto-created on first **write** — read paths return empty for missing sheets (`getSheetForRead` vs `getSheet`).
 
 ### Frontend → Apps Script protocol
 
@@ -63,7 +63,13 @@ Frontend (`buildSignedBody` in [src/services/api.js](src/services/api.js)) uses 
 
 ### State layer
 
-A single Pinia store [src/stores/trackingStore.js](src/stores/trackingStore.js) owns all server state (`accounts`, `fees`, `projects`, `summary`, `points`). Views read from it and call its `loadX` / `createX` / `updateX` actions — they should not call `api.js` directly. `loadAll()` calls the single `bootstrap` endpoint which returns everything in one HTTP request — important because Apps Script serializes concurrent requests to the same script, so 5 parallel calls would queue server-side. The standalone `getSummary` / `getPoints` endpoints still exist for partial refreshes; `getBootstrap` reuses their pure compute helpers (`computeSummary`, `computePoints`) so each sheet is read exactly once.
+A single Pinia store [src/stores/trackingStore.js](src/stores/trackingStore.js) owns all server state (`accounts`, `fees`, `allFees`, `projects`, `summary`, `points`). Views read from it and call its `loadX` / `createX` / `updateX` actions — they should not call `api.js` directly. `loadAll()` calls the single `bootstrap` endpoint which returns everything — including `allFees` (full daily rows) — in one HTTP request. Important because Apps Script serializes concurrent requests to the same script, so parallel calls queue server-side; fee mutations therefore only call `loadAll()`, no separate `fees:list`. The standalone `getSummary` / `getPoints` endpoints still exist for partial refreshes; `getBootstrap` reuses their pure compute helpers (`computeSummary`, `computePoints`) so each sheet is read exactly once.
+
+### Performance / response caching (two layers)
+
+- **Server (CacheService):** `getBootstrap` caches its full JSON result in `ScriptCache` (TTL 6h) — a cache hit touches zero Sheets APIs. Invalidation is version-based: `handleRequest` bumps `dataVersion` after any mutating action (see `MUTATING_ACTIONS` in Code.gs — `create/update/delete/bulk/archive/clearOld`); the version is part of the cache key, so stale entries are simply orphaned. The key also includes today's date (`points`/`pastDaily` depend on "today") plus `vndRate`/`requiredPoints`. **When adding a new mutating action name, add it to `MUTATING_ACTIONS`.** Caveat: hand-editing the Sheet doesn't bump the version — the app's "Tải lại" button sends `nocache: true` to force a fresh read.
+- **Client (stale-while-revalidate):** on the first `loadAll()` per session, the store hydrates instantly from the last bootstrap snapshot in `localStorage` (key `alpha:bootstrap`), then fetches fresh data in the background. Logout calls `clearLocalCache()` to remove the snapshot.
+- **Keep read paths cheap:** `readRows` uses `getSheetForRead`, which skips `ensureHeaders` and the `FeesMonthly` `setNumberFormat` pin — those run only on the write path (`getSheet`). Don't add `SpreadsheetApp` write calls to read endpoints; every write forces an expensive flush.
 
 ### Sheets schema
 
