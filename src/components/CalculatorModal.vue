@@ -21,7 +21,7 @@
       <!-- Account selector -->
       <n-flex align="center" :size="12">
         <span class="muted">Tài khoản:</span>
-        <n-select v-model:value="selectedId" :options="accountOptions" style="max-width: 280px" />
+        <n-select v-model:value="selectedId" :options="accountOptions" :render-label="renderAccountLabel" style="max-width: 280px" />
         <span v-if="selectedAccount" class="dot-lg" :style="{ background: selectedAccount.color }"></span>
       </n-flex>
 
@@ -162,9 +162,37 @@ const selectableAccounts = computed(() =>
   store.activeAccounts.filter((a) => !a.hideInPoints)
 );
 
+// Account đã có phí nhập cho HÔM NAY → đánh dấu tích trong dropdown.
+const feeTodayAccountIds = computed(() => {
+  const today = todayStr();
+  const set = new Set();
+  for (const f of store.fees || []) {
+    if (f.date === today) set.add(f.accountId);
+  }
+  return set;
+});
+
 const accountOptions = computed(() =>
-  selectableAccounts.value.map((a) => ({ label: a.displayName, value: a.id }))
+  selectableAccounts.value.map((a) => ({
+    label: a.displayName,
+    value: a.id,
+    hasFeeToday: feeTodayAccountIds.value.has(a.id),
+  }))
 );
+
+// Render label cho n-select: tên bên trái, dấu tích "đã nhập hôm nay" bên phải.
+function renderAccountLabel(option) {
+  return h(
+    'div',
+    { style: 'display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%' },
+    [
+      h('span', option.label),
+      option.hasFeeToday
+        ? h('span', { style: 'color:#16a34a;font-size:12px;white-space:nowrap' }, '✓ đã trade')
+        : null,
+    ]
+  );
+}
 
 const selectedId = computed({
   get: () => {
