@@ -282,8 +282,20 @@
             </n-form-item>
           </n-gi>
           <n-gi>
+            <n-form-item label="Trước ($)" :show-feedback="false">
+              <n-input-number v-model:value="cellModal.before" :step="0.01" :show-button="false" style="width: 100%" />
+            </n-form-item>
+          </n-gi>
+          <n-gi>
+            <n-form-item label="Sau ($)" :show-feedback="false">
+              <n-input-number v-model:value="cellModal.after" class="fill-input" :step="0.01" :show-button="false" placeholder="số dư còn" style="width: 100%" />
+            </n-form-item>
+          </n-gi>
+          <n-gi>
             <n-form-item label="Phí ($)" :show-feedback="false">
-              <n-input-number v-model:value="cellModal.fee" :step="0.01" :precision="2" style="width: 100%" />
+              <div class="w-full min-h-[34px] flex items-center justify-end px-3 rounded-md bg-[rgba(219,226,236,0.4)] text-rose-600 font-semibold tabular-nums">
+                {{ fmtUSD(cellFee) }}
+              </div>
             </n-form-item>
           </n-gi>
           <n-gi>
@@ -564,13 +576,26 @@ function pointTextClass(cell) {
 // ===== Cell/chip edit (modal) — dùng chung cho cả matrix và grouped view =====
 const cellModal = ref(null);
 
+// Phí = Trước − Sau (giống máy tính). Trước mặc định luôn 1050; Sau bỏ trống → phí 0.
+const DEFAULT_BEFORE = 1050;
+const cellFee = computed(() => {
+  const m = cellModal.value;
+  if (!m) return 0;
+  const before = Number(m.before) || 0;
+  const after = Number(m.after);
+  if (!Number.isFinite(after)) return 0;
+  return round2(Math.max(0, before - after));
+});
+
 function openEdit(date, accountId) {
   const existing = cellAt(date, accountId);
   cellModal.value = {
     date,
     accountId,
     existing,
-    fee: existing ? round2(existing.fee) : 0,
+    before: DEFAULT_BEFORE,
+    // Sửa: từ phí cũ suy ra Sau = Trước − phí. Thêm mới: bỏ trống.
+    after: existing ? round2(DEFAULT_BEFORE - existing.fee) : null,
     points: existing ? existing.points : (store.accountById(accountId)?.pointTrade ?? 15) + (store.accountById(accountId)?.pointHold ?? 0),
     note: existing ? (existing.note || '') : '',
     highlight: existing ? !!existing.highlight : false,
@@ -588,7 +613,7 @@ async function saveCell() {
     title: cellModal.value.existing ? 'Cập nhật phí' : 'Thêm phí',
     content: () => h('div', { style: 'line-height:1.8' }, [
       'Lưu phí ',
-      h('b', { style: 'color:#e11d48' }, fmtUSD(Number(cellModal.value.fee) || 0)),
+      h('b', { style: 'color:#e11d48' }, fmtUSD(cellFee.value)),
       ' (',
       h('b', { style: 'color:#2563eb' }, `+${Number(cellModal.value.points) || 0}đ`),
       ') cho ',
@@ -607,7 +632,7 @@ async function saveCell() {
     await store.addFees([{
       date: cellModal.value.date,
       accountId: cellModal.value.accountId,
-      fee: round2(cellModal.value.fee),
+      fee: cellFee.value,
       points: Number(cellModal.value.points) || 0,
       note: cellModal.value.note || '',
       highlight: !!cellModal.value.highlight,
@@ -698,4 +723,7 @@ function onClearOld() {
 .pivot tbody tr:hover td:hover {
   box-shadow: inset 0 0 0 999px rgba(15, 23, 42, 0.12); /* hover cell (đậm hơn) */
 }
+/* Ô cần người dùng nhập (Sau $) → tô nền vàng nhạt cho dễ nhận biết. */
+.fill-input :deep(.n-input) { background-color: #fefce8; }
+.fill-input :deep(.n-input.n-input--focus) { background-color: #fffef7; }
 </style>

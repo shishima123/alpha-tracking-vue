@@ -60,7 +60,7 @@
 
         <div class="vol-inputs">
           <n-form-item :label="`Tổng vol hiện tại (x${MULT})`" :show-feedback="false">
-            <n-input-number v-model:value="cfg.currentVol" :status="reached ? 'success' : undefined" :show-button="false" style="width: 100%" @update:value="persistCfg" />
+            <n-input-number v-model:value="cfg.currentVol" class="fill-input" :status="reached ? 'success' : undefined" :show-button="false" style="width: 100%" @update:value="persistCfg" />
           </n-form-item>
           <n-form-item label="Volume mỗi lệnh (raw)" :show-feedback="false">
             <n-select v-model:value="cfg.perOrder" :options="perOrderOptions" @update:value="persistCfg" />
@@ -106,7 +106,7 @@
             <n-input-number v-model:value="cfg.withdraw" :step="0.01" :show-button="false" style="width: 100%" @update:value="persistCfg" />
           </n-form-item>
           <n-form-item label="Sau ($)" :show-feedback="false">
-            <n-input-number v-model:value="cfg.lastAfter" :step="0.01" :show-button="false" placeholder="số dư còn" style="width: 100%" @update:value="persistCfg" />
+            <n-input-number v-model:value="cfg.lastAfter" class="fill-input" :step="0.01" :show-button="false" placeholder="số dư còn" style="width: 100%" @update:value="persistCfg" />
           </n-form-item>
           <n-form-item label="Phí ($)" :show-feedback="false">
             <div class="readonly fee">{{ fmtUSD(fee) }}</div>
@@ -332,6 +332,9 @@ async function saveFee() {
 .readonly.accent { color: #2563eb; font-weight: 600; }
 .readonly.fee { color: #e11d48; justify-content: flex-end; }
 .mark-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 13px; color: #475569; cursor: pointer; }
+/* Ô cần người dùng nhập → tô nền vàng nhạt cho dễ nhận biết. */
+.fill-input :deep(.n-input) { background-color: #fefce8; }
+.fill-input :deep(.n-input.n-input--focus) { background-color: #fffef7; }
 .stat {
   border: 1px solid #e2e8f0;
   border-radius: 8px;
