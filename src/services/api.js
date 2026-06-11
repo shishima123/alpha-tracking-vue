@@ -195,15 +195,16 @@ export const authApi = {
 };
 
 export const accountsApi = {
-  list: () => call('accounts', 'list'),
   create: (data) => call('accounts', 'create', data),
   update: (id, data) => call('accounts', 'update', { id, ...data }),
   remove: (id) => call('accounts', 'delete', { id }),
 };
 
 export const feesApi = {
-  create: (data) => call('fees', 'create', data),
   bulk: (entries) => call('fees', 'bulk', { entries }),
+  // Lưu phí + config account (Máy tính) trong cùng 1 request
+  bulkWithConfig: (entries, accountConfig) =>
+    call('fees', 'bulkWithConfig', { entries, accountConfig }),
   update: (id, data) => call('fees', 'update', { id, ...data }),
   remove: (id) => call('fees', 'delete', { id }),
   archive: () => call('fees', 'archive', {}),
@@ -211,7 +212,6 @@ export const feesApi = {
 };
 
 export const alphaApi = {
-  list: () => call('alpha', 'list'),
   create: (data) => call('alpha', 'create', data),
   update: (id, data) => call('alpha', 'update', { id, ...data }),
   remove: (id) => call('alpha', 'delete', { id }),

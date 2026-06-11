@@ -61,7 +61,9 @@ async function login() {
     }
     await persistPassphrase(passphrase.value);
     passphrase.value = '';
-    await store.loadAll();
+    // Không await: vào app ngay, loadAll chạy nền (SWR hydrate + loading bar
+    // đã lo phần hiển thị) — đỡ nhìn nút "Đang kiểm tra..." thêm vài giây.
+    store.loadAll();
     router.push('/');
   } catch (e) {
     error.value = e.message || 'Lỗi không xác định';

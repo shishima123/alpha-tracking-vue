@@ -63,17 +63,20 @@ Frontend (`buildSignedBody` in [src/services/api.js](src/services/api.js)) uses 
 
 ### State layer
 
-A single Pinia store [src/stores/trackingStore.js](src/stores/trackingStore.js) owns all server state (`accounts`, `fees`, `allFees`, `projects`, `summary`, `points`). Views read from it and call its `loadX` / `createX` / `updateX` actions — they should not call `api.js` directly. `loadAll()` calls the single `bootstrap` endpoint which returns everything — including `allFees` (full daily rows) — in one HTTP request. Important because Apps Script serializes concurrent requests to the same script, so parallel calls queue server-side; fee mutations therefore only call `loadAll()`, no separate `fees:list`. The standalone `getSummary` / `getPoints` endpoints still exist for partial refreshes; `getBootstrap` reuses their pure compute helpers (`computeSummary`, `computePoints`) so each sheet is read exactly once.
+A single Pinia store [src/stores/trackingStore.js](src/stores/trackingStore.js) owns all server state (`accounts`, `fees`, `allFees`, `projects`, `summary`). Views read from it and call its `loadX` / `createX` / `updateX` actions — they should not call `api.js` directly. **`bootstrap:get` is the only read endpoint** — it returns everything (including `allFees`, full daily rows) in one HTTP request. Important because Apps Script serializes concurrent requests to the same script, so parallel calls queue server-side; every mutation refreshes via a single `loadAll()`. Alpha points are computed **client-side only** (`computeAlphaPoints` in [src/utils/points.js](src/utils/points.js) — it deducts `claimPoints` of claimed projects, the server never computes points). The "Lưu phí" button in the calculator uses `fees:bulkWithConfig`, which upserts fee entries AND persists the account calc config (`currentVol`/`lastAfter`/…) in one request instead of two.
+
+Account mutations are optimistic (no refetch) but must call `patchSnapshotAccounts()` so the localStorage bootstrap snapshot stays in sync. `vndRate` is a pure display multiplier persisted in localStorage (`alpha:vndRate`) — changing it triggers no request.
 
 ### Performance / response caching (two layers)
 
-- **Server (CacheService):** `getBootstrap` caches its full JSON result in `ScriptCache` (TTL 6h) — a cache hit touches zero Sheets APIs. Invalidation is version-based: `handleRequest` bumps `dataVersion` after any mutating action (see `MUTATING_ACTIONS` in Code.gs — `create/update/delete/bulk/archive/clearOld`); the version is part of the cache key, so stale entries are simply orphaned. The key also includes today's date (`points`/`pastDaily` depend on "today") plus `requiredPoints`. `vndRate` is deliberately NOT in the key — the server returns USD figures only (`profitVND` in the response is at `DEFAULT_VND_RATE` and unused by the client); VND conversion happens client-side (`profit * store.vndRate`), so changing the rate input triggers no request. **When adding a new mutating action name, add it to `MUTATING_ACTIONS`.** Caveat: hand-editing the Sheet doesn't bump the version — the app's "Tải lại" button sends `nocache: true` to force a fresh read.
-- **Client (stale-while-revalidate):** on the first `loadAll()` per session, the store hydrates instantly from the last bootstrap snapshot in `localStorage` (key `alpha:bootstrap`), then fetches fresh data in the background. Logout calls `clearLocalCache()` to remove the snapshot.
-- **Keep read paths cheap:** `readRows` uses `getSheetForRead`, which skips `ensureHeaders` and the `FeesMonthly` `setNumberFormat` pin — those run only on the write path (`getSheet`). Don't add `SpreadsheetApp` write calls to read endpoints; every write forces an expensive flush.
+- **Server (CacheService):** `getBootstrap` caches its full JSON result in `ScriptCache` (TTL 6h) — a cache hit touches zero Sheets APIs. Invalidation is version-based: `handleRequest` bumps `dataVersion` (in a `finally`, since a mutation may have written the sheet before throwing in a later step, e.g. the Phi/Alpha mirror) after any mutating action — see `MUTATING_ACTIONS` in Code.gs (`create/update/delete/bulk/bulkWithConfig/archive/clearOld`); the version is part of the cache key, so stale entries are simply orphaned. The key is `bootstrap|<version>|<today>` — today's date because `pastDaily` depends on "today". `vndRate` is deliberately NOT in the key — the server returns USD figures only (`profitVND` in the response is at `DEFAULT_VND_RATE` and unused by the client). **When adding a new mutating action name, add it to `MUTATING_ACTIONS`.** Caveat: hand-editing the Sheet doesn't bump the version — the app's "Tải lại" button sends `nocache: true` to force a fresh read.
+- **Client (stale-while-revalidate):** on the first `loadAll()` per session, the store hydrates instantly from the last bootstrap snapshot in `localStorage` (key `alpha:bootstrap`), then fetches fresh data in the background. Logout calls `clearLocalCache()` to remove the snapshot. Login navigates immediately and runs `loadAll()` in the background.
+- **Keep read paths cheap:** `readRows` memoizes values per invocation (`_rowsCache` — every write path must call `invalidateRows`) and uses `getSheetForRead`, which skips `ensureHeaders` and the `FeesMonthly` `setNumberFormat` pin — those run only on the write path (`getSheet`). `APP_SECRET` is cached in a script global. Don't add `SpreadsheetApp` write calls to read endpoints; every write forces an expensive flush.
+- **Keep writes targeted:** `Fees` mutations never rewrite the whole sheet — `bulkCreateFees` updates touched rows individually and appends new rows in one block (`readFeesWithRow` returns real 1-based row positions); `updateFee` writes one row; `deleteFee` uses `deleteRow`. Mirror writes to the human sheets batch contiguous columns via `setRowCells`. Small sheets (`Accounts`, `AlphaProjects`, `FeesMonthly`) still use `writeAll`.
 
 ### Sheets schema
 
-Column order is declared in `HEADERS` at the top of `Code.gs`. `writeAll()` rewrites the entire data range each time; `appendItem()` appends one row. Rewriting is used for updates/deletes because Apps Script has no per-row ID lookup — when adding a new field, update `HEADERS`, the `normalize*` / row mappers, and the create/update payloads together.
+Column order is declared in `HEADERS` at the top of `Code.gs`. `itemToRow()` serializes an item in `HEADERS` order (used by `writeAll`, `appendItem` and the targeted Fees writes). Small sheets use `writeAll()` (rewrite the data range) for updates/deletes; the `Fees` sheet uses targeted row writes (see Performance section). When adding a new field, update `HEADERS`, the `normalize*` mappers, and the create/update payloads together.
 
 Two helpers handle JSON inside cells: `rewards` on alpha projects is stored as a JSON string (`{accountId: usdAmount}`) and parsed via `safeJson()`.
 
@@ -91,7 +94,7 @@ Any fee mutation (`createFee` / `bulkCreateFees` / `updateFee` / `deleteFee`) ca
 
 `getBootstrap` returns `fees` filtered to **current month only**, the full `feesMonthly` aggregate, and `pastDaily = { total, active, safeToDelete, earliestSafeDate, pendingArchiveMonths }`. `active` counts past-month daily rows whose `tradeDate + 15 >= today` — when zero, the Fees tab shows a green "safe to clear" indicator. Summary uses aggregate for archived months and raw rows for past months that aren't archived yet (no double count).
 
-The standalone `getSummary` / `getPoints` endpoints still read the full Fees sheet (used after mutations for partial refreshes), so they bypass the cache. All fee mutations in the store call `loadAll()` to keep `store.fees` correctly scoped to current month.
+All fee mutations in the store call `loadAll()` to keep `store.fees` correctly scoped to current month.
 
 ### Date handling
 
@@ -103,8 +106,8 @@ When a Sheet cell comes back as a `Date` object (Sheets auto-coerces date-shaped
 
 ### Domain rules baked into the code
 
-- **15-day point reset.** Every fee row carries `points`; an account's "current points" sums only entries whose `tradeDate + 15 days >= today` ([Code.gs `getPoints`](apps-script/Code.gs#L460)).
-- **Volume → points.** `points = floor(log2(volume))` capped at 20 (`pointsFromVolume` in Code.gs).
+- **15-day point reset.** Every fee row carries `points`; an account's "current points" sums entries in the window `[today-15, today)` and deducts `claimPoints` of alpha projects claimed in the same window (`computeAlphaPoints` in [src/utils/points.js](src/utils/points.js) — client-side only, the server has no points logic). Server-side, the same `tradeDate + 15` window drives `clearOldDaily` / `pastDaily` in Code.gs.
+- **Volume → points.** `points = floor(log2(volume))` capped at 20 (`pointsFromVolume` in [src/utils/points.js](src/utils/points.js)).
 - **Monthly profit.** `getSummary` buckets by `MM/YYYY`, sums fees and per-account rewards, then `profit = revenue - fee` (USD). VND display is computed client-side as `profit * store.vndRate` (default 26500); the `profitVND` field the server still returns uses `DEFAULT_VND_RATE` and is ignored by the frontend.
 
 ## Deploying changes to the Apps Script

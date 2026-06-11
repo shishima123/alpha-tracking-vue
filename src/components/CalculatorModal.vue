@@ -298,8 +298,14 @@ async function saveFee() {
   saving.value = true;
   try {
     persistCfg();
-    await calc.pushConfig(selectedId.value);
-    await store.addFees([
+    // Config account (currentVol/lastAfter/...) đi kèm luôn trong request lưu
+    // phí — 1 request thay vì 2 (Apps Script serialize, 2 request là chờ đôi).
+    const accountConfig = { id: selectedId.value };
+    for (const f of CALC_FIELDS) {
+      const v = cfg[f];
+      if (v !== undefined && v !== null && v !== '') accountConfig[f] = v;
+    }
+    await store.addFeesWithConfig([
       {
         date: fill.date,
         accountId: selectedId.value,
@@ -307,7 +313,7 @@ async function saveFee() {
         points: totalPoint.value,
         highlight: fill.highlight,
       },
-    ]);
+    ], accountConfig);
     toast.success(
       `Đã lưu phí ${fmtUSD(fee.value)} (+${totalPoint.value}đ) cho ${acc?.displayName}`
     );

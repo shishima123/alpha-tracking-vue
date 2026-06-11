@@ -6,7 +6,8 @@
  *  - Bootstrap → trackingStore.loadAll() → calculatorStore.syncFromAccounts(accounts)
  *    đổ values từ server vào cache để mirror.
  *  - User gõ trong modal → stageConfig() update cache local (chưa lên server).
- *  - User bấm "Lưu phí" → pushConfig() gọi accountsApi.update để persist lên sheet.
+ *  - User bấm "Lưu phí" → CalculatorModal gửi config kèm trong request lưu phí
+ *    (fees:bulkWithConfig) — server persist vào sheet Accounts cùng lượt.
  *  - configFor(id) merge thứ tự: server (tracking store) > cache > DEFAULTS.
  */
 
@@ -87,14 +88,6 @@ export const useCalculatorStore = defineStore('calculator', {
         [accountId]: { ...(this.cache[accountId] || {}), ...partial },
       };
       saveCache(this.cache);
-    },
-    /** Push staged cache lên server. Gọi sau khi user submit "Lưu phí". */
-    async pushConfig(accountId) {
-      if (!accountId) return;
-      const staged = this.cache[accountId];
-      if (!staged || Object.keys(staged).length === 0) return;
-      const tracking = useTrackingStore();
-      await tracking.updateAccount(accountId, pickCalcFields(staged));
     },
     /** Server values → cache. Gọi sau mỗi lần bootstrap để mirror multi-device. */
     syncFromAccounts(accounts) {

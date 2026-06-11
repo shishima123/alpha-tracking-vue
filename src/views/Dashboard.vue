@@ -184,8 +184,9 @@ const showOverview = useStorage('alpha:dashboardOverview', true);
 
 // Tỉ giá chỉ là phép nhân hiển thị — đổi rate không cần gọi server,
 // mọi số VND trên trang đều là computed từ profit USD × store.vndRate.
+// setVndRate persist localStorage để lần mở app sau giữ nguyên tỉ giá.
 function onVndRate(v) {
-  store.vndRate = Number(v) || 0;
+  store.setVndRate(v);
 }
 
 const monthly = computed(() => store.summary?.monthly || []);
