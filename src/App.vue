@@ -219,6 +219,10 @@ onBeforeUnmount(() => {
   margin: 0 auto;
   padding: 24px 16px;
 }
+@media (max-width: 768px) {
+  .app-main { padding: 12px 8px; }
+  .app-header__inner { padding: 8px 10px; gap: 10px; }
+}
 .app-main--login {
   display: flex;
   max-width: none;

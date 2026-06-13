@@ -1,5 +1,5 @@
 <template>
-  <n-flex vertical :size="20">
+  <n-flex vertical :size="rootGap">
     <!-- Header config -->
     <n-card>
       <n-flex justify="space-between" align="center" :wrap="true" :size="12">
@@ -174,7 +174,7 @@
 
 <script setup>
 import { computed, ref } from 'vue';
-import { useStorage } from '@vueuse/core';
+import { useStorage, useMediaQuery } from '@vueuse/core';
 import { NFlex, NCard, NGrid, NGi, NTag, NSwitch, NInputNumber, NText, NDivider, NRadioGroup, NRadioButton, NTooltip } from 'naive-ui';
 import { useTrackingStore } from '../stores/trackingStore';
 import { computeAlphaPoints } from '../utils/points';
@@ -182,6 +182,10 @@ import { usePersistedNumber } from '../utils/persistedNumber';
 import { hideMoney, MASK } from '../utils/privacy';
 
 const store = useTrackingStore();
+
+// Gap dọc giữa các card: hẹp lại trên mobile (đồng bộ breakpoint 768px với padding).
+const isNarrow = useMediaQuery('(max-width: 768px)');
+const rootGap = computed(() => (isNarrow.value ? 12 : 20));
 
 // "Điểm yêu cầu" + "Highlight" tự đồng bộ localStorage qua useStorage.
 // requiredModel = ô nhập (xoá rỗng được khi sửa); required = giá trị đã lưu.
@@ -245,6 +249,9 @@ function accHl(id) {
 <style scoped>
 /* Đồng bộ padding card với tab khác (.card Tailwind = 16px). */
 :deep(.n-card-content) { padding: 16px !important; }
+@media (max-width: 768px) {
+  :deep(.n-card-content) { padding: 10px !important; }
+}
 .card-title { font-weight: 600; }
 .muted { color: #94a3b8; }
 .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; flex-shrink: 0; }

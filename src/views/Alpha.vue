@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6">
+  <div class="space-y-3 md:space-y-6">
     <!-- Form thêm dự án mới (thu gọn mặc định) -->
     <div>
       <div class="flex justify-end mb-2">

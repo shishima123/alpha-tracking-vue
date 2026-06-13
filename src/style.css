@@ -65,6 +65,14 @@ body,
   }
 }
 
+/* ===== Mobile/tablet hẹp: thu gọn padding cho đỡ chật (áp toàn app) ===== */
+@media (max-width: 768px) {
+  .card { padding: 10px; }
+  /* Naive card đặt padding qua biến --n-padding-* trên .n-card (selector 2 class,
+     nên cần !important để đè). Giảm cả ngang lẫn dọc. */
+  .n-card { --n-padding-top: 12px !important; --n-padding-bottom: 12px !important; --n-padding-left: 10px !important; }
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }

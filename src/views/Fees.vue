@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6">
+  <div class="space-y-3 md:space-y-6">
     <!-- Management panel: archive + clear old (thu gọn mặc định) -->
     <div>
       <div class="flex justify-end mb-2">

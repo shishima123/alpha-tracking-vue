@@ -1,5 +1,5 @@
 <template>
-  <n-flex vertical :size="20">
+  <n-flex vertical :size="rootGap">
     <!-- Tỉ giá + toggle tổng quan (cùng 1 hàng) -->
     <n-flex justify="end" align="center" :size="12" :wrap="true">
       <n-flex align="center" :size="8">
@@ -167,7 +167,7 @@
 
 <script setup>
 import { computed, reactive, ref, watch } from 'vue';
-import { useStorage } from '@vueuse/core';
+import { useStorage, useMediaQuery } from '@vueuse/core';
 import { NFlex, NGrid, NGi, NCard, NTabs, NTabPane, NTable, NButton, NInputNumber, NText, NCollapseTransition } from 'naive-ui';
 import { useTrackingStore } from '../stores/trackingStore';
 import StatCard from '../components/StatCard.vue';
@@ -177,6 +177,10 @@ import { fmtUSD, fmtVND, todayStr } from '../utils/format';
 const DEFAULT_MONTHS = 3;
 
 const store = useTrackingStore();
+
+// Gap dọc giữa các card: hẹp lại trên mobile (đồng bộ breakpoint 768px với padding).
+const isNarrow = useMediaQuery('(max-width: 768px)');
+const rootGap = computed(() => (isNarrow.value ? 12 : 20));
 
 const activeTab = useStorage('alpha:dashboardTab', 'account');
 // Trạng thái thu gọn phần tổng quan (lưu localStorage).
@@ -309,6 +313,9 @@ tr.clickable:hover > td {
 /* Card tổng kết: nền xám + padding 16px (đồng bộ với các tab khác). */
 .summary-card { background: #eef1f6; }
 .summary-card :deep(.n-card-content) { padding: 16px !important; }
+@media (max-width: 768px) {
+  .summary-card :deep(.n-card-content) { padding: 10px !important; }
+}
 
 /* Freeze cột đầu (sticky khi cuộn ngang) — cho cả PC lẫn mobile.
    naive .n-table có overflow:hidden làm hỏng sticky → override visible. */
