@@ -159,7 +159,7 @@
                         {{ fmtUSD(f.fee) }}
                       </td>
                       <td class="py-1.5 text-right tabular-nums whitespace-nowrap">
-                        <span
+                        <span v-if="claimNames(f.date, f.accountId)" class="text-emerald-500 mr-1 align-middle" :title="claimTitle(f.date, f.accountId)">◆</span><span
                           class="text-[11px] rounded px-1.5 py-0.5"
                           :class="[pointTextClass(f), showHighlight && f.highlight ? 'bg-amber-50' : 'bg-[#f1f1f3]']"
                         ><span v-if="showHighlight && f.highlight" class="text-amber-500 mr-1">★</span>{{ f.points }}đ</span>
@@ -184,6 +184,7 @@
             <span class="inline-block w-3 h-3 rounded-sm bg-green-100 border border-green-300"></span>
             Hôm nay
           </span>
+          <span class="flex items-center gap-1.5"><span class="text-emerald-500">◆</span> Ngày húp kèo</span>
         </div>
         <div class="overflow-auto max-h-[70vh] border border-[#efeff5] rounded-lg bg-white">
           <table class="pivot min-w-full border-separate border-spacing-0 text-sm tabular-nums">
@@ -242,11 +243,11 @@
                     class="px-2 py-1.5 text-right border-b border-r border-[#efeff5] cursor-pointer"
                     @click="openEdit(row.date, a.id)"
                   >
-                    <span
+                    <span v-if="claimNames(row.date, a.id)" class="text-emerald-500 mr-0.5" :title="claimTitle(row.date, a.id)">◆</span><span
                       v-if="row.cells[a.id]"
                       :class="pointTextClass(row.cells[a.id])"
                     ><span v-if="showHighlight && row.cells[a.id].highlight" class="text-amber-500 mr-1">★</span>{{ row.cells[a.id].points }}</span>
-                    <span v-else class="text-gray-300">–</span>
+                    <span v-else-if="!claimNames(row.date, a.id)" class="text-gray-300">–</span>
                   </td>
                 </template>
                 <td class="px-3 py-1.5 text-right font-bold text-rose-600 border-b border-[#efeff5] whitespace-nowrap">
@@ -496,6 +497,28 @@ const indicatorDetail = computed(() => {
 // ===== Helpers =====
 function accountName(id) { return store.accountById(id)?.displayName || id; }
 function accountColor(id) { return store.accountById(id)?.color || '#3b82f6'; }
+
+// ===== Húp kèo: ngày account đã nhận thưởng 1 alpha project (rewards[accId] != 0) =====
+// Map "date|accountId" -> [tên kèo...] để gắn icon 🎁 vào ô phí tương ứng.
+const claimMap = computed(() => {
+  const m = {};
+  for (const p of store.projects || []) {
+    const rewards = p.rewards || {};
+    for (const accId in rewards) {
+      const amt = Number(rewards[accId]);
+      if (!Number.isFinite(amt) || amt === 0) continue;
+      (m[p.date + '|' + accId] ||= []).push(p.name || 'kèo');
+    }
+  }
+  return m;
+});
+function claimNames(date, accountId) {
+  return claimMap.value[date + '|' + accountId] || null;
+}
+function claimTitle(date, accountId) {
+  const names = claimNames(date, accountId);
+  return names ? `Húp kèo: ${names.join(', ')}` : '';
+}
 
 // ===== Highlight: đánh dấu tay ngày "đi đủ" + cảnh báo theo điểm Alpha =====
 // Cảnh báo bật khi điểm còn lại của account >= alertPoints MÀ số ngày đánh dấu ★ trong
