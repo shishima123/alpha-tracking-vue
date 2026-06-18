@@ -69,10 +69,6 @@
           </label>
           <template v-if="showHighlight">
             <div class="flex items-center gap-1.5 text-gray-500">
-              <span>Mức điểm cảnh báo</span>
-              <n-input-number v-model:value="alertPointsModel" :min="0" :show-button="false" size="small" style="width: 72px" />
-            </div>
-            <div class="flex items-center gap-1.5 text-gray-500">
               <span>Cần</span>
               <n-input-number v-model:value="requiredDaysModel" :min="1" :show-button="false" size="small" style="width: 56px" />
               <span>ngày / 15 ngày</span>
@@ -85,13 +81,14 @@
           </template>
         </div>
         <n-alert
-          v-if="showHighlight && highlightWarnings.length"
+          v-if="showHighlight && (highlightWarnings.length || expiryWarnings.length)"
           type="warning"
           :bordered="true"
-          title="Đủ điểm nhưng 15 ngày chưa đánh dấu — cần đi đánh dấu ngày"
+          title="Cần đi đánh dấu ngày"
         >
           <ul class="list-disc pl-4 space-y-0.5">
             <li v-for="w in highlightWarnings" :key="w.id">{{ w.text }}</li>
+            <li v-for="w in expiryWarnings" :key="`exp-${w.id}`">{{ w.text }}</li>
           </ul>
         </n-alert>
         <n-alert
@@ -99,7 +96,7 @@
           type="success"
           :bordered="true"
         >
-          ✓ Không tài khoản nào cần cảnh báo (điểm còn lại chưa tới {{ alertPoints }} hoặc đã đủ {{ requiredDays }} ngày đánh dấu trong cửa sổ 15 ngày).
+          ✓ Không tài khoản nào cần cảnh báo (mọi tài khoản đã đủ {{ requiredDays }} ngày đánh dấu và chưa có ngày đánh dấu nào sắp hết hạn).
         </n-alert>
       </div>
 
@@ -352,7 +349,6 @@ import { useTrackingStore } from '../stores/trackingStore';
 import { useToastStore } from '../stores/toastStore';
 import { dialog, confirmAction } from '../utils/naive';
 import { usePersistedNumber } from '../utils/persistedNumber';
-import { computeAlphaPoints } from '../utils/points';
 import { fmtUSD, parseDate, todayStr, round2 } from '../utils/format';
 
 const store = useTrackingStore();
@@ -520,13 +516,12 @@ function claimTitle(date, accountId) {
   return names ? `Húp kèo: ${names.join(', ')}` : '';
 }
 
-// ===== Highlight: đánh dấu tay ngày "đi đủ" + cảnh báo theo điểm Alpha =====
-// Cảnh báo bật khi điểm còn lại của account >= alertPoints MÀ số ngày đánh dấu ★ trong
-// cửa sổ 15 ngày < requiredDays (điểm cao nhưng chưa đi/đánh dấu đủ số ngày cần thiết).
+// ===== Highlight: đánh dấu tay ngày "đi đủ" + cảnh báo số ngày đánh dấu =====
+// Cảnh báo bật khi số ngày đánh dấu ★ trong cửa sổ 15 ngày < requiredDays
+// (chưa đi/đánh dấu đủ số ngày cần thiết trong 15 ngày gần nhất).
 // warnDays chỉ còn dùng cho màu chữ ô điểm (ngày đánh dấu sắp rời cửa sổ → đỏ).
 const showHighlight = useStorage('alpha:feesHighlight', true);
 // *Model = ô nhập (xoá rỗng được khi sửa); stored = giá trị đã lưu dùng để tính.
-const { stored: alertPoints, model: alertPointsModel } = usePersistedNumber('alpha:feesAlertPoints', 227, { min: 0 });
 const { stored: requiredDays, model: requiredDaysModel } = usePersistedNumber('alpha:feesRequiredDays', 1, { min: 1 });
 const { stored: warnDays, model: warnDaysModel } = usePersistedNumber('alpha:feesWarnDays', 3, { min: 0 });
 
@@ -546,18 +541,6 @@ function pointDaysLeft(date) {
 // Account nào cần để ý: gom ngày đã đánh dấu còn trong cửa sổ, sắp theo ngày hết hạn gần nhất.
 const trackedAccounts = computed(() => store.activeAccounts.filter((a) => !a.hideInPoints));
 
-// Ngưỡng điểm để nhận kèo — dùng chung key với tab Điểm (chỉ ảnh hưởng airdrop.eligible,
-// không đụng currentPoints; đọc ở đây để giữ nhất quán với tab Điểm).
-const pointsRequired = useStorage('alpha:pointsRequired', 15);
-
-// Điểm Alpha theo account (giống tab Điểm): currentPoints = điểm còn lại sau khi trừ kèo.
-const alphaByAccount = computed(() => {
-  const data = computeAlphaPoints(store.allFees || [], store.projects || [], pointsRequired.value);
-  const m = {};
-  for (const a of data.accounts) m[a.accountId] = a;
-  return m;
-});
-
 // Số ngày đánh dấu ★ còn trong cửa sổ 15 ngày, theo account.
 const markedCount = computed(() => {
   const m = {};
@@ -570,20 +553,47 @@ const markedCount = computed(() => {
   return m;
 });
 
-// Cảnh báo: điểm còn lại (tab Điểm) >= alertPoints MÀ số ngày đánh dấu < requiredDays.
+// Cảnh báo: số ngày đánh dấu ★ trong cửa sổ 15 ngày < requiredDays.
 const highlightWarnings = computed(() => {
-  const threshold = Math.max(0, Number(alertPoints.value) || 0);
   const req = Math.max(1, Number(requiredDays.value) || 1);
   const out = [];
   for (const a of trackedAccounts.value) {
-    const current = alphaByAccount.value[a.id]?.currentPoints ?? 0;
     const marked = markedCount.value[a.id] || 0;
-    if (current >= threshold && marked < req) {
+    if (marked < req) {
       out.push({
         id: a.id,
-        text: `${a.displayName}: điểm còn lại ${current} ≥ ${threshold} mà mới ${marked}/${req} ngày đánh dấu → cần đi đánh dấu ngày`,
+        text: `${a.displayName}: mới ${marked}/${req} ngày đánh dấu trong 15 ngày gần nhất → cần đi đánh dấu ngày`,
       });
     }
+  }
+  return out;
+});
+
+// Ngày đánh dấu ★ gần hết hạn nhất (daysLeft nhỏ nhất còn trong cửa sổ) theo account.
+const soonestExpiry = computed(() => {
+  const m = {};
+  for (const f of store.allFees || []) {
+    if (!f.highlight) continue;
+    const left = pointDaysLeft(f.date);
+    if (left == null || left < 0) continue; // đã rời cửa sổ
+    if (m[f.accountId] == null || left < m[f.accountId].left) {
+      m[f.accountId] = { left, date: f.date };
+    }
+  }
+  return m;
+});
+
+// Cảnh báo "Báo trước": account có ngày đánh dấu sắp rời cửa sổ 15 ngày (còn ≤ warnDays).
+const expiryWarnings = computed(() => {
+  const warn = Math.max(0, Number(warnDays.value) || 0);
+  const out = [];
+  for (const a of trackedAccounts.value) {
+    const e = soonestExpiry.value[a.id];
+    if (!e || e.left > warn) continue;
+    const txt = e.left <= 0
+      ? `${a.displayName}: hôm nay là ngày cuối của ngày đánh dấu ★ ${e.date} (mai sẽ tụt điểm)`
+      : `${a.displayName}: còn ${e.left} ngày nữa là hết ngày đánh dấu ★ ${e.date}`;
+    out.push({ id: a.id, text: txt });
   }
   return out;
 });
