@@ -102,8 +102,19 @@
 
       <n-empty v-if="groupedByDate.length === 0" description="Chưa có bản ghi nào — bấm nút Máy tính (góc trên phải) để nhập phí." style="padding: 32px 0" />
 
+      <!-- Giới hạn số ngày hiển thị: mặc định 15 ngày gần nhất, bật để xem tất cả -->
+      <div v-if="groupedByDate.length > 0" class="mb-2 flex items-center gap-2 text-sm">
+        <label class="flex items-center gap-2 cursor-pointer">
+          <n-switch v-model:value="showAllDays" size="small" />
+          <span>Hiện tất cả ngày</span>
+        </label>
+        <span v-if="!showAllDays && groupedByDate.length > VISIBLE_DAYS" class="text-gray-400 text-xs">
+          (đang hiện {{ VISIBLE_DAYS }}/{{ groupedByDate.length }} ngày gần nhất)
+        </span>
+      </div>
+
       <!-- ===== View: Theo ngày (grouped) ===== -->
-      <div v-else-if="viewMode === 'grouped'" class="overflow-x-auto bg-white border border-[#efeff5] rounded-lg">
+      <div v-if="groupedByDate.length > 0 && viewMode === 'grouped'" class="overflow-x-auto bg-white border border-[#efeff5] rounded-lg">
         <table class="w-full border-collapse">
           <thead>
             <tr class="table-thead">
@@ -113,7 +124,7 @@
           </thead>
           <tbody>
             <tr
-              v-for="group in groupedByDate"
+              v-for="group in visibleGroups"
               :key="group.date"
               class="group border-b border-[#efeff5] align-top hover:bg-[#f3f4f5] hover:shadow-[inset_3px_0_0_0_#2563eb] transition-all duration-150"
             >
@@ -171,7 +182,7 @@
       </div>
 
       <!-- ===== View: Bảng lịch sử (pivot) ===== -->
-      <div v-else class="space-y-2">
+      <div v-else-if="groupedByDate.length > 0" class="space-y-2">
         <div class="flex items-center gap-4 text-xs text-gray-500 flex-wrap">
           <span class="flex items-center gap-1.5">
             <span class="inline-block w-3 h-3 rounded-sm bg-blue-100 border border-blue-300"></span>
@@ -182,6 +193,7 @@
             Hôm nay
           </span>
           <span class="flex items-center gap-1.5"><span class="text-emerald-500">◆</span> Ngày húp kèo</span>
+          <span class="flex items-center gap-1.5"><span class="text-amber-500">★</span> Ngày đã đánh dấu (đi đủ)</span>
         </div>
         <div class="overflow-auto max-h-[70vh] border border-[#efeff5] rounded-lg bg-white">
           <table class="pivot min-w-full border-separate border-spacing-0 text-sm tabular-nums">
@@ -201,6 +213,7 @@
                 >
                   <span class="inline-block w-2 h-2 rounded-full mr-1.5" :style="{ background: accountColor(a.id) }"></span>
                   {{ a.displayName }}
+                  <span class="ml-1 text-rose-500 font-bold">({{ currentPointsById[a.id] ?? 0 }})</span>
                 </th>
                 <th
                   rowspan="2"
@@ -218,7 +231,7 @@
             </thead>
             <tbody>
               <tr
-                v-for="row in matrixRows"
+                v-for="row in visibleMatrixRows"
                 :key="row.date"
                 :class="rowBg(row)"
               >
@@ -349,6 +362,7 @@ import { useTrackingStore } from '../stores/trackingStore';
 import { useToastStore } from '../stores/toastStore';
 import { dialog, confirmAction } from '../utils/naive';
 import { usePersistedNumber } from '../utils/persistedNumber';
+import { computeAlphaPoints } from '../utils/points';
 import { fmtUSD, parseDate, todayStr, round2 } from '../utils/format';
 
 const store = useTrackingStore();
@@ -445,6 +459,17 @@ const matrixRows = computed(() => {
   });
 });
 
+// Giới hạn hiển thị: mặc định chỉ 15 ngày gần nhất (groupedByDate đã sort mới→cũ);
+// bật showAllDays để xem toàn bộ. Tuỳ chọn lưu trong localStorage.
+const VISIBLE_DAYS = 15;
+const showAllDays = useStorage('alpha:feesShowAllDays', false);
+const visibleGroups = computed(() =>
+  showAllDays.value ? groupedByDate.value : groupedByDate.value.slice(0, VISIBLE_DAYS)
+);
+const visibleMatrixRows = computed(() =>
+  showAllDays.value ? matrixRows.value : matrixRows.value.slice(0, VISIBLE_DAYS)
+);
+
 // Màu nền: hôm nay (xanh lá) ưu tiên hơn cửa sổ 15 ngày (xanh dương).
 // Cột ngày freeze cần nền đặc (không trong suốt) để che nội dung cuộn bên dưới.
 function rowBg(row) {
@@ -540,6 +565,16 @@ function pointDaysLeft(date) {
 
 // Account nào cần để ý: gom ngày đã đánh dấu còn trong cửa sổ, sắp theo ngày hết hạn gần nhất.
 const trackedAccounts = computed(() => store.activeAccounts.filter((a) => !a.hideInPoints));
+
+// Điểm Alpha hiện tại theo account (giống tab Điểm): currentPoints = điểm còn lại
+// sau khi trừ kèo đã húp. Hiển thị sau tên account ở header bảng phí.
+const pointsRequired = useStorage('alpha:pointsRequired', 15);
+const currentPointsById = computed(() => {
+  const data = computeAlphaPoints(store.allFees || [], store.projects || [], pointsRequired.value);
+  const m = {};
+  for (const a of data.accounts) m[a.accountId] = a.currentPoints;
+  return m;
+});
 
 // Số ngày đánh dấu ★ còn trong cửa sổ 15 ngày, theo account.
 const markedCount = computed(() => {
