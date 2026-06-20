@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { accountsApi, feesApi, alphaApi, bootstrapApi } from '../services/api';
 import { useCalculatorStore } from './calculatorStore';
+import { message } from '../utils/naive';
 
 // Bản bootstrap cuối được cache vào localStorage → lần mở app sau hydrate UI
 // ngay (<100ms) rồi mới refresh nền từ server (stale-while-revalidate).
@@ -148,12 +149,16 @@ export const useTrackingStore = defineStore('tracking', {
      *   đọc lại Sheets (dùng cho nút "Tải lại" khi user sửa Sheet bằng tay).
      */
     async loadAll(opts = {}) {
-      if (!this.hydrated) {
+      // Lần load đầu trong session: hydrate ngay từ snapshot localStorage, đồng thời
+      // giữ lại snapshot cũ để so với dữ liệu server → báo khi có cập nhật.
+      const isFirstLoad = !this.hydrated;
+      let prevSnapshot = null;
+      if (isFirstLoad) {
         this.hydrated = true;
         try {
-          const cached = JSON.parse(localStorage.getItem(BOOTSTRAP_CACHE_KEY) || 'null');
-          if (cached) this.applyBootstrap(cached);
-        } catch (_) { /* cache hỏng → bỏ qua */ }
+          prevSnapshot = localStorage.getItem(BOOTSTRAP_CACHE_KEY);
+          if (prevSnapshot) this.applyBootstrap(JSON.parse(prevSnapshot));
+        } catch (_) { prevSnapshot = null; /* cache hỏng → bỏ qua */ }
       }
       this.loading = true;
       this.error = null;
@@ -162,7 +167,12 @@ export const useTrackingStore = defineStore('tracking', {
         // client (computed × store.vndRate) → cache server dùng chung 1 key.
         const data = await bootstrapApi.get(opts.force ? { nocache: true } : {});
         this.applyBootstrap(data);
-        try { localStorage.setItem(BOOTSTRAP_CACHE_KEY, JSON.stringify(data)); } catch (_) { /* quota → bỏ qua */ }
+        const fresh = JSON.stringify(data);
+        try { localStorage.setItem(BOOTSTRAP_CACHE_KEY, fresh); } catch (_) { /* quota → bỏ qua */ }
+        // Chỉ báo ở lần load đầu, khi đã có snapshot cũ và dữ liệu server khác đi.
+        if (isFirstLoad && prevSnapshot && fresh !== prevSnapshot) {
+          message.success('Đã cập nhật dữ liệu mới');
+        }
       } catch (e) {
         this.error = e.message;
       } finally {

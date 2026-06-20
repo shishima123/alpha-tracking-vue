@@ -108,8 +108,8 @@
           <n-switch v-model:value="showAllDays" size="small" />
           <span>Hiện tất cả ngày</span>
         </label>
-        <span v-if="!showAllDays && groupedByDate.length > VISIBLE_DAYS" class="text-gray-400 text-xs">
-          (đang hiện {{ VISIBLE_DAYS }}/{{ groupedByDate.length }} ngày gần nhất)
+        <span v-if="!showAll && groupedByDate.length > visibleLimit" class="text-gray-400 text-xs">
+          (đang hiện {{ visibleLimit }}/{{ groupedByDate.length }} ngày gần nhất)
         </span>
       </div>
 
@@ -270,13 +270,13 @@
       </div>
 
       <!-- Toggle xem thêm/thu gọn: mở rộng tạm (không lưu); ẩn khi đã bật switch -->
-      <div v-if="!showAllDays && groupedByDate.length > VISIBLE_DAYS" class="mt-3 text-center">
+      <div v-if="!showAllDays && groupedByDate.length > visibleLimit" class="mt-3 text-center">
         <button
           class="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline"
           @click="expanded = !expanded"
         >
           <template v-if="expanded">Thu gọn ▴</template>
-          <template v-else>Xem thêm {{ groupedByDate.length - VISIBLE_DAYS }} ngày ▾</template>
+          <template v-else>Xem thêm {{ groupedByDate.length - visibleLimit }} ngày ▾</template>
         </button>
       </div>
 
@@ -470,18 +470,26 @@ const matrixRows = computed(() => {
   });
 });
 
-// Giới hạn hiển thị: mặc định chỉ 15 ngày gần nhất (groupedByDate đã sort mới→cũ).
+// Giới hạn hiển thị: mặc định đúng những ngày được tô màu (đang còn liên quan).
+// KHÔNG cố định 15+1 — vì nếu có ngày trống (không trade) thì số dòng không khớp
+// cửa sổ ngày theo lịch. Thay vào đó đếm số dòng còn được tô màu:
+//   - xanh dương nhẹ = inPointWindow (tradeDate + 15 >= today)
+//   - xanh lá = hôm nay (cũng thoả inPointWindow nên đã nằm trong số đếm)
+// groupedByDate đã sort mới→cũ nên các dòng tô màu luôn liền nhau ở đầu.
 // - showAllDays: switch lưu localStorage (luôn xem toàn bộ).
 // - expanded: bấm "Xem thêm" — chỉ mở rộng tạm thời cho phiên này, KHÔNG lưu.
-const VISIBLE_DAYS = 15;
 const showAllDays = useStorage('alpha:feesShowAllDays', false);
 const expanded = ref(false);
 const showAll = computed(() => showAllDays.value || expanded.value);
+// Số dòng hiển thị mặc định = số ngày đang được tô màu (>=1 để không rỗng).
+const visibleLimit = computed(() =>
+  Math.max(1, groupedByDate.value.filter((g) => inPointWindow(g.date)).length)
+);
 const visibleGroups = computed(() =>
-  showAll.value ? groupedByDate.value : groupedByDate.value.slice(0, VISIBLE_DAYS)
+  showAll.value ? groupedByDate.value : groupedByDate.value.slice(0, visibleLimit.value)
 );
 const visibleMatrixRows = computed(() =>
-  showAll.value ? matrixRows.value : matrixRows.value.slice(0, VISIBLE_DAYS)
+  showAll.value ? matrixRows.value : matrixRows.value.slice(0, visibleLimit.value)
 );
 
 // Màu nền: hôm nay (xanh lá) ưu tiên hơn cửa sổ 15 ngày (xanh dương).
