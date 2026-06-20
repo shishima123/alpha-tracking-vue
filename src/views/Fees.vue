@@ -269,6 +269,17 @@
         </div>
       </div>
 
+      <!-- Toggle xem thêm/thu gọn: mở rộng tạm (không lưu); ẩn khi đã bật switch -->
+      <div v-if="!showAllDays && groupedByDate.length > VISIBLE_DAYS" class="mt-3 text-center">
+        <button
+          class="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline"
+          @click="expanded = !expanded"
+        >
+          <template v-if="expanded">Thu gọn ▴</template>
+          <template v-else>Xem thêm {{ groupedByDate.length - VISIBLE_DAYS }} ngày ▾</template>
+        </button>
+      </div>
+
       <p v-if="groupedByDate.length > 0" class="text-xs text-gray-500 mt-3">
         Hiển thị toàn bộ daily còn trong sheet Fees. Sau khi bấm
         <b class="text-gray-700">Xóa lịch sử cũ</b>, các tháng đã
@@ -459,15 +470,18 @@ const matrixRows = computed(() => {
   });
 });
 
-// Giới hạn hiển thị: mặc định chỉ 15 ngày gần nhất (groupedByDate đã sort mới→cũ);
-// bật showAllDays để xem toàn bộ. Tuỳ chọn lưu trong localStorage.
+// Giới hạn hiển thị: mặc định chỉ 15 ngày gần nhất (groupedByDate đã sort mới→cũ).
+// - showAllDays: switch lưu localStorage (luôn xem toàn bộ).
+// - expanded: bấm "Xem thêm" — chỉ mở rộng tạm thời cho phiên này, KHÔNG lưu.
 const VISIBLE_DAYS = 15;
 const showAllDays = useStorage('alpha:feesShowAllDays', false);
+const expanded = ref(false);
+const showAll = computed(() => showAllDays.value || expanded.value);
 const visibleGroups = computed(() =>
-  showAllDays.value ? groupedByDate.value : groupedByDate.value.slice(0, VISIBLE_DAYS)
+  showAll.value ? groupedByDate.value : groupedByDate.value.slice(0, VISIBLE_DAYS)
 );
 const visibleMatrixRows = computed(() =>
-  showAllDays.value ? matrixRows.value : matrixRows.value.slice(0, VISIBLE_DAYS)
+  showAll.value ? matrixRows.value : matrixRows.value.slice(0, VISIBLE_DAYS)
 );
 
 // Màu nền: hôm nay (xanh lá) ưu tiên hơn cửa sổ 15 ngày (xanh dương).
