@@ -106,7 +106,33 @@
             <n-input-number v-model:value="cfg.withdraw" :step="0.01" :show-button="false" style="width: 100%" @update:value="persistCfg" />
           </n-form-item>
           <n-form-item label="Sau ($)" :show-feedback="false">
-            <n-input-number v-model:value="cfg.lastAfter" class="fill-input" :step="0.01" :show-button="false" placeholder="số dư còn" style="width: 100%" @update:value="persistCfg" />
+            <n-flex :size="4" align="center" :wrap="true" style="width: 100%">
+              <n-select
+                :value="afterIntSelect"
+                :options="afterIntOptions"
+                class="fill-input"
+                placeholder="Phần nguyên"
+                style="flex: 1 1 88px; min-width: 0"
+                @update:value="onIntSelect"
+              />
+              <n-input-number
+                v-if="afterIntSelect === 'other'"
+                :value="afterIntCustom"
+                :show-button="false"
+                class="fill-input"
+                placeholder="Số"
+                style="width: 84px"
+                @update:value="onIntCustom"
+              />
+              <span class="dec-dot">.</span>
+              <n-input
+                :value="afterDec"
+                class="fill-input"
+                placeholder="00"
+                style="width: 60px"
+                @update:value="onDecInput"
+              />
+            </n-flex>
           </n-form-item>
           <n-form-item label="Phí ($)" :show-feedback="false">
             <div class="readonly fee">{{ fmtUSD(fee) }}</div>
@@ -138,7 +164,7 @@
 <script setup>
 import { ref, reactive, computed, watch, h } from 'vue';
 import {
-  NModal, NSelect, NInputNumber, NAlert, NButton, NFlex, NGrid, NGi,
+  NModal, NSelect, NInput, NInputNumber, NAlert, NButton, NFlex, NGrid, NGi,
   NFormItem, NDatePicker, NEmpty, NText, NSwitch,
 } from 'naive-ui';
 import { useTrackingStore } from '../stores/trackingStore';
@@ -209,6 +235,65 @@ const selectedAccount = computed(() => store.accountById(selectedId.value));
 
 const cfg = reactive({ ...CALC_DEFAULTS });
 
+// ===== "Sau ($)" tách 2 phần: dropdown phần nguyên + input phần thập phân =====
+// cfg.lastAfter vẫn là source of truth (số gộp) — fee = Trước − Sau không đổi.
+const AFTER_INT_OPTIONS = [];
+for (let i = 1040; i <= 1050; i++) AFTER_INT_OPTIONS.push(i);
+const afterIntOptions = [
+  ...AFTER_INT_OPTIONS.map((v) => ({ label: String(v), value: v })),
+  { label: 'Khác', value: 'other' },
+];
+const afterIntSelect = ref(null); // số nguyên đã chọn, hoặc 'other'
+const afterIntCustom = ref(null); // số nguyên tự nhập khi chọn 'other'
+const afterDec = ref('');         // chuỗi chữ số phần thập phân ("5" → .5)
+
+// cfg.lastAfter (số gộp) → 3 phần UI. Gọi khi đổi account / sau loadAll.
+function syncAfterParts() {
+  const v = cfg.lastAfter;
+  if (v === null || v === undefined || v === '') {
+    afterIntSelect.value = null;
+    afterIntCustom.value = null;
+    afterDec.value = '';
+    return;
+  }
+  const [intStr, decStr = ''] = String(v).split('.');
+  const intPart = Number(intStr);
+  if (AFTER_INT_OPTIONS.includes(intPart)) {
+    afterIntSelect.value = intPart;
+    afterIntCustom.value = null;
+  } else {
+    afterIntSelect.value = 'other';
+    afterIntCustom.value = intPart;
+  }
+  afterDec.value = decStr;
+}
+
+// 3 phần UI → cfg.lastAfter (số gộp) rồi persist.
+function composeAfter() {
+  const intVal = afterIntSelect.value === 'other' ? afterIntCustom.value : afterIntSelect.value;
+  if (intVal === null || intVal === undefined || intVal === '') {
+    cfg.lastAfter = null;
+  } else {
+    const dec = String(afterDec.value ?? '').replace(/\D/g, '');
+    cfg.lastAfter = dec ? Number(`${intVal}.${dec}`) : Number(intVal);
+  }
+  persistCfg();
+}
+
+function onIntSelect(val) {
+  afterIntSelect.value = val;
+  if (val !== 'other') afterIntCustom.value = null;
+  composeAfter();
+}
+function onIntCustom(val) {
+  afterIntCustom.value = val;
+  composeAfter();
+}
+function onDecInput(val) {
+  afterDec.value = String(val ?? '').replace(/\D/g, '').slice(0, 4);
+  composeAfter();
+}
+
 // Re-sync cfg khi đổi account HOẶC khi server account ref thay đổi (sau loadAll).
 const sourceAccount = computed(() =>
   selectedId.value ? store.accountById(selectedId.value) : null
@@ -219,6 +304,7 @@ watch(
   () => {
     if (!selectedId.value) return;
     Object.assign(cfg, calc.configFor(selectedId.value));
+    syncAfterParts();
   },
   { immediate: true }
 );
@@ -341,6 +427,11 @@ async function saveFee() {
 /* Ô cần người dùng nhập → tô nền vàng nhạt cho dễ nhận biết. */
 .fill-input :deep(.n-input) { background-color: #fefce8; }
 .fill-input :deep(.n-input.n-input--focus) { background-color: #fffef7; }
+/* Phần thập phân là <n-input> trực tiếp → root chính là .n-input (không phải con). */
+.fill-input.n-input { background-color: #fefce8; }
+.fill-input.n-input.n-input--focus { background-color: #fffef7; }
+.fill-input :deep(.n-base-selection .n-base-selection-label) { background-color: #fefce8; }
+.dec-dot { font-weight: 700; color: #475569; flex: 0 0 auto; }
 .stat {
   border: 1px solid #e2e8f0;
   border-radius: 8px;
