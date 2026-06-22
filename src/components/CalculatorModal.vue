@@ -31,12 +31,12 @@
         <n-grid :cols="3" :x-gap="12">
           <n-gi>
             <n-form-item label="Điểm Trade" :show-feedback="false">
-              <n-input-number v-model:value="cfg.pointTrade" :min="1" :max="20" style="width: 100%" @update:value="persistCfg" />
+              <n-select v-model:value="cfg.pointTrade" :options="pointTradeOptions" style="width: 100%" @update:value="persistCfg" />
             </n-form-item>
           </n-gi>
           <n-gi>
             <n-form-item label="Điểm Hold" :show-feedback="false">
-              <n-input-number v-model:value="cfg.pointHold" :min="0" style="width: 100%" @update:value="persistCfg" />
+              <n-select v-model:value="cfg.pointHold" :options="pointHoldOptions" style="width: 100%" @update:value="persistCfg" />
             </n-form-item>
           </n-gi>
           <n-gi>
@@ -182,6 +182,8 @@ const calc = useCalculatorStore();
 const toast = useToastStore();
 const MULT = ALPHA_VOLUME_MULTIPLIER;
 const perOrderOptions = [128, 256, 512, 1024, 2048].map((v) => ({ label: fmtNumber(v), value: v }));
+const pointTradeOptions = [14, 15, 16, 17, 18].map((v) => ({ label: String(v), value: v }));
+const pointHoldOptions = [1, 2, 3].map((v) => ({ label: String(v), value: v }));
 
 // Chỉ tài khoản active VÀ không bật "ẩn điểm" mới hiện ở máy tính.
 const selectableAccounts = computed(() =>
