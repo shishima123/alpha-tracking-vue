@@ -133,7 +133,6 @@
             <template v-for="p in visibleProjects" :key="p.id">
               <!-- DISPLAY ROW -->
               <tr
-                v-if="editingId !== p.id"
                 class="group border-b border-[#efeff5] align-top hover:bg-[#f3f4f5] hover:shadow-[inset_3px_0_0_0_#2563eb] transition-all duration-150"
               >
                 <!-- Dự án -->
@@ -203,83 +202,6 @@
                   </div>
                 </td>
               </tr>
-
-              <!-- EDIT ROW -->
-              <tr v-else class="border-b border-[#efeff5] bg-[#f6f9ff]">
-                <td colspan="4" class="px-3 py-3">
-                  <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
-                    <div>
-                      <label class="label">Tên dự án</label>
-                      <n-input v-model:value="editForm.name" />
-                    </div>
-                    <div>
-                      <label class="label">Ngày</label>
-                      <n-date-picker
-                        v-model:formatted-value="editForm.date"
-                        value-format="dd/MM/yyyy"
-                        format="dd/MM/yyyy"
-                        type="date"
-                        :clearable="false"
-                        style="width: 100%"
-                      />
-                    </div>
-                    <div>
-                      <label class="label">Điểm yêu cầu</label>
-                      <n-input-number v-model:value="editForm.claimPoints" style="width: 100%" />
-                    </div>
-                    <div>
-                      <label class="label">Loại</label>
-                      <n-select v-model:value="editForm.type" :options="typeOptions" />
-                    </div>
-                    <div>
-                      <label class="label">Ghi chú</label>
-                      <n-input v-model:value="editForm.note" placeholder="Không bắt buộc" />
-                    </div>
-                  </div>
-
-                  <div class="mt-3">
-                    <div class="label">Số tiền nhận được ($)
-                      <span class="font-normal normal-case text-gray-400">— tick "ước lượng" nếu chưa chính thức</span>
-                    </div>
-                    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 mt-1">
-                      <div v-for="acc in store.activeAccounts" :key="acc.id">
-                        <label class="text-xs flex items-center gap-1 text-gray-700 mb-0.5">
-                          <span class="inline-block w-2 h-2 rounded-full" :style="{ background: acc.color }"></span>
-                          {{ acc.displayName }}
-                        </label>
-                        <n-input-number
-                          v-model:value="editForm.rewards[acc.id]"
-                          :step="0.01"
-                          :show-button="false"
-                          :status="editForm.estimated[acc.id] ? 'warning' : undefined"
-                          placeholder="0"
-                          style="width: 100%"
-                        />
-                        <n-checkbox
-                          v-model:checked="editForm.estimated[acc.id]"
-                          size="small"
-                          style="margin-top: 4px; font-size: 11px"
-                        >
-                          ước lượng
-                        </n-checkbox>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="flex items-center justify-between mt-3">
-                    <div class="text-sm">
-                      <span class="text-gray-500">Tổng: </span>
-                      <span class="text-green-600 font-semibold">{{ fmtUSD(editTotal) }}</span>
-                    </div>
-                    <div class="flex gap-2">
-                      <n-button :disabled="savingEdit" @click="cancelEdit">Hủy</n-button>
-                      <n-button type="primary" :loading="savingEdit" @click="saveEdit">
-                        {{ savingEdit ? 'Đang lưu...' : 'Lưu' }}
-                      </n-button>
-                    </div>
-                  </div>
-                </td>
-              </tr>
             </template>
           </tbody>
         </table>
@@ -287,9 +209,38 @@
 
       <!-- ===== View: Bảng (pivot) ===== -->
       <div v-else class="space-y-2">
-        <div class="flex items-center gap-1.5 text-xs text-gray-500">
-          <span class="inline-block w-3 h-3 rounded-sm bg-amber-100 border border-amber-300"></span>
-          Giá trị ~ (nền vàng) = ước lượng · bấm tên dự án để sửa
+        <div class="flex items-center justify-between gap-2 flex-wrap">
+          <div class="flex items-center gap-1.5 text-xs text-gray-500">
+            <span class="inline-block w-3 h-3 rounded-sm bg-amber-100 border border-amber-300"></span>
+            Giá trị ~ (nền vàng) = ước lượng · bấm tên dự án để sửa
+          </div>
+          <n-popover trigger="click" placement="bottom-end" :show-arrow="false">
+            <template #trigger>
+              <button class="inline-flex items-center gap-1 text-xs font-medium text-gray-500 bg-white border border-[#efeff5] rounded-full px-3 py-1 hover:border-blue-600 hover:text-blue-600 transition-colors">
+                Ẩn/hiện cột
+                <span v-if="hiddenCols.length" class="text-blue-600">({{ hiddenCols.length }})</span>
+              </button>
+            </template>
+            <div class="py-1" style="min-width: 180px">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-semibold text-gray-500 uppercase">Cột tài khoản</span>
+                <n-button size="tiny" text type="primary" :disabled="!hiddenCols.length" @click="showAllCols">Hiện tất cả</n-button>
+              </div>
+              <div class="flex flex-col gap-1.5 max-h-[50vh] overflow-auto">
+                <n-checkbox
+                  v-for="a in projectMatrixAccounts"
+                  :key="a.id"
+                  :checked="!hiddenCols.includes(a.id)"
+                  @update:checked="(v) => toggleCol(a.id, v)"
+                >
+                  <span class="inline-flex items-center gap-1.5">
+                    <span class="inline-block w-2 h-2 rounded-full" :style="{ background: a.color }"></span>
+                    {{ a.displayName }}
+                  </span>
+                </n-checkbox>
+              </div>
+            </div>
+          </n-popover>
         </div>
         <div class="overflow-auto max-h-[70vh] border border-[#efeff5] rounded-lg bg-white">
           <table class="pivot min-w-full border-separate border-spacing-0 text-sm tabular-nums">
@@ -300,7 +251,7 @@
                 <th class="sticky top-0 z-20 bg-[#fafafc] h-9 px-2 text-right font-semibold border-b border-[#e6e6eb] whitespace-nowrap">Claim</th>
                 <th class="sticky top-0 z-20 bg-[#fafafc] h-9 px-3 text-left font-semibold border-b border-r border-[#e6e6eb] whitespace-nowrap">Loại</th>
                 <th
-                  v-for="a in projectMatrixAccounts"
+                  v-for="a in visibleMatrixAccounts"
                   :key="a.id"
                   class="sticky top-0 z-20 bg-[#fafafc] h-9 px-2 text-right font-semibold border-b border-[#e6e6eb] whitespace-nowrap"
                 >
@@ -324,7 +275,7 @@
                   <n-tag size="small" :color="typeColor(p.type)" :bordered="false">{{ p.type }}</n-tag>
                 </td>
                 <td
-                  v-for="a in projectMatrixAccounts"
+                  v-for="a in visibleMatrixAccounts"
                   :key="p.id + '-' + a.id"
                   class="px-2 py-1.5 text-right border-b border-[#efeff5]"
                 >
@@ -357,6 +308,90 @@
         </n-button>
       </div>
     </div>
+
+    <!-- ===== Modal sửa dự án ===== -->
+    <n-modal
+      :show="editingId !== null"
+      preset="card"
+      style="max-width: 760px"
+      :bordered="false"
+      :title="editForm.name ? `Sửa dự án ${editForm.name}` : 'Sửa dự án'"
+      @update:show="(v) => { if (!v) cancelEdit(); }"
+    >
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+        <div>
+          <label class="label">Tên dự án</label>
+          <n-input v-model:value="editForm.name" />
+        </div>
+        <div>
+          <label class="label">Ngày</label>
+          <n-date-picker
+            v-model:formatted-value="editForm.date"
+            value-format="dd/MM/yyyy"
+            format="dd/MM/yyyy"
+            type="date"
+            :clearable="false"
+            style="width: 100%"
+          />
+        </div>
+        <div>
+          <label class="label">Điểm yêu cầu</label>
+          <n-input-number v-model:value="editForm.claimPoints" style="width: 100%" />
+        </div>
+        <div>
+          <label class="label">Loại</label>
+          <n-select v-model:value="editForm.type" :options="typeOptions" />
+        </div>
+        <div>
+          <label class="label">Ghi chú</label>
+          <n-input v-model:value="editForm.note" placeholder="Không bắt buộc" />
+        </div>
+      </div>
+
+      <div class="mt-3">
+        <div class="label">Số tiền nhận được ($)
+          <span class="font-normal normal-case text-gray-400">— tick "ước lượng" nếu chưa chính thức</span>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 mt-1">
+          <div v-for="acc in store.activeAccounts" :key="acc.id">
+            <label class="text-xs flex items-center gap-1 text-gray-700 mb-0.5">
+              <span class="inline-block w-2 h-2 rounded-full" :style="{ background: acc.color }"></span>
+              {{ acc.displayName }}
+            </label>
+            <n-input-number
+              v-model:value="editForm.rewards[acc.id]"
+              :step="0.01"
+              :show-button="false"
+              :status="editForm.estimated[acc.id] ? 'warning' : undefined"
+              placeholder="0"
+              style="width: 100%"
+            />
+            <n-checkbox
+              v-model:checked="editForm.estimated[acc.id]"
+              size="small"
+              style="margin-top: 4px; font-size: 11px"
+            >
+              ước lượng
+            </n-checkbox>
+          </div>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="flex items-center justify-between">
+          <div class="text-sm">
+            <span class="text-gray-500">Tổng: </span>
+            <span class="text-green-600 font-semibold">{{ fmtUSD(editTotal) }}</span>
+          </div>
+          <div class="flex gap-2">
+            <n-button :disabled="savingEdit" @click="cancelEdit">Hủy</n-button>
+            <n-button type="primary" :loading="savingEdit" @click="saveEdit">
+              {{ savingEdit ? 'Đang lưu...' : 'Lưu' }}
+            </n-button>
+          </div>
+        </div>
+      </template>
+    </n-modal>
   </div>
 </template>
 
@@ -365,7 +400,7 @@ import { reactive, ref, computed, watch } from 'vue';
 import { useStorage } from '@vueuse/core';
 import {
   NInput, NInputNumber, NSelect, NDatePicker, NCheckbox,
-  NRadioGroup, NRadioButton, NButton, NTag, NEmpty,
+  NRadioGroup, NRadioButton, NButton, NTag, NEmpty, NModal, NPopover,
 } from 'naive-ui';
 import { useTrackingStore } from '../stores/trackingStore';
 import { useToastStore } from '../stores/toastStore';
@@ -485,10 +520,26 @@ const projectMatrixAccounts = computed(() => {
     .sort((a, b) => store.accountOrderIndex(a.id) - store.accountOrderIndex(b.id));
 });
 
-// Từ view bảng → chuyển sang view danh sách + mở sửa (showAll để chắc chắn dự án hiển thị).
+// Ẩn cột tài khoản ở view bảng — lưu danh sách id bị ẩn vào localStorage.
+const hiddenCols = useStorage('alpha:hiddenProjectCols', []);
+
+const visibleMatrixAccounts = computed(() =>
+  projectMatrixAccounts.value.filter((a) => !hiddenCols.value.includes(a.id))
+);
+
+function toggleCol(id, checked) {
+  const set = new Set(hiddenCols.value);
+  if (checked) set.delete(id); // checked = hiển thị
+  else set.add(id);
+  hiddenCols.value = [...set];
+}
+
+function showAllCols() {
+  hiddenCols.value = [];
+}
+
+// Từ view bảng → mở modal sửa (modal hiển thị độc lập với view/giới hạn 15 ngày).
 function editFromTable(p) {
-  viewMode.value = 'list';
-  showAll.value = true;
   startEdit(p);
 }
 

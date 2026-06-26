@@ -69,7 +69,7 @@
     </n-collapse-transition>
 
     <!-- Danh sách + edit inline -->
-    <n-card>
+    <n-card class="accounts-panel">
       <n-flex justify="space-between" align="center" :wrap="true" style="margin-bottom: 12px">
         <span class="card-title">
           Danh sách tài khoản
@@ -322,6 +322,12 @@ function del(a) {
 </script>
 
 <style scoped>
+/* Card lớn nền xám nhạt (đồng bộ tab Điểm / Phí / Alpha) — bảng trắng nổi lên trên. */
+.accounts-panel { background: #eef1f6; }
+.accounts-panel :deep(.n-card-content) { padding: 16px !important; }
+@media (max-width: 768px) {
+  .accounts-panel :deep(.n-card-content) { padding: 10px !important; }
+}
 .card-title { font-weight: 600; }
 .muted { color: #94a3b8; }
 .strong { font-weight: 600; }
@@ -332,7 +338,12 @@ function del(a) {
 /* Hover row — đồng bộ với các bảng khác. */
 tbody td { transition: background-color 0.15s; }
 tbody tr:hover > td { background-color: #f3f4f5; }
-.table-scroll { overflow-x: auto; }
+.table-scroll {
+  overflow-x: auto;
+  background: #fff;
+  border: 1px solid #efeff5;
+  border-radius: 8px;
+}
 .table-scroll :deep(th),
 .table-scroll :deep(td) { white-space: nowrap; }
 .actions-cell :deep(.n-button) {
