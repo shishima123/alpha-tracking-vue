@@ -78,6 +78,19 @@
               <n-input-number v-model:value="warnDaysModel" :min="0" :show-button="false" size="small" style="width: 56px" />
               <span>ngày (màu ô)</span>
             </div>
+            <div class="flex items-center gap-1.5 text-gray-500">
+              <span>Theo dõi</span>
+              <n-select
+                v-model:value="trackedIds"
+                :options="trackedOptions"
+                multiple
+                size="small"
+                placeholder="Tất cả tài khoản"
+                max-tag-count="responsive"
+                clearable
+                style="min-width: 180px; max-width: 320px"
+              />
+            </div>
           </template>
         </div>
         <n-alert
@@ -96,7 +109,7 @@
           type="success"
           :bordered="true"
         >
-          ✓ Không tài khoản nào cần cảnh báo (mọi tài khoản đã đủ {{ requiredDays }} ngày đánh dấu và chưa có ngày đánh dấu nào sắp hết hạn).
+          ✓ Không tài khoản nào cần cảnh báo ({{ trackedIds.length ? `${trackedAccounts.length} tài khoản đang theo dõi` : 'mọi tài khoản' }} đã đủ {{ requiredDays }} ngày đánh dấu và chưa có ngày đánh dấu nào sắp hết hạn).
         </n-alert>
       </div>
 
@@ -611,8 +624,20 @@ function pointDaysLeft(date) {
   return Math.floor((reset.getTime() - today.getTime()) / 86400000);
 }
 
-// Account nào cần để ý: gom ngày đã đánh dấu còn trong cửa sổ, sắp theo ngày hết hạn gần nhất.
-const trackedAccounts = computed(() => store.activeAccounts.filter((a) => !a.hideInPoints));
+// Account nào cần để ý cho cảnh báo. Mặc định tất cả account đang active (không ẩn ở
+// tab Điểm); người dùng có thể chọn riêng vài account để chỉ cảnh báo cho chúng.
+// trackedIds rỗng = theo dõi tất cả (hành vi cũ). Lưu lựa chọn vào localStorage.
+const candidateAccounts = computed(() => store.activeAccounts.filter((a) => !a.hideInPoints));
+const trackedOptions = computed(() =>
+  candidateAccounts.value.map((a) => ({ label: a.displayName, value: a.id }))
+);
+const trackedIds = useStorage('alpha:feesTrackedAccounts', []);
+const trackedAccounts = computed(() => {
+  const candidates = candidateAccounts.value;
+  if (!trackedIds.value.length) return candidates;
+  const set = new Set(trackedIds.value);
+  return candidates.filter((a) => set.has(a.id));
+});
 
 // Điểm Alpha hiện tại theo account (giống tab Điểm): currentPoints = điểm còn lại
 // sau khi trừ kèo đã húp. Hiển thị sau tên account ở header bảng phí.
