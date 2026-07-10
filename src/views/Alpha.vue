@@ -21,7 +21,7 @@
       <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
         <div>
           <label class="label">Tên dự án</label>
-          <n-input v-model:value="form.name" placeholder="VD: BILL" />
+          <n-input :value="form.name" placeholder="VD: BILL" @update:value="(v) => (form.name = (v || '').toUpperCase())" />
         </div>
         <div>
           <label class="label">Ngày</label>
@@ -321,7 +321,7 @@
       <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
         <div>
           <label class="label">Tên dự án</label>
-          <n-input v-model:value="editForm.name" />
+          <n-input :value="editForm.name" @update:value="(v) => (editForm.name = (v || '').toUpperCase())" />
         </div>
         <div>
           <label class="label">Ngày</label>
