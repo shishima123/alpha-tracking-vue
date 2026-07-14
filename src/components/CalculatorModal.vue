@@ -185,9 +185,9 @@ const perOrderOptions = [128, 256, 512, 1024, 2048].map((v) => ({ label: fmtNumb
 const pointTradeOptions = [14, 15, 16, 17, 18].map((v) => ({ label: String(v), value: v }));
 const pointHoldOptions = [1, 2, 3].map((v) => ({ label: String(v), value: v }));
 
-// Chỉ tài khoản active VÀ không bật "ẩn điểm" mới hiện ở máy tính.
+// Chỉ tài khoản active VÀ không bật "ẩn máy tính" mới hiện ở máy tính.
 const selectableAccounts = computed(() =>
-  store.activeAccounts.filter((a) => !a.hideInPoints)
+  store.activeAccounts.filter((a) => !a.hideInCalc)
 );
 
 // Account đã có phí nhập cho HÔM NAY → đánh dấu tích trong dropdown.

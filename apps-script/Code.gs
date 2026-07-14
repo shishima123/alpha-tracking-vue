@@ -26,7 +26,7 @@ const HEADERS = {
   Accounts: [
     'id', 'name', 'displayName', 'color', 'active',
     'pointTrade', 'pointHold', 'currentVol', 'perOrder', 'withdraw', 'lastAfter',
-    'createdAt', 'sortOrder', 'hideInPoints',
+    'createdAt', 'sortOrder', 'hideInPoints', 'hideInCalc', 'hideInAlpha',
   ],
   // 'highlight' luôn ở CUỐI: ensureHeaders chỉ append cột thiếu vào cuối, thêm vào
   // giữa sẽ lệch cột dữ liệu cũ.
@@ -377,6 +377,8 @@ function normalizeAccount(r) {
     createdAt: r.createdAt || '',
     sortOrder: numOr(r.sortOrder, 0),
     hideInPoints: r.hideInPoints === true || r.hideInPoints === 'TRUE',
+    hideInCalc: r.hideInCalc === true || r.hideInCalc === 'TRUE',
+    hideInAlpha: r.hideInAlpha === true || r.hideInAlpha === 'TRUE',
   };
 }
 
@@ -402,6 +404,8 @@ function createAccount(payload) {
     createdAt: new Date().toISOString(),
     sortOrder: payload.sortOrder,
     hideInPoints: payload.hideInPoints === true,
+    hideInCalc: payload.hideInCalc === true,
+    hideInAlpha: payload.hideInAlpha === true,
   });
   appendItem(SHEETS.ACCOUNTS, item);
   return item;

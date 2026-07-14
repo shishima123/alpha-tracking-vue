@@ -53,7 +53,7 @@
           <span class="font-normal normal-case text-gray-400">— tick "ước lượng" nếu chưa chính thức</span>
         </div>
         <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 mt-2">
-          <div v-for="acc in store.activeAccounts" :key="acc.id">
+          <div v-for="acc in rewardAccounts" :key="acc.id">
             <label class="text-xs flex items-center gap-1 text-gray-700 mb-0.5">
               <span
                 class="inline-block w-2 h-2 rounded-full"
@@ -353,7 +353,7 @@
           <span class="font-normal normal-case text-gray-400">— tick "ước lượng" nếu chưa chính thức</span>
         </div>
         <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 mt-1">
-          <div v-for="acc in store.activeAccounts" :key="acc.id">
+          <div v-for="acc in rewardAccounts" :key="acc.id">
             <label class="text-xs flex items-center gap-1 text-gray-700 mb-0.5">
               <span class="inline-block w-2 h-2 rounded-full" :style="{ background: acc.color }"></span>
               {{ acc.displayName }}
@@ -426,6 +426,12 @@ const viewMode = useStorage('alpha:projectsViewMode', 'list');
 const projectTypes = ['FCFS', 'TGE', 'Phase', 'Pre-Tge', 'Booster'];
 const typeOptions = projectTypes.map((t) => ({ label: t, value: t }));
 
+// Tài khoản hiện ở phần nhập reward: active VÀ không bật "ẩn dự án Alpha".
+// (accountsWithReward vẫn duyệt store.accounts để không ẩn reward cũ đã ghi.)
+const rewardAccounts = computed(() =>
+  store.activeAccounts.filter((a) => !a.hideInAlpha)
+);
+
 const form = reactive({
   name: '',
   date: todayStr(),
@@ -437,7 +443,7 @@ const form = reactive({
 });
 
 watch(
-  () => store.activeAccounts,
+  () => rewardAccounts.value,
   (accs) => {
     for (const a of accs) {
       if (!(a.id in form.rewards)) form.rewards[a.id] = null;
@@ -637,7 +643,7 @@ function startEdit(p) {
   // Giữ NGUYÊN rewards gốc (kể cả của inactive accounts) để không bị drop khi save
   editForm.rewards = { ...(p.rewards || {}) };
   editForm.estimated = { ...(p.estimated || {}) };
-  for (const a of store.activeAccounts) {
+  for (const a of rewardAccounts.value) {
     if (!(a.id in editForm.rewards)) editForm.rewards[a.id] = null;
     if (!(a.id in editForm.estimated)) editForm.estimated[a.id] = false;
   }

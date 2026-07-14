@@ -51,9 +51,20 @@
             </n-gi>
           </n-grid>
 
-          <n-checkbox v-model:checked="form.hideInPoints" style="margin-top: 8px">
-            Ẩn ở tab Điểm Alpha
-          </n-checkbox>
+          <n-flex :size="24" :wrap="true" style="margin-top: 12px">
+            <n-flex align="center" :size="8" :wrap="false">
+              <n-switch v-model:value="form.hideInPoints" size="small" />
+              <span class="switch-label">Ẩn điểm (tab Điểm Alpha)</span>
+            </n-flex>
+            <n-flex align="center" :size="8" :wrap="false">
+              <n-switch v-model:value="form.hideInCalc" size="small" />
+              <span class="switch-label">Ẩn máy tính</span>
+            </n-flex>
+            <n-flex align="center" :size="8" :wrap="false">
+              <n-switch v-model:value="form.hideInAlpha" size="small" />
+              <span class="switch-label">Ẩn dự án Alpha</span>
+            </n-flex>
+          </n-flex>
 
           <n-flex justify="end" :size="8" style="margin-top: 16px">
             <n-button @click="resetForm">Reset</n-button>
@@ -77,9 +88,10 @@
             ({{ visibleAccounts.length }}{{ inactiveCount ? '/' + store.accounts.length : '' }})
           </span>
         </span>
-        <n-checkbox v-if="inactiveCount" v-model:checked="showInactive">
-          Hiện {{ inactiveCount }} tài khoản không active
-        </n-checkbox>
+        <n-flex v-if="inactiveCount" align="center" :size="8" :wrap="false">
+          <n-switch v-model:value="showInactive" size="small" />
+          <span class="switch-label">Hiện {{ inactiveCount }} tài khoản không active</span>
+        </n-flex>
       </n-flex>
 
       <div class="table-scroll">
@@ -91,6 +103,8 @@
             <th style="width: 110px">Màu</th>
             <th class="ta-c" style="width: 70px">Active</th>
             <th class="ta-c" style="width: 80px">Ẩn điểm</th>
+            <th class="ta-c" style="width: 80px">Ẩn M.tính</th>
+            <th class="ta-c" style="width: 80px">Ẩn D.án</th>
             <th class="ta-r" style="width: 80px">Đ.Trade</th>
             <th class="ta-r" style="width: 80px">Đ.Hold</th>
             <th class="ta-r" style="width: 70px">Đ.Tổng</th>
@@ -112,16 +126,11 @@
                 </n-flex>
               </td>
               <td class="muted mono">{{ a.color }}</td>
-              <td class="ta-c">
-                <n-tag size="small" :type="a.active ? 'success' : 'default'" :bordered="false">
-                  {{ a.active ? '✓' : '✕' }}
-                </n-tag>
-              </td>
-              <td class="ta-c">
-                <n-tag size="small" :type="a.hideInPoints ? 'warning' : 'default'" :bordered="false">
-                  {{ a.hideInPoints ? '✓' : '—' }}
-                </n-tag>
-              </td>
+              <!-- Switch chỉ để xem — muốn đổi phải bấm Sửa. -->
+              <td class="ta-c"><n-switch size="small" :value="!!a.active" disabled class="view-switch" /></td>
+              <td class="ta-c"><n-switch size="small" :value="!!a.hideInPoints" disabled class="view-switch" /></td>
+              <td class="ta-c"><n-switch size="small" :value="!!a.hideInCalc" disabled class="view-switch" /></td>
+              <td class="ta-c"><n-switch size="small" :value="!!a.hideInAlpha" disabled class="view-switch" /></td>
               <td class="ta-r">{{ a.pointTrade }}</td>
               <td class="ta-r">{{ a.pointHold }}</td>
               <td class="ta-r strong" style="color: #2563eb">{{ (a.pointTrade || 0) + (a.pointHold || 0) }}</td>
@@ -145,7 +154,9 @@
               </td>
               <td class="muted mono">{{ editForm.color }}</td>
               <td class="ta-c"><n-switch v-model:value="editForm.active" size="small" /></td>
-              <td class="ta-c"><n-checkbox v-model:checked="editForm.hideInPoints" /></td>
+              <td class="ta-c"><n-switch v-model:value="editForm.hideInPoints" size="small" /></td>
+              <td class="ta-c"><n-switch v-model:value="editForm.hideInCalc" size="small" /></td>
+              <td class="ta-c"><n-switch v-model:value="editForm.hideInAlpha" size="small" /></td>
               <td><n-input-number v-model:value="editForm.pointTrade" :min="1" :max="20" size="small" style="width: 70px" /></td>
               <td><n-input-number v-model:value="editForm.pointHold" :min="0" size="small" style="width: 70px" /></td>
               <td class="ta-r strong" style="color: #2563eb">
@@ -162,7 +173,7 @@
             </tr>
           </template>
           <tr v-if="visibleAccounts.length === 0">
-            <td colspan="9" class="empty">
+            <td colspan="11" class="empty">
               {{ store.accounts.length === 0 ? 'Chưa có tài khoản nào' : 'Tất cả tài khoản đang bị ẩn (không active)' }}
             </td>
           </tr>
@@ -178,7 +189,7 @@ import { reactive, ref, computed } from 'vue';
 import { useStorage } from '@vueuse/core';
 import {
   NFlex, NCard, NButton, NCollapseTransition, NGrid, NGi, NFormItem,
-  NInput, NInputNumber, NColorPicker, NSwitch, NCheckbox, NTable, NTag, NText,
+  NInput, NInputNumber, NColorPicker, NSwitch, NTable, NText,
 } from 'naive-ui';
 import { useTrackingStore } from '../stores/trackingStore';
 import { useToastStore } from '../stores/toastStore';
@@ -205,6 +216,8 @@ const DEFAULT_FORM = {
   pointHold: 2,
   sortOrder: 0,
   hideInPoints: false,
+  hideInCalc: false,
+  hideInAlpha: false,
 };
 
 const form = reactive({ ...DEFAULT_FORM });
@@ -237,6 +250,8 @@ async function submit() {
       pointHold: form.pointHold,
       sortOrder: Number(form.sortOrder) || 0,
       hideInPoints: !!form.hideInPoints,
+      hideInCalc: !!form.hideInCalc,
+      hideInAlpha: !!form.hideInAlpha,
     });
     toast.success(`Đã tạo tài khoản "${name}"`);
     resetForm();
@@ -257,6 +272,8 @@ const editForm = reactive({
   pointHold: 2,
   sortOrder: 0,
   hideInPoints: false,
+  hideInCalc: false,
+  hideInAlpha: false,
 });
 const savingEdit = ref(false);
 
@@ -269,6 +286,8 @@ function startEdit(a) {
   editForm.pointHold = a.pointHold ?? 2;
   editForm.sortOrder = a.sortOrder ?? 0;
   editForm.hideInPoints = !!a.hideInPoints;
+  editForm.hideInCalc = !!a.hideInCalc;
+  editForm.hideInAlpha = !!a.hideInAlpha;
 }
 
 function cancelEdit() {
@@ -293,6 +312,8 @@ async function saveEdit() {
       pointHold: editForm.pointHold,
       sortOrder: Number(editForm.sortOrder) || 0,
       hideInPoints: !!editForm.hideInPoints,
+      hideInCalc: !!editForm.hideInCalc,
+      hideInAlpha: !!editForm.hideInAlpha,
     });
     toast.success(`Đã cập nhật "${editForm.displayName}"`);
     editingId.value = null;
@@ -329,6 +350,10 @@ function del(a) {
   .accounts-panel :deep(.n-card-content) { padding: 10px !important; }
 }
 .card-title { font-weight: 600; }
+.switch-label { font-size: 13px; color: #475569; user-select: none; }
+/* Switch ở dòng xem (disabled): giữ màu bình thường cho dễ nhìn, chỉ khóa tương tác. */
+.view-switch { opacity: 1 !important; }
+.view-switch :deep(.n-switch__rail) { cursor: default !important; }
 .muted { color: #94a3b8; }
 .strong { font-weight: 600; }
 .mono { font-family: ui-monospace, monospace; font-size: 12px; }
