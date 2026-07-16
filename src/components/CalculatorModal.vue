@@ -138,6 +138,11 @@
             <div class="readonly fee">{{ fmtUSD(fee) }}</div>
           </n-form-item>
         </div>
+        <div v-if="existingFee" class="dup-warn">
+          ⚠️ <b>{{ selectedAccount?.displayName }}</b> đã có phí
+          <b>{{ fmtUSD(existingFee.fee) }}</b> (+{{ existingFee.points }}đ) ngày {{ fill.date }}
+          — lưu sẽ <b>ghi đè</b>. Quên đổi tài khoản?
+        </div>
         <label class="mark-row">
           <n-switch v-model:value="fill.highlight" size="small" />
           <span>★ Đánh dấu ngày này (ngày đi đủ điều kiện nhận kèo)</span>
@@ -364,12 +369,32 @@ const canSave = computed(
   () => selectedId.value && (fee.value > 0 || totalPoint.value > 0)
 );
 
+// Phí đã ghi cho (ngày đang fill, account đang chọn) — nếu có thì lưu sẽ GHI ĐÈ
+// (upsert theo date+accountId), thường là dấu hiệu quên đổi tài khoản.
+// Dùng allFees vì fill.date có thể rơi sang tháng trước (store.fees chỉ tháng này).
+const existingFee = computed(() => {
+  if (!selectedId.value) return null;
+  return (store.allFees || []).find(
+    (f) => f.date === fill.date && f.accountId === selectedId.value
+  ) || null;
+});
+
 async function saveFee() {
   if (!canSave.value) return;
   const acc = selectedAccount.value;
+  const existing = existingFee.value;
   if (!(await confirmAction({
-    title: 'Lưu phí',
+    title: existing ? 'Tài khoản này ĐÃ có phí ngày này!' : 'Lưu phí',
     content: () => h('div', { style: 'line-height:1.8' }, [
+      existing
+        ? h('div', {
+            style: 'background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:8px 12px;margin-bottom:8px;color:#b91c1c',
+          }, [
+            h('b', acc?.displayName),
+            ` đã có phí ${fmtUSD(existing.fee)} (+${existing.points}đ) ngày ${fill.date}. `,
+            'Lưu tiếp sẽ GHI ĐÈ — kiểm tra lại xem có quên đổi tài khoản không?',
+          ])
+        : null,
       'Lưu phí ',
       h('b', { style: 'color:#e11d48' }, fmtUSD(fee.value)),
       ' (',
@@ -380,8 +405,8 @@ async function saveFee() {
       h('b', { style: 'color:#0f172a' }, fill.date),
       '?',
     ]),
-    positiveText: 'Lưu',
-    type: 'info',
+    positiveText: existing ? 'Vẫn ghi đè' : 'Lưu',
+    type: existing ? 'warning' : 'info',
   }))) return;
   saving.value = true;
   try {
@@ -426,6 +451,17 @@ async function saveFee() {
 .readonly.accent { color: #2563eb; font-weight: 600; }
 .readonly.fee { color: #e11d48; justify-content: flex-end; }
 .mark-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 13px; color: #475569; cursor: pointer; }
+/* Cảnh báo account đang chọn đã có phí ngày đang fill (lưu = ghi đè). */
+.dup-warn {
+  margin-top: 12px;
+  padding: 8px 12px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 13px;
+  line-height: 1.5;
+}
 /* Ô cần người dùng nhập → tô nền vàng nhạt cho dễ nhận biết. */
 .fill-input :deep(.n-input) { background-color: #fefce8; }
 .fill-input :deep(.n-input.n-input--focus) { background-color: #fffef7; }
