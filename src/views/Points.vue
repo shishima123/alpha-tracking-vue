@@ -51,7 +51,7 @@
           <tr>
             <th class="mini-corner">Alpha Points</th>
             <th v-for="acc in pointsAccounts" :key="acc.id" colspan="2" class="mini-acc">
-              <span class="dot dot-sm" :style="{ background: acc.color }"></span>{{ acc.displayName }}
+              {{ acc.displayName }}
             </th>
           </tr>
         </thead>
@@ -102,10 +102,7 @@
         >
           <!-- Header: name + tag -->
           <n-flex justify="space-between" align="center" style="margin-bottom: 12px">
-            <n-flex align="center" :size="8">
-              <span class="dot" :style="{ background: acc.color }"></span>
-              <span class="card-title">{{ acc.displayName }}</span>
-            </n-flex>
+            <span class="card-title">{{ acc.displayName }}</span>
             <n-tag v-if="data(acc.id).airdrop.eligible" type="success" size="small" :bordered="false">
               ✓ Đủ điểm nhận
             </n-tag>
@@ -254,7 +251,6 @@ function accHl(id) {
 }
 .card-title { font-weight: 600; }
 .muted { color: #94a3b8; }
-.dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 /* Card lớn nền xám nhạt để card tài khoản (trắng) nổi rõ. */
 .points-panel { background: #eef1f6; }
 /* Card tài khoản tự sắp xếp theo bề rộng: 2-3+ card/hàng tùy màn, full-width < 480px. */
@@ -311,7 +307,6 @@ function accHl(id) {
   text-align: center;
   color: #1f2225;
 }
-.dot-sm { width: 8px; height: 8px; margin-right: 6px; vertical-align: middle; }
 .mini-corner { text-align: left; }
 .mini-label { font-weight: 600; color: #334155; text-align: left; }
 .mini-num { text-align: center; font-weight: 700; }

@@ -23,10 +23,13 @@ const SHEETS = {
 };
 
 const HEADERS = {
+  // 'email' / 'x' / 'bscAddress' ở CUỐI vì lý do giống Fees.highlight bên dưới:
+  // ensureHeaders chỉ append cột thiếu vào cuối.
   Accounts: [
-    'id', 'name', 'displayName', 'color', 'active',
+    'id', 'name', 'displayName', 'active',
     'pointTrade', 'pointHold', 'currentVol', 'perOrder', 'withdraw', 'lastAfter',
     'createdAt', 'sortOrder', 'hideInPoints', 'hideInCalc', 'hideInAlpha',
+    'email', 'x', 'bscAddress',
   ],
   // 'highlight' luôn ở CUỐI: ensureHeaders chỉ append cột thiếu vào cuối, thêm vào
   // giữa sẽ lệch cột dữ liệu cũ.
@@ -365,7 +368,6 @@ function normalizeAccount(r) {
     id: String(r.id),
     name: r.name,
     displayName: r.displayName || r.name,
-    color: r.color || '#3b82f6',
     active: r.active !== false && r.active !== 'FALSE' && r.active !== '',
     pointTrade: numOr(r.pointTrade, ACCOUNT_CALC_DEFAULTS.pointTrade),
     pointHold: numOr(r.pointHold, ACCOUNT_CALC_DEFAULTS.pointHold),
@@ -379,6 +381,10 @@ function normalizeAccount(r) {
     hideInPoints: r.hideInPoints === true || r.hideInPoints === 'TRUE',
     hideInCalc: r.hideInCalc === true || r.hideInCalc === 'TRUE',
     hideInAlpha: r.hideInAlpha === true || r.hideInAlpha === 'TRUE',
+    email: String(valOr(r.email, '')).trim(),
+    // Bỏ '@' đầu nếu user gõ vào — lưu handle trần, UI tự thêm '@'.
+    x: String(valOr(r.x, '')).trim().replace(/^@/, ''),
+    bscAddress: String(valOr(r.bscAddress, '')).trim(),
   };
 }
 
@@ -393,7 +399,6 @@ function createAccount(payload) {
     id: id,
     name: name,
     displayName: payload.displayName || name,
-    color: payload.color || '#3b82f6',
     active: payload.active !== false,
     pointTrade: payload.pointTrade,
     pointHold: payload.pointHold,
@@ -406,6 +411,9 @@ function createAccount(payload) {
     hideInPoints: payload.hideInPoints === true,
     hideInCalc: payload.hideInCalc === true,
     hideInAlpha: payload.hideInAlpha === true,
+    email: payload.email,
+    x: payload.x,
+    bscAddress: payload.bscAddress,
   });
   appendItem(SHEETS.ACCOUNTS, item);
   return item;

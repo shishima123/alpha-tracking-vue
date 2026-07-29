@@ -22,7 +22,6 @@
       <n-flex align="center" :size="12">
         <span class="muted">Tài khoản:</span>
         <n-select v-model:value="selectedId" :options="accountOptions" :render-label="renderAccountLabel" style="max-width: 280px" />
-        <span v-if="selectedAccount" class="dot-lg" :style="{ background: selectedAccount.color }"></span>
       </n-flex>
 
       <!-- Config section -->
@@ -441,7 +440,6 @@ async function saveFee() {
 
 <style scoped>
 .muted { color: #94a3b8; }
-.dot-lg { width: 12px; height: 12px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 .section { border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; }
 .section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; margin-bottom: 8px; }
 .readonly {

@@ -55,10 +55,6 @@
         <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 mt-2">
           <div v-for="acc in rewardAccounts" :key="acc.id">
             <label class="text-xs flex items-center gap-1 text-gray-700 mb-0.5">
-              <span
-                class="inline-block w-2 h-2 rounded-full"
-                :style="{ background: acc.color }"
-              ></span>
               {{ acc.displayName }}
             </label>
             <n-input-number
@@ -166,9 +162,6 @@
                         :key="acc.id"
                         class="border-b border-[#f3f3f5] last:border-0 hover:bg-[#e2e3e5] rounded transition-colors"
                       >
-                        <td class="py-1 pr-2 w-1">
-                          <span class="inline-block w-2.5 h-2.5 rounded-full align-middle" :style="{ background: acc.color }"></span>
-                        </td>
                         <td class="py-1 pr-4 text-slate-700 font-medium whitespace-nowrap">{{ acc.displayName }}</td>
                         <td class="py-1 text-right whitespace-nowrap">
                           <span
@@ -233,10 +226,7 @@
                   :checked="!hiddenCols.includes(a.id)"
                   @update:checked="(v) => toggleCol(a.id, v)"
                 >
-                  <span class="inline-flex items-center gap-1.5">
-                    <span class="inline-block w-2 h-2 rounded-full" :style="{ background: a.color }"></span>
-                    {{ a.displayName }}
-                  </span>
+                  <span class="inline-flex items-center gap-1.5">{{ a.displayName }}</span>
                 </n-checkbox>
               </div>
             </div>
@@ -255,7 +245,6 @@
                   :key="a.id"
                   class="sticky top-0 z-20 bg-[#fafafc] h-9 px-2 text-right font-semibold border-b border-[#e6e6eb] whitespace-nowrap"
                 >
-                  <span class="inline-block w-2 h-2 rounded-full mr-1" :style="{ background: a.color }"></span>
                   {{ a.displayName }}
                 </th>
                 <th class="sticky top-0 z-20 bg-[#fafafc] h-9 px-3 text-right font-semibold border-b border-l border-[#e6e6eb] whitespace-nowrap">Tổng</th>
@@ -355,7 +344,6 @@
         <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 mt-1">
           <div v-for="acc in rewardAccounts" :key="acc.id">
             <label class="text-xs flex items-center gap-1 text-gray-700 mb-0.5">
-              <span class="inline-block w-2 h-2 rounded-full" :style="{ background: acc.color }"></span>
               {{ acc.displayName }}
             </label>
             <n-input-number
@@ -522,7 +510,7 @@ const projectMatrixAccounts = computed(() => {
     }
   });
   return [...ids]
-    .map((id) => store.accountById(id) || { id, displayName: id, color: '#3b82f6' })
+    .map((id) => store.accountById(id) || { id, displayName: id })
     .sort((a, b) => store.accountOrderIndex(a.id) - store.accountOrderIndex(b.id));
 });
 

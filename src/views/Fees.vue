@@ -169,9 +169,6 @@
                       :title="f.note ? `${accountName(f.accountId)} · ${f.note}` : accountName(f.accountId)"
                       @click="openEdit(f.date, f.accountId)"
                     >
-                      <td class="py-1.5 pr-2 w-1">
-                        <span class="inline-block w-2.5 h-2.5 rounded-full align-middle" :style="{ background: accountColor(f.accountId) }"></span>
-                      </td>
                       <td class="py-1.5 pr-3 font-semibold text-slate-700 whitespace-nowrap">
                         {{ accountName(f.accountId) }}
                         <span v-if="f.note" class="text-[11px]">📝</span>
@@ -224,7 +221,6 @@
                   colspan="2"
                   class="sticky top-0 z-20 bg-[#fafafc] h-9 px-3 text-center font-semibold border-b border-r border-[#e6e6eb] whitespace-nowrap"
                 >
-                  <span class="inline-block w-2 h-2 rounded-full mr-1.5" :style="{ background: accountColor(a.id) }"></span>
                   {{ a.displayName }}
                   <span class="ml-1 text-rose-500 font-bold">({{ currentPointsById[a.id] ?? 0 }})</span>
                 </th>
@@ -319,7 +315,6 @@
           <n-gi>
             <n-form-item label="Tài khoản" :show-feedback="false">
               <div class="input flex items-center gap-2" style="background: #fafafc">
-                <span class="inline-block w-2.5 h-2.5 rounded-full" :style="{ background: accountColor(cellModal.accountId) }"></span>
                 {{ accountName(cellModal.accountId) }}
               </div>
             </n-form-item>
@@ -477,7 +472,7 @@ const matrixAccounts = computed(() => {
   const ids = new Set();
   filteredFees.value.forEach((f) => ids.add(f.accountId));
   return [...ids]
-    .map((id) => store.accountById(id) || { id, displayName: id, color: '#3b82f6' })
+    .map((id) => store.accountById(id) || { id, displayName: id })
     .sort((a, b) => store.accountOrderIndex(a.id) - store.accountOrderIndex(b.id));
 });
 
@@ -578,7 +573,6 @@ const indicatorDetail = computed(() => {
 
 // ===== Helpers =====
 function accountName(id) { return store.accountById(id)?.displayName || id; }
-function accountColor(id) { return store.accountById(id)?.color || '#3b82f6'; }
 
 // ===== Húp kèo: ngày account đã nhận thưởng 1 alpha project (rewards[accId] != 0) =====
 // Map "date|accountId" -> [tên kèo...] để gắn icon 🎁 vào ô phí tương ứng.

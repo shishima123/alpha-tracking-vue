@@ -96,12 +96,7 @@
                       </thead>
                       <tbody>
                         <tr v-for="row in sortedAccountRows(m)" :key="row.id">
-                          <td>
-                            <n-flex align="center" :size="8" :wrap="false">
-                              <span class="dot" :style="{ background: accountColor(row.id) }"></span>
-                              {{ accountName(row.id) }}
-                            </n-flex>
-                          </td>
+                          <td>{{ accountName(row.id) }}</td>
                           <td class="ta-r rev">{{ fmtUSD(row.revenue) }}</td>
                           <td class="ta-r fee">-{{ fmtUSD(row.fee) }}</td>
                           <td class="ta-r strong" :class="row.profit >= 0 ? 'pos' : 'neg'">{{ fmtUSD(row.profit) }}</td>
@@ -142,12 +137,7 @@
             </thead>
             <tbody>
               <tr v-for="row in accountTotals" :key="row.id">
-                <td>
-                  <n-flex align="center" :size="8" :wrap="false">
-                    <span class="dot" :style="{ background: accountColor(row.id) }"></span>
-                    <span class="strong">{{ accountName(row.id) }}</span>
-                  </n-flex>
-                </td>
+                <td><span class="strong">{{ accountName(row.id) }}</span></td>
                 <td class="ta-r rev">{{ fmtUSD(row.revenue) }}</td>
                 <td class="ta-r fee">-{{ fmtUSD(row.fee) }}</td>
                 <td class="ta-r strong" :class="row.profit >= 0 ? 'pos' : 'neg'">{{ fmtUSD(row.profit) }}</td>
@@ -253,9 +243,6 @@ function sortedAccountRows(m) {
 function accountName(id) {
   return store.accountById(id)?.displayName || id;
 }
-function accountColor(id) {
-  return store.accountById(id)?.color || '#3b82f6';
-}
 </script>
 
 <style scoped>
@@ -289,7 +276,6 @@ function accountColor(id) {
 .pos { color: #16a34a; }
 .neg { color: #dc2626; }
 .empty { text-align: center; padding: 24px; color: #94a3b8; }
-.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 .clickable { cursor: pointer; }
 
 /* Hover row — đồng bộ với các bảng khác (#f3f4f5 = overlay xám trên nền trắng). */

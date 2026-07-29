@@ -10,7 +10,7 @@
     <n-collapse-transition :show="showForm">
       <n-card>
         <div>
-          <n-grid cols="2 m:3 l:7" responsive="screen" :x-gap="12" :y-gap="8">
+          <n-grid cols="2 m:3 l:6" responsive="screen" :x-gap="12" :y-gap="8">
             <n-gi>
               <n-form-item label="Tên (name)" :show-feedback="false">
                 <n-input v-model:value="form.name" placeholder="vd: bo" />
@@ -22,16 +22,8 @@
               </n-form-item>
             </n-gi>
             <n-gi>
-              <n-form-item label="Màu" :show-feedback="false">
-                <n-color-picker v-model:value="form.color" :show-alpha="false" :modes="['hex']" />
-              </n-form-item>
-            </n-gi>
-            <n-gi>
-              <n-form-item label="Active" :show-feedback="false">
-                <n-switch v-model:value="form.active">
-                  <template #checked>Có</template>
-                  <template #unchecked>Không</template>
-                </n-switch>
+              <n-form-item label="Thứ tự" :show-feedback="false">
+                <n-input-number v-model:value="form.sortOrder" placeholder="0" style="width: 100%" />
               </n-form-item>
             </n-gi>
             <n-gi>
@@ -45,24 +37,44 @@
               </n-form-item>
             </n-gi>
             <n-gi>
-              <n-form-item label="Thứ tự" :show-feedback="false">
-                <n-input-number v-model:value="form.sortOrder" placeholder="0" style="width: 100%" />
+              <n-form-item label="Active" :show-feedback="false">
+                <n-switch v-model:value="form.active">
+                  <template #checked>Có</template>
+                  <template #unchecked>Không</template>
+                </n-switch>
+              </n-form-item>
+            </n-gi>
+
+            <n-gi span="2">
+              <n-form-item label="Email" :show-feedback="false">
+                <n-input v-model:value="form.email" placeholder="vd: abc@gmail.com" />
+              </n-form-item>
+            </n-gi>
+            <n-gi>
+              <n-form-item label="X (Twitter)" :show-feedback="false">
+                <n-input v-model:value="form.x" placeholder="vd: binance" />
+              </n-form-item>
+            </n-gi>
+            <n-gi span="3">
+              <n-form-item label="Địa chỉ BSC" :show-feedback="false">
+                <n-input v-model:value="form.bscAddress" placeholder="0x..." />
               </n-form-item>
             </n-gi>
           </n-grid>
 
           <n-flex :size="24" :wrap="true" style="margin-top: 12px">
+            <span class="switch-label" style="font-weight: 600">Ẩn ở tab:</span>
             <n-flex align="center" :size="8" :wrap="false">
               <n-switch v-model:value="form.hideInPoints" size="small" />
-              <span class="switch-label">Ẩn điểm (tab Điểm Alpha)</span>
+              <span class="switch-label">Điểm Alpha</span>
             </n-flex>
             <n-flex align="center" :size="8" :wrap="false">
               <n-switch v-model:value="form.hideInCalc" size="small" />
-              <span class="switch-label">Ẩn máy tính</span>
+              <span class="switch-label">Máy tính</span>
             </n-flex>
             <n-flex align="center" :size="8" :wrap="false">
               <n-switch v-model:value="form.hideInAlpha" size="small" />
-              <span class="switch-label">Ẩn dự án Alpha</span>
+              <span class="switch-label">Dự án Alpha</span>
             </n-flex>
           </n-flex>
 
@@ -98,42 +110,53 @@
       <n-table :bordered="false" :single-line="false" size="small">
         <thead>
           <tr>
-            <th class="ta-c" style="width: 80px">Thứ tự</th>
-            <th>Tên / Display</th>
-            <th style="width: 110px">Màu</th>
+            <th class="ta-c" style="width: 56px">#</th>
+            <th style="min-width: 170px">Tài khoản</th>
+            <th style="width: 230px">Liên hệ</th>
             <th class="ta-c" style="width: 70px">Active</th>
-            <th class="ta-c" style="width: 80px">Ẩn điểm</th>
-            <th class="ta-c" style="width: 80px">Ẩn M.tính</th>
-            <th class="ta-c" style="width: 80px">Ẩn D.án</th>
-            <th class="ta-r" style="width: 80px">Đ.Trade</th>
-            <th class="ta-r" style="width: 80px">Đ.Hold</th>
-            <th class="ta-r" style="width: 70px">Đ.Tổng</th>
+            <th class="ta-c" style="width: 150px">Ẩn ở tab</th>
+            <th class="ta-c" style="width: 150px">Điểm (Trade + Hold)</th>
             <th style="width: 110px"></th>
           </tr>
         </thead>
         <tbody>
           <template v-for="a in visibleAccounts" :key="a.id">
             <!-- Display row -->
-            <tr v-if="editingId !== a.id">
+            <tr v-if="editingId !== a.id" :class="{ 'row-inactive': !a.active }">
               <td class="ta-c muted">{{ a.sortOrder ?? 0 }}</td>
               <td>
-                <n-flex align="center" :size="8" :wrap="false">
-                  <span class="dot" :style="{ background: a.color }"></span>
-                  <div>
-                    <div class="strong">{{ a.displayName }}</div>
-                    <div class="muted" style="font-size: 12px">{{ a.id }}</div>
-                  </div>
-                </n-flex>
+                <div class="strong">{{ a.displayName }}</div>
+                <div class="muted" style="font-size: 12px">{{ a.id }}</div>
               </td>
-              <td class="muted mono">{{ a.color }}</td>
+              <td class="contact-cell">
+                <div v-if="a.email" class="contact-line" :title="a.email">✉ {{ a.email }}</div>
+                <div v-if="a.x" class="contact-line">
+                  <a class="contact-link" :href="`https://x.com/${a.x}`" target="_blank" rel="noopener">
+                    𝕏 @{{ a.x }}
+                  </a>
+                </div>
+                <div v-if="a.bscAddress" class="contact-line">
+                  <button class="addr" :title="`${a.bscAddress} — bấm để copy`" @click="copyText(a.bscAddress)">
+                    ◆ {{ shortAddr(a.bscAddress) }}
+                  </button>
+                </div>
+                <span v-if="!a.email && !a.x && !a.bscAddress" class="muted">—</span>
+              </td>
               <!-- Switch chỉ để xem — muốn đổi phải bấm Sửa. -->
               <td class="ta-c"><n-switch size="small" :value="!!a.active" disabled class="view-switch" /></td>
-              <td class="ta-c"><n-switch size="small" :value="!!a.hideInPoints" disabled class="view-switch" /></td>
-              <td class="ta-c"><n-switch size="small" :value="!!a.hideInCalc" disabled class="view-switch" /></td>
-              <td class="ta-c"><n-switch size="small" :value="!!a.hideInAlpha" disabled class="view-switch" /></td>
-              <td class="ta-r">{{ a.pointTrade }}</td>
-              <td class="ta-r">{{ a.pointHold }}</td>
-              <td class="ta-r strong" style="color: #2563eb">{{ (a.pointTrade || 0) + (a.pointHold || 0) }}</td>
+              <td class="ta-c">
+                <!-- Chỉ hiện tab nào ĐANG bị ẩn → đa số dòng chỉ là dấu '—', dễ quét mắt. -->
+                <n-flex justify="center" :size="4" :wrap="true">
+                  <span v-if="a.hideInPoints" class="tag">Điểm</span>
+                  <span v-if="a.hideInCalc" class="tag">Máy tính</span>
+                  <span v-if="a.hideInAlpha" class="tag">Dự án</span>
+                  <span v-if="!a.hideInPoints && !a.hideInCalc && !a.hideInAlpha" class="muted">—</span>
+                </n-flex>
+              </td>
+              <td class="ta-c">
+                <span class="muted">{{ a.pointTrade }} + {{ a.pointHold }} = </span>
+                <span class="pts-total">{{ (a.pointTrade || 0) + (a.pointHold || 0) }}</span>
+              </td>
               <td class="actions-cell">
                 <n-flex justify="center" align="center" :size="12" :wrap="false">
                   <n-button size="tiny" text type="primary" @click="startEdit(a)">Sửa</n-button>
@@ -143,24 +166,54 @@
             </tr>
 
             <!-- Edit row -->
-            <tr v-else>
-              <td class="ta-c"><n-input-number v-model:value="editForm.sortOrder" size="small" style="width: 70px" /></td>
+            <tr v-else class="row-edit">
+              <td class="ta-c">
+                <n-input-number v-model:value="editForm.sortOrder" size="small" :show-button="false" style="width: 48px" />
+              </td>
               <td>
-                <n-flex align="center" :size="8" :wrap="false">
-                  <n-color-picker v-model:value="editForm.color" :show-alpha="false" :modes="['hex']" style="width: 40px" />
-                  <n-input v-model:value="editForm.displayName" size="small" placeholder="Display name" />
-                </n-flex>
+                <n-input v-model:value="editForm.displayName" size="small" placeholder="Display name" />
                 <div class="muted" style="font-size: 12px; margin-top: 4px">{{ a.id }} (cố định)</div>
               </td>
-              <td class="muted mono">{{ editForm.color }}</td>
+              <td>
+                <n-flex vertical :size="4">
+                  <n-input v-model:value="editForm.email" size="tiny" placeholder="Email" />
+                  <n-input v-model:value="editForm.x" size="tiny" placeholder="X (không cần @)" />
+                  <n-input v-model:value="editForm.bscAddress" size="tiny" placeholder="Địa chỉ BSC (0x...)" />
+                </n-flex>
+              </td>
               <td class="ta-c"><n-switch v-model:value="editForm.active" size="small" /></td>
-              <td class="ta-c"><n-switch v-model:value="editForm.hideInPoints" size="small" /></td>
-              <td class="ta-c"><n-switch v-model:value="editForm.hideInCalc" size="small" /></td>
-              <td class="ta-c"><n-switch v-model:value="editForm.hideInAlpha" size="small" /></td>
-              <td><n-input-number v-model:value="editForm.pointTrade" :min="1" :max="20" size="small" style="width: 70px" /></td>
-              <td><n-input-number v-model:value="editForm.pointHold" :min="0" size="small" style="width: 70px" /></td>
-              <td class="ta-r strong" style="color: #2563eb">
-                {{ (Number(editForm.pointTrade) || 0) + (Number(editForm.pointHold) || 0) }}
+              <td>
+                <n-flex vertical :size="4">
+                  <n-flex align="center" :size="6" :wrap="false">
+                    <n-switch v-model:value="editForm.hideInPoints" size="small" />
+                    <span class="switch-label">Điểm</span>
+                  </n-flex>
+                  <n-flex align="center" :size="6" :wrap="false">
+                    <n-switch v-model:value="editForm.hideInCalc" size="small" />
+                    <span class="switch-label">Máy tính</span>
+                  </n-flex>
+                  <n-flex align="center" :size="6" :wrap="false">
+                    <n-switch v-model:value="editForm.hideInAlpha" size="small" />
+                    <span class="switch-label">Dự án</span>
+                  </n-flex>
+                </n-flex>
+              </td>
+              <td>
+                <n-flex align="center" justify="center" :size="6" :wrap="false">
+                  <n-input-number
+                    v-model:value="editForm.pointTrade" :min="1" :max="20"
+                    size="tiny" :show-button="false" style="width: 46px"
+                  />
+                  <span class="muted">+</span>
+                  <n-input-number
+                    v-model:value="editForm.pointHold" :min="0"
+                    size="tiny" :show-button="false" style="width: 46px"
+                  />
+                  <span class="muted">=</span>
+                  <span class="pts-total">
+                    {{ (Number(editForm.pointTrade) || 0) + (Number(editForm.pointHold) || 0) }}
+                  </span>
+                </n-flex>
               </td>
               <td class="actions-cell">
                 <n-flex justify="center" align="center" :size="12" :wrap="false">
@@ -173,7 +226,7 @@
             </tr>
           </template>
           <tr v-if="visibleAccounts.length === 0">
-            <td colspan="11" class="empty">
+            <td colspan="7" class="empty">
               {{ store.accounts.length === 0 ? 'Chưa có tài khoản nào' : 'Tất cả tài khoản đang bị ẩn (không active)' }}
             </td>
           </tr>
@@ -189,7 +242,7 @@ import { reactive, ref, computed } from 'vue';
 import { useStorage } from '@vueuse/core';
 import {
   NFlex, NCard, NButton, NCollapseTransition, NGrid, NGi, NFormItem,
-  NInput, NInputNumber, NColorPicker, NSwitch, NTable, NText,
+  NInput, NInputNumber, NSwitch, NTable, NText,
 } from 'naive-ui';
 import { useTrackingStore } from '../stores/trackingStore';
 import { useToastStore } from '../stores/toastStore';
@@ -210,7 +263,6 @@ const visibleAccounts = computed(() =>
 const DEFAULT_FORM = {
   name: '',
   displayName: '',
-  color: '#3b82f6',
   active: true,
   pointTrade: 15,
   pointHold: 2,
@@ -218,7 +270,25 @@ const DEFAULT_FORM = {
   hideInPoints: false,
   hideInCalc: false,
   hideInAlpha: false,
+  email: '',
+  x: '',
+  bscAddress: '',
 };
+
+// 0x1234...abcd — bản đầy đủ nằm ở title, bấm để copy.
+function shortAddr(addr) {
+  const s = String(addr || '');
+  return s.length > 14 ? `${s.slice(0, 6)}...${s.slice(-4)}` : s;
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success('Đã copy: ' + text);
+  } catch (_) {
+    toast.error('Trình duyệt không cho copy');
+  }
+}
 
 const form = reactive({ ...DEFAULT_FORM });
 const saving = ref(false);
@@ -244,7 +314,6 @@ async function submit() {
     await store.createAccount({
       name,
       displayName: form.displayName.trim() || name,
-      color: form.color,
       active: form.active,
       pointTrade: form.pointTrade,
       pointHold: form.pointHold,
@@ -252,6 +321,9 @@ async function submit() {
       hideInPoints: !!form.hideInPoints,
       hideInCalc: !!form.hideInCalc,
       hideInAlpha: !!form.hideInAlpha,
+      email: form.email.trim(),
+      x: form.x.trim().replace(/^@/, ''),
+      bscAddress: form.bscAddress.trim(),
     });
     toast.success(`Đã tạo tài khoản "${name}"`);
     resetForm();
@@ -266,7 +338,6 @@ async function submit() {
 const editingId = ref(null);
 const editForm = reactive({
   displayName: '',
-  color: '#3b82f6',
   active: true,
   pointTrade: 15,
   pointHold: 2,
@@ -274,13 +345,15 @@ const editForm = reactive({
   hideInPoints: false,
   hideInCalc: false,
   hideInAlpha: false,
+  email: '',
+  x: '',
+  bscAddress: '',
 });
 const savingEdit = ref(false);
 
 function startEdit(a) {
   editingId.value = a.id;
   editForm.displayName = a.displayName || '';
-  editForm.color = a.color || '#3b82f6';
   editForm.active = !!a.active;
   editForm.pointTrade = a.pointTrade ?? 15;
   editForm.pointHold = a.pointHold ?? 2;
@@ -288,6 +361,9 @@ function startEdit(a) {
   editForm.hideInPoints = !!a.hideInPoints;
   editForm.hideInCalc = !!a.hideInCalc;
   editForm.hideInAlpha = !!a.hideInAlpha;
+  editForm.email = a.email || '';
+  editForm.x = a.x || '';
+  editForm.bscAddress = a.bscAddress || '';
 }
 
 function cancelEdit() {
@@ -306,7 +382,6 @@ async function saveEdit() {
   try {
     await store.updateAccount(editingId.value, {
       displayName: editForm.displayName,
-      color: editForm.color,
       active: editForm.active,
       pointTrade: editForm.pointTrade,
       pointHold: editForm.pointHold,
@@ -314,6 +389,9 @@ async function saveEdit() {
       hideInPoints: !!editForm.hideInPoints,
       hideInCalc: !!editForm.hideInCalc,
       hideInAlpha: !!editForm.hideInAlpha,
+      email: editForm.email.trim(),
+      x: editForm.x.trim().replace(/^@/, ''),
+      bscAddress: editForm.bscAddress.trim(),
     });
     toast.success(`Đã cập nhật "${editForm.displayName}"`);
     editingId.value = null;
@@ -356,10 +434,12 @@ function del(a) {
 .view-switch :deep(.n-switch__rail) { cursor: default !important; }
 .muted { color: #94a3b8; }
 .strong { font-weight: 600; }
-.mono { font-family: ui-monospace, monospace; font-size: 12px; }
 .ta-r { text-align: right; }
 .ta-c { text-align: center; }
 .actions-cell { vertical-align: middle; }
+/* Tài khoản không active: làm mờ nhẹ để phân biệt khi bật "Hiện ... không active". */
+.row-inactive > td { opacity: 0.55; }
+.row-edit > td { background-color: #f8fafc; }
 /* Hover row — đồng bộ với các bảng khác. */
 tbody td { transition: background-color 0.15s; }
 tbody tr:hover > td { background-color: #f3f4f5; }
@@ -380,7 +460,42 @@ tbody tr:hover > td { background-color: #f3f4f5; }
   background-color: #f1f3f5;
 }
 .empty { text-align: center; padding: 24px; color: #94a3b8; }
-.dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+
+/* Cột Liên hệ — 3 dòng nhỏ, địa chỉ rút gọn bấm để copy. */
+.contact-cell { max-width: 230px; }
+.contact-line {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.contact-link { color: #2563eb; text-decoration: none; }
+.contact-link:hover { text-decoration: underline; }
+.addr {
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  color: #64748b;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.addr:hover { color: #2563eb; }
+
+/* Tag "đang bị ẩn ở tab X" — chỉ hiện khi bật, nên bảng sạch ở trạng thái mặc định. */
+.tag {
+  display: inline-block;
+  font-size: 11px;
+  line-height: 1.6;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #fff1f2;
+  color: #e11d48;
+  border: 1px solid #fecdd3;
+}
+.pts-total { font-weight: 600; color: #2563eb; }
+
 .head-toggle {
   display: inline-flex;
   align-items: center;

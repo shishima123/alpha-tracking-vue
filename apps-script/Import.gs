@@ -24,17 +24,17 @@
  * - Account đã tồn tại sẽ KHÔNG bị ghi đè (giữ nguyên cài đặt hiện tại).
  */
 const ACCOUNT_DEFS = {
-  'Main':           { id: 'main',  displayName: 'Main',        active: true,  color: '#ef4444' },
-  'Em iu':          { id: 'emiu',  displayName: 'Em iu',       active: true,  color: '#ec4899' },
-  'Huy':            { id: 'huy',   displayName: 'Huy',         active: true,  color: '#f59e0b' },
-  'Old(Phu)':       { id: 'old',   displayName: 'Old(Phu)',         active: true,  color: '#10b981' },
-  'New(Chanh)':     { id: 'new',   displayName: 'New(Chanh)',         active: true,  color: '#3b82f6' },
-  'Bo':             { id: 'bo',    displayName: 'Bo',          active: true,  color: '#8b5cf6' },
-  'Booster':        { id: 'booster', displayName: 'Booster', active: true, color: '#7c3aed' },
+  'Main':           { id: 'main',  displayName: 'Main',        active: true },
+  'Em iu':          { id: 'emiu',  displayName: 'Em iu',       active: true },
+  'Huy':            { id: 'huy',   displayName: 'Huy',         active: true },
+  'Old(Phu)':       { id: 'old',   displayName: 'Old(Phu)',    active: true },
+  'New(Chanh)':     { id: 'new',   displayName: 'New(Chanh)',  active: true },
+  'Bo':             { id: 'bo',    displayName: 'Bo',          active: true },
+  'Booster':        { id: 'booster', displayName: 'Booster',   active: true },
   // === Inactive (có data cũ nhưng không còn dùng — vẫn xuất hiện ở Dashboard) ===
-  'Ba Huy':         { id: 'bahuy', displayName: 'Ba Huy',      active: false, color: '#6b7280' },
-  'Tuyet':          { id: 'tuyet',   displayName: 'Tuyet', active: false, color: '#9ca3af' },
-  'An':             { id: 'an',   displayName: 'An',    active: false, color: '#a3a3a3' },
+  'Ba Huy':         { id: 'bahuy', displayName: 'Ba Huy',      active: false },
+  'Tuyet':          { id: 'tuyet', displayName: 'Tuyet',       active: false },
+  'An':             { id: 'an',    displayName: 'An',          active: false },
 };
 
 function importLegacy() {
@@ -63,9 +63,9 @@ function findSheet(ss, name) {
 
 // --------------------------------------------------------------------------
 /**
- * Đảm bảo các account trong ACCOUNT_DEFS đều tồn tại + đồng bộ displayName/color.
+ * Đảm bảo các account trong ACCOUNT_DEFS đều tồn tại + đồng bộ displayName.
  * - Account chưa có → tạo mới (lấy đủ thông tin từ DEFS, kể cả active flag)
- * - Account đã có → CHỈ update displayName + color cho khớp DEFS
+ * - Account đã có → CHỈ update displayName cho khớp DEFS
  *   (giữ nguyên active, pointTrade/Hold, vol, withdraw, lastAfter, createdAt)
  */
 function ensureAccountsFromDefs() {
@@ -87,18 +87,16 @@ function ensureAccountsFromDefs() {
     const d = uniqueDefs[id];
     const cur = existingMap[id];
     if (cur) {
-      if (cur.displayName !== d.displayName || cur.color !== d.color) {
+      if (cur.displayName !== d.displayName) {
         cur.displayName = d.displayName;
-        cur.color = d.color;
         updated++;
-        Logger.log('  ~ Synced "' + d.id + '" → displayName="' + d.displayName + '", color="' + d.color + '"');
+        Logger.log('  ~ Synced "' + d.id + '" → displayName="' + d.displayName + '"');
       }
     } else {
       const item = normalizeAccount({
         id: d.id,
         name: d.displayName,
         displayName: d.displayName,
-        color: d.color,
         active: d.active,
         createdAt: new Date().toISOString(),
       });
@@ -323,6 +321,33 @@ function importLegacyProjects() {
   projSh.getRange(projSh.getLastRow() + 1, 1, rows.length, projHeaders.length).setValues(rows);
   Logger.log('Imported ' + rows.length + ' project rows');
   return rows.length;
+}
+
+// --------------------------------------------------------------------------
+/**
+ * MIGRATION 1 LẦN: xóa hẳn cột 'color' khỏi sheet Accounts.
+ *
+ * HEADERS.Accounts trong Code.gs đã bỏ 'color', mà readRows map cột theo THỨ TỰ
+ * index — nên khi cột color vẫn còn trong sheet thì mọi cột từ D trở đi bị lệch.
+ * Chạy hàm này NGAY SAU khi deploy Code.gs mới:
+ *   Apps Script editor → chọn "migrateRemoveAccountColor" → Run → xem Logs.
+ * Idempotent: chạy lại lần 2 không làm gì (không còn header 'color').
+ */
+function migrateRemoveAccountColor() {
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Accounts');
+  if (!sh) {
+    Logger.log('Không tìm thấy sheet Accounts — bỏ qua.');
+    return;
+  }
+  const headerRow = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+  const idx = headerRow.indexOf('color');
+  if (idx === -1) {
+    Logger.log('Sheet Accounts không có cột "color" — không cần migrate.');
+    return;
+  }
+  sh.deleteColumn(idx + 1);
+  Logger.log('Đã xóa cột "color" (cột ' + (idx + 1) + ') khỏi sheet Accounts.');
+  Logger.log('Header còn lại: ' + sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].join(', '));
 }
 
 // --------------------------------------------------------------------------
