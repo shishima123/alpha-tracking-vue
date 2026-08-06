@@ -342,9 +342,10 @@
           <span class="font-normal normal-case text-gray-400">— tick "ước lượng" nếu chưa chính thức</span>
         </div>
         <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 mt-1">
-          <div v-for="acc in rewardAccounts" :key="acc.id">
+          <div v-for="acc in editRewardAccounts" :key="acc.id">
             <label class="text-xs flex items-center gap-1 text-gray-700 mb-0.5">
               {{ acc.displayName }}
+              <span v-if="editExtraIds.includes(acc.id)" class="text-gray-400" title="Tài khoản đang ẩn">(ẩn)</span>
             </label>
             <n-input-number
               v-model:value="editForm.rewards[acc.id]"
@@ -617,6 +618,19 @@ const editForm = reactive({
 });
 const savingEdit = ref(false);
 
+// Account bị ẩn (inactive / hideInAlpha) nhưng dự án đang sửa có sẵn giá trị →
+// vẫn phải hiện ô nhập để sửa được. Chốt lúc mở modal, không tính lại theo
+// editForm.rewards để ô không biến mất khi user xóa trắng giá trị.
+const editExtraIds = ref([]);
+
+const editRewardAccounts = computed(() => {
+  const extras = editExtraIds.value
+    .map((id) => store.accountById(id) || { id, displayName: id });
+  return [...rewardAccounts.value, ...extras].sort(
+    (a, b) => store.accountOrderIndex(a.id) - store.accountOrderIndex(b.id)
+  );
+});
+
 const editTotal = computed(() =>
   Object.values(editForm.rewards).reduce((s, v) => s + (Number(v) || 0), 0)
 );
@@ -635,6 +649,10 @@ function startEdit(p) {
     if (!(a.id in editForm.rewards)) editForm.rewards[a.id] = null;
     if (!(a.id in editForm.estimated)) editForm.estimated[a.id] = false;
   }
+  const shown = new Set(rewardAccounts.value.map((a) => a.id));
+  editExtraIds.value = Object.keys(p.rewards || {}).filter(
+    (id) => !shown.has(id) && hasReward(p, id)
+  );
 }
 
 function cancelEdit() {
