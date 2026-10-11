@@ -97,14 +97,18 @@
       <!-- Fill phí -->
       <div class="section">
         <div class="section-title">Fill phí vào hệ thống</div>
-        <div class="fill-grid">
+        <n-radio-group v-model:value="feeMode" size="small" class="fee-mode" aria-label="Cách nhập phí">
+          <n-radio-button value="balance">Tính từ Trước − Sau</n-radio-button>
+          <n-radio-button value="direct">Nhập phí trực tiếp</n-radio-button>
+        </n-radio-group>
+        <div class="fill-grid" :class="{ 'direct-fee-grid': feeMode === 'direct' }">
           <n-form-item label="Ngày" :show-feedback="false">
             <n-date-picker v-model:formatted-value="fill.date" value-format="dd/MM/yyyy" format="dd/MM/yyyy" type="date" :clearable="false" style="width: 100%" />
           </n-form-item>
-          <n-form-item label="Trước ($)" :show-feedback="false">
+          <n-form-item v-if="feeMode === 'balance'" label="Trước ($)" :show-feedback="false">
             <n-input-number v-model:value="cfg.withdraw" :step="0.01" :show-button="false" style="width: 100%" @update:value="persistCfg" />
           </n-form-item>
-          <n-form-item label="Sau ($)" :show-feedback="false">
+          <n-form-item v-if="feeMode === 'balance'" label="Sau ($)" :show-feedback="false">
             <n-flex :size="4" align="center" :wrap="true" style="width: 100%">
               <n-select
                 :value="afterIntSelect"
@@ -134,7 +138,18 @@
             </n-flex>
           </n-form-item>
           <n-form-item label="Phí ($)" :show-feedback="false">
-            <div class="readonly fee">{{ fmtUSD(fee) }}</div>
+            <n-input-number
+              v-if="feeMode === 'direct'"
+              v-model:value="directFee"
+              :min="0"
+              :step="0.01"
+              :precision="2"
+              :show-button="false"
+              class="fill-input"
+              placeholder="Nhập phí"
+              style="width: 100%"
+            />
+            <div v-else class="readonly fee">{{ fmtUSD(fee) }}</div>
           </n-form-item>
         </div>
         <div v-if="existingFee" class="dup-warn">
@@ -152,7 +167,7 @@
     <template #footer>
       <n-flex justify="space-between" align="center" :wrap="true" :size="8">
         <n-text depth="3" style="font-size: 12px">
-          Phí = Trước − Sau. Điểm khi lưu = Điểm Tổng (<b style="color: #2563eb">{{ totalPoint }}</b>).
+          {{ feeMode === 'direct' ? 'Phí = số phí nhập trực tiếp.' : 'Phí = Trước − Sau.' }} Điểm khi lưu = Điểm Tổng (<b style="color: #2563eb">{{ totalPoint }}</b>).
         </n-text>
         <n-flex :size="8">
           <n-button :disabled="saving" @click="calc.hide()">Đóng</n-button>
@@ -169,7 +184,7 @@
 import { ref, reactive, computed, watch, h } from 'vue';
 import {
   NModal, NSelect, NInput, NInputNumber, NAlert, NButton, NFlex, NGrid, NGi,
-  NFormItem, NDatePicker, NEmpty, NText, NSwitch,
+  NFormItem, NDatePicker, NEmpty, NText, NSwitch, NRadioGroup, NRadioButton,
 } from 'naive-ui';
 import { useTrackingStore } from '../stores/trackingStore';
 import { useCalculatorStore, CALC_DEFAULTS, CALC_FIELDS } from '../stores/calculatorStore';
@@ -356,8 +371,20 @@ const fill = reactive({
   highlight: false,
 });
 const saving = ref(false);
+const feeMode = ref('balance');
+// Keep direct fee drafts separate for each account during this session.
+const directFeeDrafts = reactive({});
+const directFee = computed({
+  get: () => directFeeDrafts[selectedId.value] ?? null,
+  set: (value) => {
+    if (selectedId.value) directFeeDrafts[selectedId.value] = value;
+  },
+});
 
 const fee = computed(() => {
+  if (feeMode.value === 'direct') {
+    return Number.isFinite(directFee.value) ? round2(Math.max(0, directFee.value)) : 0;
+  }
   const before = Number(cfg.withdraw) || 0;
   const after = Number(cfg.lastAfter);
   if (!Number.isFinite(after)) return 0;
@@ -365,7 +392,9 @@ const fee = computed(() => {
 });
 
 const canSave = computed(
-  () => selectedId.value && (fee.value > 0 || totalPoint.value > 0)
+  () => selectedId.value
+    && (feeMode.value !== 'direct' || (Number.isFinite(directFee.value) && directFee.value >= 0))
+    && (fee.value > 0 || totalPoint.value > 0)
 );
 
 // Phí đã ghi cho (ngày đang fill, account đang chọn) — nếu có thì lưu sẽ GHI ĐÈ
@@ -497,6 +526,8 @@ async function saveFee() {
   grid-template-columns: repeat(4, 1fr);
   gap: 12px;
 }
+.fee-mode { margin-bottom: 12px; }
+.direct-fee-grid { grid-template-columns: repeat(2, 1fr); }
 @media (max-width: 480px) {
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .fill-grid { grid-template-columns: repeat(2, 1fr); }
